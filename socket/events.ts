@@ -26,6 +26,7 @@ export type S2CPayloadType = {
     }) => void,
     [S2CSocketEvent.ChatMessageCreated]: (payload: {
         id: string;
+        nickname: string;
         message: string;
         createdAt: string;
     }) => void;

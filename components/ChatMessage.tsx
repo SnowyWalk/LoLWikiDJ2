@@ -1,27 +1,29 @@
 import Image from "next/image";
 
-type ChatMessageProps = {
-    imageUrl: string;
+export type ChatMessageData = {
+    id: string;
     nickname: string;
-    time: string;
-    body: string;
+    message: string;
+    createdAt: Date;
 }
 
-export default function ChatMessage({imageUrl, nickname, time, body} : ChatMessageProps)
-{
-    const dateTime = new Date(time);
+type ChatMessageProps = {
+    chatMessageData: ChatMessageData;
+}
 
+export default function ChatMessage({chatMessageData} : ChatMessageProps)
+{
     return (
         <div className="flow-root">
-            <Image className="float-left m-2 rounded-full" src={imageUrl} alt="" width={60} height={60} />
+            {/*<Image className="float-left m-2 rounded-full" src={""} alt="" width={60} height={60} />*/}
 
             <div className="mt-2 mb-1 flex items-baseline gap-2">
-                <span>{nickname}</span>
-                <span className="text-xs text-muted-foreground">{dateTime.toLocaleTimeString()}</span>
+                <span>{chatMessageData.nickname}</span>
+                <span className="text-xs text-muted-foreground">{chatMessageData.createdAt.toLocaleTimeString()}</span>
             </div>
 
             <p className="ml-3 break-all">
-                {body}
+                {chatMessageData.message}
             </p>
         </div>
     )

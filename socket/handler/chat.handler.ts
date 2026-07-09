@@ -7,9 +7,11 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
         console.log(`[chat] message received: ${payload.message}`);
         io.to(socket.data.channel).emit(S2CSocketEvent.ChatMessageCreated, {
             id: socket.data.id,
+            nickname: socket.data.nickname,
             message: payload.message,
-            createdAt: Date.now().toLocaleString(),
+            createdAt: new Date().toISOString(),
         })
+        
     })
     
 }
