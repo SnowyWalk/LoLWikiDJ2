@@ -29,6 +29,7 @@ export type S2CPayloadType = {
         nickname: string;
         message: string;
         createdAt: string;
+        uuid: string;
     }) => void;
 };
 

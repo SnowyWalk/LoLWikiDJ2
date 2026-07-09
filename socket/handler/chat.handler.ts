@@ -10,6 +10,7 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
             nickname: socket.data.nickname,
             message: payload.message,
             createdAt: new Date().toISOString(),
+            uuid: crypto.randomUUID(),
         })
         
     })

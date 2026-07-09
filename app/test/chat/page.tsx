@@ -7,13 +7,11 @@ import useSocket from "@/hooks/useSocket";
 import {socket} from "@/socket";
 import {C2SSocketEvent} from "@/socket/events";
 import {useRef} from "react";
-import UseChatMessages from "@/hooks/useChatMessages.tsx";
-import ChatMessage from "@/components/ChatMessage.tsx";
+import ChatPanel from "@/components/ChatPanel.tsx";
 
 export default function Test_Chat() {
     const {isConnected, transport} = useSocket();
     const inputRef = useRef<HTMLInputElement>(null);
-    const {chatList} = UseChatMessages();
 
     function onClickSendButton() {
         const message = inputRef.current?.value.trim();
@@ -31,17 +29,7 @@ export default function Test_Chat() {
                 <p>Status: {isConnected ? "connected" : "disconnected"}</p>
                 <p>Transport: {transport}</p>
             </div>
-            <div className="w-60 h-50 border-2 overflow-auto">
-                {
-                    chatList &&
-                    chatList.map((e, index) => (
-                        <ChatMessage
-                            key={index}
-                            chatMessageData={e}
-                        />
-                    ))
-                }
-            </div>
+            <ChatPanel className="w-100 h-50"/>
             <div className="w-60">
                 <Label htmlFor="asd">123</Label>
                 <Input id="asd" ref={inputRef} type="text" autoComplete="off" placeholder="Enter text..."
