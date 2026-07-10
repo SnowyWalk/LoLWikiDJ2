@@ -18,8 +18,6 @@ const useChatMessages = () => {
                 uuid: payload.uuid,
             };
 
-            console.log(payload, chatMessageData);
-
             setChatMessages((prev) => [...prev, chatMessageData]);
         };
 

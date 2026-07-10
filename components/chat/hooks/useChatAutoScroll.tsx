@@ -4,36 +4,48 @@ import {useCallback, useEffect, useLayoutEffect, useRef} from "react";
 
 type useChatAutoScrollProps<T> = {
     scrollDivRef: React.RefObject<HTMLDivElement | null>;
-    l: T[];
+    messages: T[];
+    scrollRequest: number;
 }
 
-const useChatAutoScroll = <T, >({scrollDivRef, l}: useChatAutoScrollProps<T>) => {
+const useChatAutoScroll = <T, >({
+    scrollDivRef,
+    messages,
+    scrollRequest,
+}: useChatAutoScrollProps<T>) => {
     const shouldStickToBottom = useRef(true);
+    const previousScrollRequest = useRef(scrollRequest);
 
     useEffect(() => {
         if (scrollDivRef.current == null)
             return;
 
-        scrollDivRef.current.onscroll = () => {
-            const threshold = 8;
-
-            shouldStickToBottom.current =
-                scrollDivRef.current!.scrollHeight - scrollDivRef.current!.scrollTop - scrollDivRef.current!.clientHeight <= threshold;
+        const handleScroll = () => {
+            shouldStickToBottom.current = scrollDivRef.current!.scrollHeight - scrollDivRef.current!.scrollTop - scrollDivRef.current!.clientHeight <= 8;
         }
+        
+        scrollDivRef.current.addEventListener("scroll", handleScroll);
+        return () => scrollDivRef!.current?.removeEventListener("scroll", handleScroll)
     }, [scrollDivRef]);
 
     const scrollToBottom = useCallback(() => {
-        scrollDivRef.current!.scrollTop = scrollDivRef.current!.scrollHeight;
+        const scrollDiv = scrollDivRef.current;
+        if (scrollDiv == null)
+            return;
+
+        scrollDiv.scrollTop = scrollDiv.scrollHeight;
+        shouldStickToBottom.current = true;
     }, [scrollDivRef]);
 
     useLayoutEffect(() => {
-        if (shouldStickToBottom.current) {
-            shouldStickToBottom.current = false;
-            scrollToBottom();
-        }
-    }, [l, scrollToBottom]);
+        const wasScrollRequested = scrollRequest !== previousScrollRequest.current;
 
-    return {scrollToBottom}
+        if (wasScrollRequested || shouldStickToBottom.current)
+            scrollToBottom();
+
+        previousScrollRequest.current = scrollRequest;
+    }, [messages, scrollRequest, scrollToBottom]);
+
 };
 
 export default useChatAutoScroll;

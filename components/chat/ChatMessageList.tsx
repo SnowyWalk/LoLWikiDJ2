@@ -2,26 +2,23 @@
 
 import ChatMessage from "@/components/chat/ChatMessage.tsx";
 import useChatMessages from "@/components/chat/hooks/useChatMessages.tsx";
-import {RefObject, useLayoutEffect, useRef} from "react";
+import {useRef} from "react";
 import useChatAutoScroll from "@/components/chat/hooks/useChatAutoScroll.tsx";
 import {ChatMessageModel} from "@/components/chat/types.ts";
 
 type ChatMessageListProps = {
-    scrollToBottomRequestRef: RefObject<boolean>;
+    scrollRequest: number;
 }
 
-export default function ChatMessageList({scrollToBottomRequestRef}: ChatMessageListProps) {
+export default function ChatMessageList({scrollRequest}: ChatMessageListProps) {
     const messageListRef = useRef<HTMLDivElement>(null);
 
     const {chatMessages} = useChatMessages();
-    const {scrollToBottom} = useChatAutoScroll<ChatMessageModel>({l: chatMessages, scrollDivRef: messageListRef});
-
-    useLayoutEffect(() => {
-        if (scrollToBottomRequestRef.current) {
-            scrollToBottomRequestRef.current = false;
-            scrollToBottom();
-        }
-    }, [scrollToBottom, scrollToBottomRequestRef])
+    useChatAutoScroll<ChatMessageModel>({
+        messages: chatMessages,
+        scrollDivRef: messageListRef,
+        scrollRequest,
+    });
 
     return (
         <div ref={messageListRef} className="overflow-auto w-full grow">
