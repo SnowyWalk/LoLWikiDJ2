@@ -1,6 +1,6 @@
 "use client";
 
-import {useCallback, useEffect, useLayoutEffect, useRef} from "react";
+import {useCallback, useEffect, useLayoutEffect, useRef, useState} from "react";
 
 type useChatAutoScrollProps<T> = {
     scrollDivRef: React.RefObject<HTMLDivElement | null>;
@@ -15,17 +15,25 @@ const useChatAutoScroll = <T, >({
 }: useChatAutoScrollProps<T>) => {
     const shouldStickToBottom = useRef(true);
     const previousScrollRequest = useRef(scrollRequest);
+    const previousMessageCount = useRef(messages.length);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
-        if (scrollDivRef.current == null)
+        const scrollDiv = scrollDivRef.current;
+        if (scrollDiv == null)
             return;
 
         const handleScroll = () => {
-            shouldStickToBottom.current = scrollDivRef.current!.scrollHeight - scrollDivRef.current!.scrollTop - scrollDivRef.current!.clientHeight <= 8;
-        }
-        
-        scrollDivRef.current.addEventListener("scroll", handleScroll);
-        return () => scrollDivRef!.current?.removeEventListener("scroll", handleScroll)
+            const isAtBottom =
+                scrollDiv.scrollHeight - scrollDiv.scrollTop - scrollDiv.clientHeight <= 8;
+
+            shouldStickToBottom.current = isAtBottom;
+            if (isAtBottom)
+                setUnreadCount(0);
+        };
+
+        scrollDiv.addEventListener("scroll", handleScroll);
+        return () => scrollDiv.removeEventListener("scroll", handleScroll);
     }, [scrollDivRef]);
 
     const scrollToBottom = useCallback(() => {
@@ -35,17 +43,23 @@ const useChatAutoScroll = <T, >({
 
         scrollDiv.scrollTop = scrollDiv.scrollHeight;
         shouldStickToBottom.current = true;
+        setUnreadCount(0);
     }, [scrollDivRef]);
 
     useLayoutEffect(() => {
         const wasScrollRequested = scrollRequest !== previousScrollRequest.current;
+        const addedMessageCount = messages.length - previousMessageCount.current;
 
-        if (wasScrollRequested || shouldStickToBottom.current)
+        if (wasScrollRequested || (addedMessageCount > 0 && shouldStickToBottom.current))
             scrollToBottom();
+        else if (addedMessageCount > 0)
+            setUnreadCount((count) => count + addedMessageCount);
 
         previousScrollRequest.current = scrollRequest;
+        previousMessageCount.current = messages.length;
     }, [messages, scrollRequest, scrollToBottom]);
 
+    return {unreadCount, scrollToBottom};
 };
 
 export default useChatAutoScroll;
