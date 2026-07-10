@@ -1,0 +1,57 @@
+"use client";
+
+import {useRef} from "react";
+import {socket} from "@/socket.ts";
+import {C2SSocketEvent} from "@/socket/events.ts";
+import {Input} from "@/components/ui/input.tsx";
+import {cn} from "@/lib/utils.ts";
+import {Button} from "@/components/ui/button.tsx";
+
+type ChatInputProps = {
+    className?: string;
+    onSend?: () => void;
+};
+
+export default function ChatInput({className, onSend}: ChatInputProps) {
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const sendMessage = (message: string) => {
+        socket.emit(C2SSocketEvent.ChatMessageCreate, {message});
+        onSend?.();
+
+        inputRef.current!.value = "";
+    }
+    
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key !== "Enter")
+            return;
+
+        const message = inputRef.current!.value.trim();
+        if (!message)
+            return;
+
+        sendMessage(message);
+    }
+
+    const handleClickedSendButton = () => {
+        const message = inputRef.current!.value.trim();
+        if (!message)
+            return;
+
+        sendMessage(message);
+    }
+
+    return (
+        <div className={cn("w-full h-10 grow-0 flex flex-row items-center border-t", className)}>
+            <Input type="text"
+                   ref={inputRef}
+                   onKeyDown={handleInputKeyDown}
+                   className="w-full h-full px-2 grow"
+                   placeholder="Enter text..."
+                   aria-label=""/>
+            <Button
+                onClick={handleClickedSendButton}
+                className="grow-0">Send</Button>
+        </div>
+    )
+}
