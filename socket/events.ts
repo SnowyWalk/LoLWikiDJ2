@@ -1,21 +1,27 @@
 export const C2SSocketEvent = {
     Login: "login:login",
     ChatMessageCreate: "chat:message:create",
+    ChatImageCreate: "chat:image:create",
 } as const;
 
 export const S2CSocketEvent = {
     LoginResult: "login:result",
     ChatMessageCreated: "chat:message:created",
+    ChatImageCreated: "chat:image:created",
 } as const;
 
 export type C2SPayloadType = {
     [C2SSocketEvent.Login]: (payload: {
         nickname: string;
         channel: string;
-    }) => void, 
+    }) => void,
     [C2SSocketEvent.ChatMessageCreate]: (payload: {
         message: string;
-    }) => void;
+    }) => void,
+    [C2SSocketEvent.ChatImageCreate]: (payload: {
+        data: ArrayBuffer;
+        clientMutationID: string;
+    }) => void,
 };
 
 export type S2CPayloadType = {
@@ -30,7 +36,25 @@ export type S2CPayloadType = {
         message: string;
         createdAt: string;
         uuid: string;
-    }) => void;
+    }) => void,
+    [S2CSocketEvent.ChatImageCreated]: (payload:
+                                            | {
+                                            isSuccess: true;
+                                            id: string;
+                                            nickname: string;
+                                            createdAt: string;
+                                            clientMutationID: string;
+                                            imageUrl: string;
+                                            size: number;
+                                            width: number;
+                                            height: number;
+                                            uuid: string;
+                                        }
+                                            | {
+                                            isSuccess: false;
+                                            clientMutationID: string;
+                                            error: string;
+                                        }) => void,
 };
 
 export type InterServerPayloadType = {
