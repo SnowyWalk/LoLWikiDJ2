@@ -9,16 +9,17 @@ const useChatSendImage = () => {
         const handleChatImageCreated: S2CPayloadType[typeof S2CSocketEvent.ChatImageCreated] = (payload) => {
             console.log("ChatImageCreated", payload);
             setUploadingMutationIDs((ids) => ids.filter((id) => id !== payload.clientMutationID));
+            console.log("uploadingMutationIDs", uploadingMutationIDs);
         }
 
         socket.on(S2CSocketEvent.ChatImageCreated, handleChatImageCreated);
         return () => {
             socket.off(S2CSocketEvent.ChatImageCreated, handleChatImageCreated);
         }
-    }, [])
+    }, [uploadingMutationIDs])
 
     const sendImage = async (file: File, clientMutationID: string) => {
-        setUploadingMutationIDs([...uploadingMutationIDs, clientMutationID]);
+        setUploadingMutationIDs((current) => [...current, clientMutationID]);
         socket.emit(C2SSocketEvent.ChatImageCreate, {
             data: await file.arrayBuffer(),
             clientMutationID,

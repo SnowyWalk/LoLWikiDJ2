@@ -4,31 +4,33 @@ import ChatMessage from "@/components/chat/ChatMessage.tsx";
 import useChatMessages from "@/components/chat/hooks/useChatMessages.tsx";
 import {useRef} from "react";
 import useChatAutoScroll from "@/components/chat/hooks/useChatAutoScroll.tsx";
-import {ChatMessageModel} from "@/components/chat/types.ts";
 import {Button} from "@/components/ui/button.tsx";
+import {ChatMessageDTO} from "@/shared/chat-types.ts";
+import {cn} from "@/lib/utils.ts";
 
 type ChatMessageListProps = {
     scrollRequest: number;
+    className?: string;
 }
 
-export default function ChatMessageList({scrollRequest}: ChatMessageListProps) {
+export default function ChatMessageList({scrollRequest, className}: ChatMessageListProps) {
     const messageListRef = useRef<HTMLDivElement>(null);
 
     const {chatMessages} = useChatMessages();
-    const {unreadCount, scrollToBottom} = useChatAutoScroll<ChatMessageModel>({
+    const {unreadCount, scrollToBottom} = useChatAutoScroll<ChatMessageDTO>({
         messages: chatMessages,
         scrollDivRef: messageListRef,
         scrollRequest,
     });
 
     return (
-        <div className="relative min-h-0 w-full grow">
+        <div className={cn("relative min-h-0 w-full grow", className)}>
             <div ref={messageListRef} className="h-full w-full overflow-y-auto">
                 {
                     chatMessages.map(e => (
                         <ChatMessage
-                            key={e.uuid}
-                            chatMessageData={e}
+                            key={e.chatUuid}
+                            chatMessageDTO={e}
                         />
                     ))
                 }

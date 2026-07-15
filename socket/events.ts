@@ -1,3 +1,5 @@
+import type {ChatMessageDTO} from "../shared/chat-types.ts";
+
 export const C2SSocketEvent = {
     Login: "login:login",
     ChatMessageCreate: "chat:message:create",
@@ -31,24 +33,13 @@ export type S2CPayloadType = {
         channel: string;
     }) => void,
     [S2CSocketEvent.ChatMessageCreated]: (payload: {
-        id: string;
-        nickname: string;
-        message: string;
-        createdAt: string;
-        uuid: string;
+        info: ChatMessageDTO;
     }) => void,
     [S2CSocketEvent.ChatImageCreated]: (payload:
                                             | {
                                             isSuccess: true;
-                                            id: string;
-                                            nickname: string;
-                                            createdAt: string;
+                                            info: ChatMessageDTO;
                                             clientMutationID: string;
-                                            imageUrl: string;
-                                            size: number;
-                                            width: number;
-                                            height: number;
-                                            uuid: string;
                                         }
                                             | {
                                             isSuccess: false;

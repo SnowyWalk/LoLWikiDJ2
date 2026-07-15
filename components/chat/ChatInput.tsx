@@ -42,16 +42,16 @@ export default function ChatInput({className, onSend}: ChatInputProps) {
     }
 
     return (
-        <div className={cn("w-full h-10 grow-0 flex flex-row items-center border-t", className)}>
+        <div className={cn("w-full h-10 grow-0 flex flex-row items-center", className)}>
             <Input type="text"
                    ref={inputRef}
                    onKeyDown={handleInputKeyDown}
-                   className="w-full h-full px-2 grow"
+                   className="w-full h-full px-2 mr-1.5 grow"
                    placeholder="Enter text..."
                    aria-label=""/>
             <Button
                 onClick={handleClickedSendButton}
-                className="grow-0">Send</Button>
+                className="grow-0 h-full">Send</Button>
         </div>
     )
 }

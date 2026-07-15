@@ -12,7 +12,9 @@ const handler = app.getRequestHandler();
 
 app.prepare().then(() => {
     const httpServer = createServer(handler);
-    const io = new Server(httpServer);
+    const io = new Server(httpServer, {
+        maxHttpBufferSize: 50 * 1024 * 1024, // 50MB
+    });
 
     registerSocketEvents(io);
 

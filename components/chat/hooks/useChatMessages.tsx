@@ -3,55 +3,37 @@
 import {useCallback, useEffect, useState} from "react";
 import {S2CPayloadType, S2CSocketEvent} from "@/socket/events.ts";
 import {socket} from "@/socket.ts";
-import {ChatMessageModel} from "@/components/chat/types.ts";
-
-export type ChatMessageData = {
-    id: string;
-    nickname: string;
-    createdAt: Date;
-    uuid: string;
-    content: ChatMessageContent;
-}
-
-export type ChatMessageContent = |
-    {
-        type: "text";
-        message: string;
-    }
-    | {
-        type: "image";
-        imageUrl: string;
-        width: number;
-        height: number;
-        size: number;
-    };
+import {ChatMessageDTO} from "@/shared/chat-types.ts";
 
 const useChatMessages = () => {
-    const [chatMessages, setChatMessages] = useState<ChatMessageModel[]>([]);
+    const [chatMessages, setChatMessages] = useState<ChatMessageDTO[]>([]);
 
-    const addChatMessage = useCallback((message: ChatMessageModel) => {
-
+    const addChatMessage = useCallback((chatMessageDTO: ChatMessageDTO) => {
+        setChatMessages((prev) => [...prev, chatMessageDTO]);
     }, []);
 
     useEffect(() => {
         const handleChatMessageCreated: S2CPayloadType[typeof S2CSocketEvent.ChatMessageCreated] = (payload) => {
-            const chatMessageData: ChatMessageModel = {
-                id: payload.id,
-                nickname: payload.nickname,
-                message: payload.message,
-                createdAt: new Date(payload.createdAt),
-                uuid: payload.uuid,
-            };
-
-            setChatMessages((prev) => [...prev, chatMessageData]);
+            addChatMessage(payload.info);
         };
 
+        const handleChatImageCreated: S2CPayloadType[typeof S2CSocketEvent.ChatImageCreated] = (payload) => {
+            if (!payload.isSuccess) {
+                console.error("ChatImageCreated failed", payload.error); // TODO: 웹에서 표현
+                return;
+            }
+
+            addChatMessage(payload.info);
+        }
+
         socket.on(S2CSocketEvent.ChatMessageCreated, handleChatMessageCreated);
+        socket.on(S2CSocketEvent.ChatImageCreated, handleChatImageCreated);
 
         return () => {
             socket.off(S2CSocketEvent.ChatMessageCreated, handleChatMessageCreated);
+            socket.off(S2CSocketEvent.ChatImageCreated, handleChatImageCreated);
         }
-    }, []);
+    }, [addChatMessage]);
 
     return {chatMessages, addChatMessage};
 }

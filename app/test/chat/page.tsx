@@ -8,13 +8,13 @@ export default function Test_Chat() {
     const {isConnected, transport} = useSocket();
 
     return (
-        <>
-            <div>
+        <div className="flex flex-row h-screen">
+            <div className="flex-1">
                 <p>Status: {isConnected ? "connected" : "disconnected"}</p>
                 <p>Transport: {transport}</p>
             </div>
-            <ChatPanel/>
-            <Image src="/static/images.png" alt="Next.js Logo" width={30} height={30} priority/>
-        </>
+            <ChatPanel className={"w-88.5 h-full flex-0"}/>
+            {/*<Image src="/static/images.png" alt="Next.js Logo" width={30} height={30} priority/>*/}
+        </div>
     );
 }

@@ -21,7 +21,8 @@ export default function useSocket() {
             })
         }
 
-        function onDisconnect() {
+        function onDisconnect(reason: string, details: unknown) {
+            console.log("socket disconnected", reason, details);
             setIsConnected(false);
             setTransport("N/A");
         }

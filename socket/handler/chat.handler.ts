@@ -3,19 +3,46 @@ import type {AppServer, AppServerSocket} from "../types.ts";
 import {mkdir, writeFile} from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import type {ChatMessageDTO} from "../../shared/chat-types.ts";
+import {getTodayDate} from "../../lib/utils.ts";
 
 const CHAT_IMAGE_DIR = path.join(process.cwd(), "public", "uploads", "chat-images");
 
 export default function registerChatHandler(io: AppServer, socket: AppServerSocket) {
 
-    socket.on(C2SSocketEvent.ChatMessageCreate, (payload) => {
-        io.to(socket.data.channel).emit(S2CSocketEvent.ChatMessageCreated, {
-            id: socket.data.id,
-            nickname: socket.data.nickname,
-            message: payload.message,
+    const buildTextChatMessageDTO = (message: string): ChatMessageDTO => {
+        return {
+            chatUuid: crypto.randomUUID(),
             createdAt: new Date().toISOString(),
-            uuid: crypto.randomUUID(),
-        })
+            nickname: socket.data.nickname,
+            userId: socket.data.id,
+            content: {
+                type: "text",
+                message: message,
+            }
+        }
+    }
+
+    const buildImageChatMessageDTO = ({imagePath, width, height, size}: {
+        imagePath: string,
+        width: number,
+        height: number,
+        size: number
+    }): ChatMessageDTO => {
+        return {
+            chatUuid: crypto.randomUUID(),
+            createdAt: new Date().toISOString(),
+            nickname: socket.data.nickname,
+            userId: socket.data.id,
+            content: {
+                type: "image",
+                imagePath, width, height, size,
+            }
+        }
+    }
+
+    socket.on(C2SSocketEvent.ChatMessageCreate, (payload) => {
+        io.to(socket.data.channel).emit(S2CSocketEvent.ChatMessageCreated, {info: buildTextChatMessageDTO(payload.message)})
     })
 
     socket.on(C2SSocketEvent.ChatImageCreate, async (payload) => {
@@ -90,10 +117,11 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
             if (!ext)
                 throw new Error("Unsupported image format");
 
-            await mkdir(CHAT_IMAGE_DIR, {recursive: true});
+            const subFolderName = getTodayDate();
+            await mkdir(path.join(CHAT_IMAGE_DIR, subFolderName), {recursive: true});
 
             const filename = `${crypto.randomUUID()}.${ext.extension}`;
-            const filePath = path.join(CHAT_IMAGE_DIR, filename);
+            const filePath = path.join(CHAT_IMAGE_DIR, subFolderName, filename);
 
             await writeFile(filePath, buffer, {flag: "wx"});
 
@@ -101,7 +129,7 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
             const {width, height} = metadata;
 
             return {
-                filename,
+                imagePath: `${subFolderName}/${filename}`,
                 size: buffer.byteLength,
                 width,
                 height,
@@ -112,21 +140,12 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
         // 파일 저장
         const {data, clientMutationID} = payload;
         try {
-            console.log("ChatImageCreate", data);
-            const {filename, size, width, height} = await saveImage(data);
-            console.log("ChatImageCreate saved", filename); 
-            
+            const {imagePath, size, width, height} = await saveImage(data);
+
             socket.emit(S2CSocketEvent.ChatImageCreated, {
                 isSuccess: true,
                 clientMutationID: clientMutationID,
-                uuid: crypto.randomUUID(), // 채팅메시지에 대한 uuid임
-                id: socket.data.id,
-                nickname: socket.data.nickname,
-                createdAt: new Date().toISOString(),
-                size: size,
-                width: width,
-                height: height,
-                imageUrl: filename,
+                info: buildImageChatMessageDTO({imagePath, size, width, height})
             })
         } catch (err) {
             console.error("ChatImageCreate error", err);
