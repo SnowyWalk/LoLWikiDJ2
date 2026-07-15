@@ -4,7 +4,7 @@ import {mkdir, writeFile} from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 
-const CHAT_IMAGE_DIR = "@/uploads/chat-images/";
+const CHAT_IMAGE_DIR = path.join(process.cwd(), "public", "uploads", "chat-images");
 
 export default function registerChatHandler(io: AppServer, socket: AppServerSocket) {
 
@@ -92,7 +92,7 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
 
             await mkdir(CHAT_IMAGE_DIR, {recursive: true});
 
-            const filename = `${crypto.randomUUID()}.${ext}`;
+            const filename = `${crypto.randomUUID()}.${ext.extension}`;
             const filePath = path.join(CHAT_IMAGE_DIR, filename);
 
             await writeFile(filePath, buffer, {flag: "wx"});
@@ -107,14 +107,15 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
                 height,
             }
         }
-        
-        console.log("ChatImageCreate", payload);
+
 
         // 파일 저장
         const {data, clientMutationID} = payload;
         try {
+            console.log("ChatImageCreate", data);
             const {filename, size, width, height} = await saveImage(data);
-
+            console.log("ChatImageCreate saved", filename); 
+            
             socket.emit(S2CSocketEvent.ChatImageCreated, {
                 isSuccess: true,
                 clientMutationID: clientMutationID,
@@ -128,6 +129,7 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
                 imageUrl: filename,
             })
         } catch (err) {
+            console.error("ChatImageCreate error", err);
             socket.emit(S2CSocketEvent.ChatImageCreated, {
                 isSuccess: false,
                 error: (err instanceof Error) ? err.message : String(err),
