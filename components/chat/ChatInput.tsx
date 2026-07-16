@@ -10,9 +10,10 @@ import {Button} from "@/components/ui/button.tsx";
 type ChatInputProps = {
     className?: string;
     onSend?: () => void;
+    onImagePaste?: (files: File[]) => void;
 };
 
-export default function ChatInput({className, onSend}: ChatInputProps) {
+export default function ChatInput({className, onSend, onImagePaste}: ChatInputProps) {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const sendMessage = (message: string) => {
@@ -21,7 +22,7 @@ export default function ChatInput({className, onSend}: ChatInputProps) {
 
         inputRef.current!.value = "";
     }
-    
+
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key !== "Enter")
             return;
@@ -41,11 +42,21 @@ export default function ChatInput({className, onSend}: ChatInputProps) {
         sendMessage(message);
     }
 
+    const handleInputPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+        const images = Array.from(e.clipboardData?.items).filter(item => item.type.startsWith("image/")).map(data => data.getAsFile()).filter((file) : file is File => file !== null);
+        if (images.length == 0)
+            return;
+        
+        e.preventDefault();
+        onImagePaste?.(images);
+    }
+
     return (
         <div className={cn("w-full h-10 grow-0 flex flex-row items-center", className)}>
             <Input type="text"
                    ref={inputRef}
                    onKeyDown={handleInputKeyDown}
+                   onPaste={handleInputPaste}
                    className="w-full h-full px-2 mr-1.5 grow"
                    placeholder="Enter text..."
                    aria-label=""/>
