@@ -20,11 +20,15 @@ export default function ChatMessage({chatMessageDTO}: ChatMessageProps) {
                 return content.message;
             case "image":
                 const imageUrl = `/uploads/chat-images/${content.imagePath.replaceAll("\\", "/")}`;
-                return <Image src={imageUrl}
-                              className="rounded-2xl h-auto max-w-full pt-1.5 pb-1"
-                              alt={formatFileSize(content.size)}
-                              width={content.width}
-                              height={content.height}/>
+                return (
+                    <div className="flex flex-col">
+                        <Image src={imageUrl}
+                               className="rounded-2xl h-auto max-w-full pt-1.5 pb-1"
+                               alt="image.."
+                               width={content.width}
+                               height={content.height}/>
+                        <label className="w-full text-right text-muted-foreground text-xs pr-1">{formatFileSize(content.size)}</label>
+                    </div>)
             default:
                 const exhaustiveCheck: never = content;
                 return exhaustiveCheck;
