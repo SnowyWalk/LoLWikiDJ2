@@ -14,18 +14,24 @@ type ChatPanelProps = {
 export default function ChatPanel({className}: ChatPanelProps) {
     const [scrollRequest, setScrollRequest] = useState(0);
     const {uploadingMutationIDs, sendImages} = UseChatSendImage()
+    
+    const handleBeforeSendImages = (files: File[]) => {
+        console.log("handleBeforeSendImages", files);
+        sendImages(files);
+    };
 
     useEffect(() => {
         // TODO: 표현
     }, [uploadingMutationIDs])
 
     return (
-        <ChatImageDropZone onImagesDrop={sendImages}>
-            <div className={cn("border-l-1 flex flex-col", className)}>
+        <ChatImageDropZone onImagesDrop={handleBeforeSendImages}>
+            <div className={cn("border-l flex flex-col", className)}>
                 <ChatMessageList scrollRequest={scrollRequest}/>
+                    <div className="absolute inset-x-2 bottom-full z-20 mb-2" >a</div>
                 <ChatInput 
                     onSend={() => setScrollRequest((request) => request + 1)} 
-                    onImagePaste={sendImages}
+                    onImagePaste={handleBeforeSendImages}
                     className="px-2 pb-2.5 pt-2 h-15"/>
             </div>
         </ChatImageDropZone>

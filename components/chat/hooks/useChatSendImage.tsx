@@ -1,6 +1,6 @@
 import {socket} from "@/socket.ts";
 import {C2SSocketEvent, S2CPayloadType, S2CSocketEvent} from "@/socket/events.ts";
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useState} from "react";
 
 const useChatSendImage = () => {
     const [uploadingMutationIDs, setUploadingMutationIDs] = useState<string[]>([]);
@@ -18,13 +18,13 @@ const useChatSendImage = () => {
         }
     }, [uploadingMutationIDs])
 
-    const sendImage = async (file: File, clientMutationID: string) => {
+    const sendImage = useCallback(async (file: File, clientMutationID: string) => {
         setUploadingMutationIDs((current) => [...current, clientMutationID]);
         socket.emit(C2SSocketEvent.ChatImageCreate, {
             data: await file.arrayBuffer(),
             clientMutationID,
         })
-    }
+    }, [])
 
     const sendImages = async (dropImages: File[]) => {
         for (const dropImage of dropImages) {
