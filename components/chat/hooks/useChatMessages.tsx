@@ -19,7 +19,6 @@ const useChatMessages = () => {
 
         const handleChatImageCreated: S2CPayloadType[typeof S2CSocketEvent.ChatImageCreated] = (payload) => {
             if (!payload.isSuccess) {
-                console.error("ChatImageCreated failed", payload.error); // TODO: 웹에서 표현
                 addChatMessage({
                     userId: "system",
                     nickname: "System",
@@ -27,7 +26,7 @@ const useChatMessages = () => {
                     chatUuid: crypto.randomUUID(),
                     content: {
                         type: "text",
-                        message: "이미지 업로드 실패;;",
+                        message: `[이미지 업로드 실패]\nError Message: ${payload.error ?? "Unknown error"}`,
                     }
                 })
                 return;

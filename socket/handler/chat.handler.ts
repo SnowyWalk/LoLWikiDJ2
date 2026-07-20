@@ -47,6 +47,13 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
 
     socket.on(C2SSocketEvent.ChatImageCreate, async (payload) => {
 
+        // Fail Test
+        // socket.emit(S2CSocketEvent.ChatImageCreated, {
+        //         isSuccess: false,
+        //         error: "test error message",
+        //         clientMutationID: payload.clientMutationID,
+        //     })
+        
         type DetectedImage = {
             extension: "png" | "jpg" | "gif" | "webp";
             mimeType: string;
