@@ -5,6 +5,7 @@ import path from "node:path";
 import sharp from "sharp";
 import type {ChatMessageDTO} from "../../shared/chat-types.ts";
 import {getTodayDate} from "../../lib/utils.ts";
+import { setTimeout as delay } from "node:timers/promises";
 
 const CHAT_IMAGE_DIR = path.join(process.cwd(), "public", "uploads", "chat-images");
 
@@ -47,6 +48,8 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
 
     socket.on(C2SSocketEvent.ChatImageCreate, async (payload) => {
 
+        await delay(3000);
+        
         // Fail Test
         // socket.emit(S2CSocketEvent.ChatImageCreated, {
         //         isSuccess: false,

@@ -37,7 +37,7 @@ export default function ChatMessage({chatMessageDTO}: ChatMessageProps) {
 
     return (
         <article
-            className="relative mx-2 mt-2.5 mb-2 flow-root rounded-[5px] bg-muted px-1.75 py-0.75 text-left whitespace-pre-line wrap-break-word">
+            className="relative mx-2 mt-2.5 mb-2 last:mb-0 flow-root rounded-[5px] bg-muted px-1.75 py-0.75 text-left whitespace-pre-line wrap-break-word">
             <Image
                 src="/static/images.png"
                 alt=""
