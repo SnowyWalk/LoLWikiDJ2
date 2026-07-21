@@ -2,7 +2,6 @@
 
 import useSocket from "@/hooks/useSocket";
 import ChatPanel from "@/components/chat/ChatPanel.tsx";
-import Image from "next/image";
 
 export default function Test_Chat() {
     const {isConnected, transport} = useSocket();
