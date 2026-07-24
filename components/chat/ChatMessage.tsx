@@ -2,7 +2,6 @@
 
 import React, {useMemo} from "react";
 import {ChatMessageContent, ChatMessageDTO} from "@/shared/chat-types.ts";
-import Image from "next/image";
 import {formatFileSize} from "@/lib/utils.ts";
 import SpectableImage from "@/components/chat/SpectableImage.tsx";
 

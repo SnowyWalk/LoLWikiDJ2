@@ -19,5 +19,3 @@ export type AppServerSocket = Socket<
     InterServerPayloadType,
     SocketData
 >;
-
-export type SocketPayload<T extends (...args: any[]) => any> = Parameters<T>[0];
