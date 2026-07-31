@@ -21,7 +21,8 @@
     ],
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+    "types": ["node", "youtube"],
   },
   "include": [
     "next-env.d.ts",
