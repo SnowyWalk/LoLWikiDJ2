@@ -28,8 +28,8 @@ export default function ChatPanel({className}: ChatPanelProps) {
     }, [uploadingMutationIDs])
 
     return (
-        <ChatImageDropZone onImagesDrop={handleBeforeSendImages}>
-            <div className={cn("border-l flex flex-col", className)}>
+        <ChatImageDropZone onImagesDrop={handleBeforeSendImages} className={cn("flex", className)}>
+            <div className="flex border-l flex-col grow overflow-hidden">
                 <ChatMessageList scrollRequest={scrollRequest}/>
 
                 <ChatInput

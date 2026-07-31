@@ -1,13 +1,15 @@
 "use client";
 
 import React, {ReactNode, useRef, useState} from "react";
+import {cn} from "@/lib/utils.ts";
 
 type useDropzoneProps = {
     children: ReactNode;
     onImagesDrop?: (files: File[]) => void;
+    className?: string;
 };
 
-export default function ChatImageDropZone({children, onImagesDrop}: useDropzoneProps) {
+export default function ChatImageDropZone({children, onImagesDrop, className}: useDropzoneProps) {
     const [isDragOver, setIsDragOver] = useState(false);
     const dragOverCountRef = useRef<number>(0);
 
@@ -43,7 +45,7 @@ export default function ChatImageDropZone({children, onImagesDrop}: useDropzoneP
     }
 
     return (
-        <div className="relative w-fit" 
+        <div className={cn("relative w-fit", className)} 
              onDragEnter={handleDragEnter}
              onDragOver={handleDragOver} 
              onDragLeave={handleDragLeave} 

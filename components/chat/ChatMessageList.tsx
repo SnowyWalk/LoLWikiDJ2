@@ -2,11 +2,12 @@
 
 import ChatMessage from "@/components/chat/ChatMessage.tsx";
 import useChatMessages from "@/components/chat/hooks/useChatMessages.tsx";
-import {useRef} from "react";
+import {useEffect, useRef} from "react";
 import useChatAutoScroll from "@/components/chat/hooks/useChatAutoScroll.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {ChatMessageDTO} from "@/shared/chat-types.ts";
 import {cn} from "@/lib/utils.ts";
+import useSocket from "@/hooks/useSocket.tsx";
 
 type ChatMessageListProps = {
     scrollRequest: number;
@@ -15,13 +16,40 @@ type ChatMessageListProps = {
 
 export default function ChatMessageList({scrollRequest, className}: ChatMessageListProps) {
     const messageListRef = useRef<HTMLDivElement>(null);
+    const {isConnected, transport} = useSocket();
 
-    const {chatMessages} = useChatMessages();
+    const {chatMessages, addChatMessage} = useChatMessages();
     const {unreadCount, scrollToBottom} = useChatAutoScroll<ChatMessageDTO>({
         messages: chatMessages,
         scrollDivRef: messageListRef,
         scrollRequest,
     });
+    
+    useEffect(() => {
+        addChatMessage({
+            userId: '-',
+            chatUuid: crypto.randomUUID(),
+            nickname: 'System',
+            createdAt: new Date().toISOString(),
+            content: {
+                type: 'text',
+                message: `isConnected changed -> ${isConnected}`,
+            }
+        });
+    }, [addChatMessage, isConnected])
+    
+    useEffect(() => {
+        addChatMessage({
+            userId: '-',
+            chatUuid: crypto.randomUUID(),
+            nickname: 'System',
+            createdAt: new Date().toISOString(),
+            content: {
+                type: 'text',
+                message: `transport changed -> ${transport}`,
+            }
+        });
+    }, [addChatMessage, transport])
 
     return (
         <div className={cn("relative min-h-0 w-full grow", className)}>
