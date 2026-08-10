@@ -13,7 +13,7 @@ type YtPlayerProps = {
     className?: string;
 }
 
-export default function YtPlayer({className}: YtPlayerProps) {
+export default function YoutubePlayer({className}: YtPlayerProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<YT.Player | null>(null);
 
