@@ -41,8 +41,26 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
             }
         }
     }
+    
+    const parseYoutubeVideoId = (src: string) => {
+        const youtubeVideoIdRegex = /^(?:(?:https?:\/\/)?(?:(?:www|m|music)\.)?youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/)|(?:https?:\/\/)?youtu\.be\/)?([A-Za-z0-9_-]{11})(?:[?&#/].*)?$/;
+        return src.match(youtubeVideoIdRegex)?.[1] ?? src;
+    }
 
     socket.on(C2SSocketEvent.ChatMessageCreate, (payload) => {
+        
+        if (payload.message.startsWith("/p"))
+        {
+            const youtubeMatch = payload.message.match("i//p\s+(.*)/");
+            if (youtubeMatch)
+            {
+                const youtubeVideoId = parseYoutubeVideoId(youtubeMatch[1]);
+                io.to(socket.data.channel).emit(S2CSocketEvent.VideoPlay, {src: youtubeVideoId, playerType: "youtube"});
+                return;
+            }
+        }
+        
+        
         io.to(socket.data.channel).emit(S2CSocketEvent.ChatMessageCreated, {info: buildTextChatMessageDTO(payload.message)})
     })
 

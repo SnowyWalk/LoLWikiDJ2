@@ -10,6 +10,7 @@ export const S2CSocketEvent = {
     LoginResult: "login:result",
     ChatMessageCreated: "chat:message:created",
     ChatImageCreated: "chat:image:created",
+    VideoPlay: "video:play",
 } as const;
 
 export type C2SPayloadType = {
@@ -46,6 +47,10 @@ export type S2CPayloadType = {
                                             clientMutationID: string;
                                             error: string;
                                         }) => void,
+    [S2CSocketEvent.VideoPlay]: (payload: {
+        playerType: VideoPlayerType;
+        src: string;
+    }) => void,
 };
 
 export type InterServerPayloadType = {
@@ -57,3 +62,5 @@ export type SocketData = {
     nickname: string;
     channel: string;
 };
+
+export type VideoPlayerType = "youtube"; 
