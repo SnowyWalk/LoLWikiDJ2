@@ -1,4 +1,5 @@
-import type {ChatMessageDTO} from "../shared/chat-types.ts";
+import type {ChatMessageDTO} from "../shared/chat.types.ts";
+import {VideoQueueItem} from "@/shared/video.types.ts";
 
 export const C2SSocketEvent = {
     Login: "login:login",
@@ -11,6 +12,7 @@ export const S2CSocketEvent = {
     ChatMessageCreated: "chat:message:created",
     ChatImageCreated: "chat:image:created",
     VideoPlay: "video:play",
+    VideoQueueList: "video:queue:list",
 } as const;
 
 export type C2SPayloadType = {
@@ -51,6 +53,9 @@ export type S2CPayloadType = {
         playerType: VideoPlayerType;
         src: string;
     }) => void,
+    [S2CSocketEvent.VideoQueueList]: (payload: {
+        queue: VideoQueueItem[];
+    }) => void, 
 };
 
 export type InterServerPayloadType = {
@@ -63,4 +68,3 @@ export type SocketData = {
     channel: string;
 };
 
-export type VideoPlayerType = "youtube"; 

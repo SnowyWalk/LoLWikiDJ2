@@ -49,9 +49,10 @@ export default function registerChatHandler(io: AppServer, socket: AppServerSock
 
     socket.on(C2SSocketEvent.ChatMessageCreate, (payload) => {
         
-        if (payload.message.startsWith("/p"))
+        if (payload.message.toLowerCase().startsWith("/p"))
         {
-            const youtubeMatch = payload.message.match("i//p\s+(.*)/");
+            const youtubeMatch = payload.message.match(/^\/p\s+(.*)/i);
+            console.log(youtubeMatch);
             if (youtubeMatch)
             {
                 const youtubeVideoId = parseYoutubeVideoId(youtubeMatch[1]);
