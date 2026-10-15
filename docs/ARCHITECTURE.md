@@ -9,7 +9,7 @@
 | 사용자 체감 UI 동일 | 레거시 화면과 **픽셀 단위 비교(diff 0px)** 를 CI에서 자동 검증. 예외는 명시적으로 승인된 항목만 |
 | 트래픽 비용 절감 | 월 8만원 → 목표 **2만원 이하** (EC2 Data Transfer Out 중심) |
 | 내부 구조 개선 | 포트별로 복붙된 18개 서버 파일(약 3,000줄 × 18) → **단일 프로세스, 다중 방(Room)** |
-| 배포 | EC2 + Docker Compose, GitHub Actions로 이미지 빌드/배포, 시크릿은 GitHub Secrets |
+| 배포 | snowywalk.me EC2의 다른 앱들과 같은 방식: 서버에서 `git pull` → `docker compose up -d --build`, nginx-proxy-manager가 컨테이너 이름으로 연결, 시크릿은 서버 `.env` |
 
 설계 원칙
 1. **동작 계약(소켓 이벤트 이름·페이로드)을 먼저 고정하고 내부만 갈아끼운다.** 프론트/백을 한 번에 바꾸지 않는다.
@@ -281,21 +281,21 @@ CMD ["node", "dist/server.js"]
 - 압축: NPM 기본 설정이 JS/CSS를 압축하지 않으므로 Next(`compress: true`)가 gzip.
 - 로그 로테이션: `logging: { driver: json-file, options: { max-size: 10m, max-file: 3 } }`.
 
-### 6.3 GitHub Actions
-1. `ci.yml` (PR): typecheck, lint, unit(lolwiki-api 등), contract, **visual regression**.
-2. `deploy.yml` (main push, 저장소 변수 `DEPLOY_ENABLED=true` 일 때): GitHub Actions에서 Docker build → GHCR push(서버 메모리가 작아 서버에서 빌드하지 않음) → SSH로 `~/dj2` 에 compose.yaml/.env 업로드 → 잡 토큰으로 GHCR 로그인·pull·로그아웃 → `docker compose up -d` → `/healthz` 확인.
+### 6.3 배포 절차 (서버의 다른 앱들과 동일)
+- 최초: `gh repo clone SnowyWalk/LoLWikiDJ2 ~/dj2` → `.env` 작성(`.env.example` 참고) → `./scripts/deploy.sh`
+- 이후: `cd ~/dj2 && ./scripts/deploy.sh` (git pull → `docker compose up -d --build` → `/healthz` 확인)
+- GitHub Actions 는 CI(타입 검사·린트·빌드)만 담당.
 
-### 6.4 시크릿 (GitHub Secrets → 배포 시 EC2 `.env`로 기록)
+### 6.4 시크릿 (서버 `~/dj2/.env`, 다른 앱들과 동일)
 | 이름 | 기존 위치 |
 | --- | --- |
-| `DB_USER`, `DB_PASSWORD` (+ 변수 `DB_HOST`, `DB_PORT`, `DB_NAME`) | `db_config.txt` |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | `db_config.txt` |
 | `YOUTUBE_API_KEY` | 소스 하드코딩(`request_youtube_video`) — 재발급 권장 |
 | `TWITCH_CLIENT_ID`, `TWITCH_SECRET` | `twitch_config.txt` |
 | `DANBOORU_LOGIN`, `DANBOORU_API_KEY` | `danbooru_config.txt` |
 | `GOOGLE_TTS_CREDENTIALS_JSON_B64` | `tts-api-*.json` (base64) |
 | `TOONATION_SESSION_ID` | 소스 하드코딩 (재발급 권장) |
 | `MASTER_IP` | 소스 하드코딩 `g_master_ip` |
-| `EC2_SSH_KEY` (+ 변수 `EC2_HOST`, `EC2_USER`, `DEPLOY_ENABLED`) | 배포용 |
 
 `.gitignore`에 `.env*`, `data/`, `*.json` 자격증명 패턴 추가. 위 설정 파일들은 git 이력에 커밋된 적 없음을 확인함(`git log --all`).
 
@@ -340,4 +340,4 @@ CMD ["node", "dist/server.js"]
 5. **옛 서버(lolwiki.xyz) 처리**: 전환 후 인스턴스 종료 시 고정비 절감. 단 MySQL 위치(2번)와 연동.
 6. 레거시 저장소의 이전 시도 산출물(`src/app`, `dist/`, `.omx/`, `data/*-smoke`) 및 `LoLWikiDJ2 (유기)` 폴더 정리 여부.
 7. **롤백과사전(외부 사이트) 연동 사용성 개선** — 로그인 자격증명 입력/유지 방식 등이 불편함(사용자 요청, 2026-10-16). P3에서 `lolwiki-api` 이식 시 함께 재설계.
-8. **배포 경로**: EC2 보안그룹이 SSH(22)를 사용자 IP에만 열어 GitHub Actions가 접속하지 못함. (a) self-hosted runner(인바운드 개방 불필요) (b) 보안그룹 22번 전체 개방(키 인증만 허용 중) (c) AWS SSM 중 선택 필요.
+8. ~~배포 경로~~ → **결정됨**: 서버의 다른 앱들과 같은 방식(서버에서 직접 빌드, NPM 연결).

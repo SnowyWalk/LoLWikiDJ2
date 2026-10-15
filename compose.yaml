@@ -1,16 +1,19 @@
 name: dj2
 
-# EC2(snowywalk.me 서버)에서는 nginx-proxy-manager(NPM)가 80/443과 TLS를 맡는다.
-# 이 앱은 포트를 열지 않고 NPM과 같은 외부 네트워크 `proxy` 에 붙으며,
-# NPM 프록시 호스트가 dj2.snowywalk.me → http://dj2:3000 으로 전달한다.
+# snowywalk.me 서버의 다른 앱들과 같은 방식:
+#   서버에서 git pull → docker compose up -d --build
+#   포트를 열지 않고 외부 네트워크 `proxy` 에 붙으면,
+#   nginx-proxy-manager 가 dj2.snowywalk.me → http://dj2:3000 으로 전달한다.
 
 services:
   app:
-    image: ${APP_IMAGE:-ghcr.io/snowywalk/lolwikidj2:latest}
     build: .
+    image: dj2:local
     container_name: dj2
     restart: unless-stopped
     env_file: .env
+    expose:
+      - "3000"
     volumes:
       - app-data:/data
       - ./secrets:/run/secrets/app:ro

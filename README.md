@@ -22,5 +22,5 @@ npm start
 
 ## 배포
 
-`main` 에 푸시하면 GitHub Actions 가 이미지를 GHCR 에 올리고 EC2(`~/dj2`)에서 `docker compose up -d` 한다.
+서버(snowywalk.me EC2)에서 `cd ~/dj2 && ./scripts/deploy.sh` (git pull → `docker compose up -d --build`).
 nginx-proxy-manager 가 `https://dj2.snowywalk.me` → `http://dj2:3000` 으로 전달한다. 자세한 내용은 설계서 6절.
