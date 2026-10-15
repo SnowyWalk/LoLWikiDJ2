@@ -12,8 +12,9 @@ const EnvSchema = z.object({
   DB_PORT: z.coerce.number().int().default(3306),
   DB_USER: z.string().default(""),
   DB_PASSWORD: z.string().default(""),
-  DB_NAME: z.string().default("LoLWikiDJ_DB"),
+  DB_NAME: z.string().default("lolwikidj_v2"),
 
+  YOUTUBE_API_KEY: z.string().default(""),
   TWITCH_CLIENT_ID: z.string().default(""),
   TWITCH_SECRET: z.string().default(""),
   DANBOORU_LOGIN: z.string().default(""),

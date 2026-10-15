@@ -192,12 +192,70 @@ tests/
 ## 5. 백엔드 설계
 
 - **서버 엔트리** `server/index.ts`: `http.createServer` → Next request handler + Socket.IO attach. TLS는 NPM 담당(앱은 평문 HTTP 3000).
-- **DB**: `mysql2/promise` 커넥션 풀(현재의 단일 커넥션 + 수동 재연결 제거), Drizzle로 기존 테이블 introspect(`Accounts`, `Playlists`, `Icons`, `Bans`, `Secures`, `LoLWikiArchive`, …). 스키마는 **변경하지 않음**(무중단 이전).
+- **DB**: `mysql2/promise` 커넥션 풀(현재의 단일 커넥션 + 수동 재연결 제거), 모든 쿼리 파라미터 바인딩. 스키마는 **v2로 재설계**(§5.1), 레거시 데이터는 검증 가능한 스크립트로 이전(§5.2).
 - **클라이언트 IP**: `X-Forwarded-For` 를 신뢰 프록시 단계 수(`TRUST_PROXY_HOPS`, 운영 2 = Cloudflare+NPM)만큼만 해석.
 - **롤백 API**: `lolwiki-api.js`와 테스트(`lolwiki-api.test.js`)를 TS로 이식, 응답 캐시(목록 10~30초, 상세 60초, 블록 30초)는 방 간 공유.
 - **TTS**: 생성한 음성 파일은 텍스트+보이스 해시로 캐시해 재사용(`/data/tts`).
 - **로깅**: pino(JSON) → `docker logs`. 기존 `log('INFO', …)` 포맷 유지 가능.
 - **헬스체크**: `/healthz` (P1: 프로세스·방 상태. P3에서 DB ping, 데이터 디렉터리 쓰기 가능 여부 추가).
+
+---
+
+### 5.1 DB 재설계 (v2 스키마, `db/migrations/0001_init.sql`)
+
+레거시 문제
+- 재생목록 곡 목록이 `Playlists.VideoList` JSON 배열 하나. 곡 하나를 넣고·빼고·옮길 때마다 배열 전체를 읽고 다시 씀.
+- **노래가 한 곡 재생될 때마다** DJ 재생목록을 한 칸 순환시키느라 배열 전체를 다시 쓰고, 그 유저의 **모든 재생목록 + 모든 곡 정보**를 소켓으로 다시 보냄(`update_playlist`). 편집 한 번도 마찬가지.
+- 계정의 재생목록 목록도 `Accounts.Playlists` JSON. 아이콘은 별도 `Icons` 테이블(이름으로 조인). 접속 기록(`Secures.ConnectData`)도 IP별 JSON을 로그인마다 통째로 다시 씀.
+- 외래키·유일키가 없어 중복 영상 행, 깨진 참조, 주인 없는 재생목록이 실제로 쌓여 있음(2021 덤프 기준 영상 중복 23건, 고아 재생목록 21건).
+
+v2 테이블
+
+| 테이블 | 내용 | 레거시 |
+| --- | --- | --- |
+| `users` | 닉네임, 아이콘 id/버전, 현재·좋아요 재생목록, `playlist_rev` | Accounts + Icons |
+| `playlists` | 소유자, 이름, 목록 내 순서(`sort_order`), 곡 수, 소프트 삭제 | Playlists + Accounts.Playlists |
+| `playlist_items` | **곡 하나 = 행 하나**, `position`(간격 1024 정렬 키) | Playlists.VideoList |
+| `videos` | `youtube_id` UNIQUE(대소문자 구분) | Videos |
+| `bans` | IP LIKE 패턴 그대로 | Bans |
+| `ip_user_stats`, `ip_notes` | (IP, 닉네임)별 접속 횟수·처음/마지막 접속, IP 메모 | Secures |
+| `lolwiki_bookmarks` | 목록용 컬럼 + 상세 `detail` JSON, (owner, post_seq) UNIQUE | LoLWikiArchive |
+| `lolwiki_memos` | (작성자, 대상) 메모 한 행 | LoLWikiMemos |
+| `legacy_migration_issues` | 새 제약에 안 맞아 옮기지 못한 레거시 행의 **원본** | — |
+
+연산 비용 변화
+- 곡 추가/삭제: JSON 배열 재작성 → 행 INSERT/DELETE 1개.
+- 순서 변경·재생 후 순환(맨 뒤로): 배열 재작성 → `position` UPDATE 1개 (이웃 사이 간격이 없을 때만 그 재생목록 재정렬).
+- 로그인 기록: IP별 JSON 재작성 → `INSERT … ON DUPLICATE KEY UPDATE` 1개.
+- 레거시 id(재생목록·영상·아이콘)는 그대로 보존 → 아이콘 파일(`static/icon/{id}.png`)과 검증이 그대로 맞음.
+
+재생목록 동기화(트래픽)
+- 접속 시 1회: 내 재생목록 전체 스냅샷 + `playlist_rev`. 클라이언트는 `localStorage`에 보관하고, 재접속 때 rev가 같으면 스냅샷을 다시 받지 않음.
+- 이후에는 **변경분만** 전송: `playlist:item_added / item_removed / item_moved / renamed / created / deleted / current_changed` (rev 포함). 재생 순환은 `item_moved` 하나(수십 바이트).
+- 같은 유저의 여러 탭은 `user:{id}` 소켓 룸으로 함께 갱신.
+- 검색(재생목록 안 곡 이름 검색)은 기존처럼 클라이언트에 있는 데이터로 동작 → UI 동작 동일.
+
+### 5.2 레거시 데이터 이전 (`scripts/db/migrate-legacy.ts`) — 유실 방지 설계
+
+| 장치 | 내용 |
+| --- | --- |
+| 레거시 읽기 전용 | `START TRANSACTION READ ONLY, WITH CONSISTENT SNAPSHOT` — 레거시에 어떤 쓰기도 하지 않고, 읽는 동안 들어온 변경에 흔들리지 않는 한 시점의 스냅샷 |
+| 대상 분리 | 레거시와 대상이 같은 DB면 중단. 대상은 별도 데이터베이스(`lolwikidj_v2`) |
+| 모르는 데이터 감지 | 스크립트가 모르는 테이블·컬럼이 레거시에 있으면 중단(`--allow-unmapped`로만 진행) |
+| 원자적 쓰기 | 대상 쓰기는 트랜잭션 하나. 실패 시 전부 롤백(실제로 테스트 중 3번 롤백됨) |
+| 버리지 않기 | 중복 영상, 깨진 참조, 255자 넘는 쓰레기 닉네임 등은 `legacy_migration_issues`에 **원본 그대로** 저장 |
+| 독립 검증 | 커밋 후 대상 DB를 다시 읽어, 변환 코드가 아니라 **레거시 원본과 직접** 비교: 모든 계정·재생목록 목록 순서·현재/좋아요 재생목록, 재생목록별 곡 순서(유튜브 id 열), 아이콘 id/버전, 접속 횟수 합계, 북마크·메모·차단 개수. 하나라도 다르면 exit 1 |
+| 반복 실행 | 데이터 규모가 작아(2021 기준 수 초) 전환 직전에 `--reset-target`으로 처음부터 다시 돌리는 방식. 리허설을 몇 번이고 할 수 있음 |
+| 레거시 비교 규칙 존중 | 아이콘↔계정 연결은 레거시 DB에서 직접 JOIN(레거시 collation), 접속 기록 닉네임은 레거시 JS처럼 정확히 비교(`utf8mb4_0900_bin`, 끝 공백 구분) |
+
+테스트(2026-10-16): 2021 실제 덤프(계정 829, 재생목록 1,210, 영상 7,498) + 이후 추가된 테이블과 일부러 깨뜨린 엣지 케이스(`scripts/db/test/legacy-extras.sql`)로 실행 → **검증 통과**. 실데이터에서 발견해 반영한 것: 32자 넘는 닉네임, 700자짜리 닉네임, 끝 공백만 다른 닉네임(`'eq'`/`'eq '`), 결합 문자(zalgo) 닉네임.
+
+전환 절차
+1. 옛 서버에서 전체 백업: `mysqldump --single-transaction --routines --triggers LoLWikiDJ_DB | gzip` → 서버 밖(로컬/S3)에 보관.
+2. 현재 스키마 확인: `scripts/db/inspect-legacy.sql` 결과로 2021 덤프 이후 추가된 컬럼을 확인하고 매핑에 반영(모르는 컬럼이 있으면 스크립트가 어차피 멈춤).
+3. 리허설: 백업을 복원한 사본으로 `migrate-legacy` 실행 → 검증 통과 확인.
+4. 실제 전환: 레거시 서비스 중지(쓰기 멈춤) → 백업 한 번 더 → `migrate-legacy --reset-target` → 검증 통과 → 새 서비스 시작. 레거시 DB는 지우지 않고 읽기 전용으로 일정 기간 보존.
+5. 이후 v2 DB는 매일 `mysqldump` 백업(보관 기간 지정).
 
 ---
 
@@ -231,6 +289,7 @@ CMD ["node", "dist/server.js"]
 | 이름 | 기존 위치 |
 | --- | --- |
 | `DB_USER`, `DB_PASSWORD` (+ 변수 `DB_HOST`, `DB_PORT`, `DB_NAME`) | `db_config.txt` |
+| `YOUTUBE_API_KEY` | 소스 하드코딩(`request_youtube_video`) — 재발급 권장 |
 | `TWITCH_CLIENT_ID`, `TWITCH_SECRET` | `twitch_config.txt` |
 | `DANBOORU_LOGIN`, `DANBOORU_API_KEY` | `danbooru_config.txt` |
 | `GOOGLE_TTS_CREDENTIALS_JSON_B64` | `tts-api-*.json` (base64) |
@@ -280,3 +339,5 @@ CMD ["node", "dist/server.js"]
 4. **이미지 손실 압축(WebP 등)** 허용 범위: 기본은 무손실만.
 5. **옛 서버(lolwiki.xyz) 처리**: 전환 후 인스턴스 종료 시 고정비 절감. 단 MySQL 위치(2번)와 연동.
 6. 레거시 저장소의 이전 시도 산출물(`src/app`, `dist/`, `.omx/`, `data/*-smoke`) 및 `LoLWikiDJ2 (유기)` 폴더 정리 여부.
+7. **롤백과사전(외부 사이트) 연동 사용성 개선** — 로그인 자격증명 입력/유지 방식 등이 불편함(사용자 요청, 2026-10-16). P3에서 `lolwiki-api` 이식 시 함께 재설계.
+8. **배포 경로**: EC2 보안그룹이 SSH(22)를 사용자 IP에만 열어 GitHub Actions가 접속하지 못함. (a) self-hosted runner(인바운드 개방 불필요) (b) 보안그룹 22번 전체 개방(키 인증만 허용 중) (c) AWS SSM 중 선택 필요.

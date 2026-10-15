@@ -8,7 +8,9 @@
     "build:server": "esbuild src/server/index.ts --bundle --platform=node --target=node22 --format=cjs --packages=external --tsconfig=tsconfig.json --outfile=dist/server.js",
     "start": "node dist/server.js",
     "lint": "eslint",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "db:migrate": "tsx scripts/db/migrate.ts",
+    "db:migrate-legacy": "tsx scripts/db/migrate-legacy.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
