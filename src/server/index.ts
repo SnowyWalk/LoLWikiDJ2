@@ -3,6 +3,7 @@ import next from "next";
 import { env, isDev } from "./config";
 import { applyMigrations } from "./db/migrate";
 import { closePool, pingDb } from "./db/pool";
+import { serveLolwikiMirror, startMirrorCacheJanitor } from "./images/lolwiki-mirror";
 import { logger } from "./logger";
 import { attachRealtime } from "./realtime";
 import { roomStats } from "./rooms/RoomState";
@@ -25,12 +26,15 @@ async function main() {
       });
       return;
     }
-    void serveDataFile(req, res).then((served) => {
-      if (!served) void handle(req, res);
-    });
+    void (async () => {
+      if (await serveLolwikiMirror(req, res)) return;
+      if (await serveDataFile(req, res)) return;
+      await handle(req, res);
+    })();
   });
 
   attachRealtime(server);
+  startMirrorCacheJanitor();
 
   server.listen(env.PORT, env.HOST, () => {
     logger.info(`> ready on http://${env.HOST}:${env.PORT} (${isDev ? "development" : "production"})`);

@@ -5179,17 +5179,42 @@ function lol_icon_change_confirm()
 	alert('아이콘 변경을 요청했습니다.')
 }
 
+function lol_mirror_uri(uri)
+{
+	return format('{0}/lolwiki_mirror?uri={1}', location.origin, encodeURIComponent(uri))
+}
+
+// [v2] 트래픽 절감: 이미지 서버가 https 로 직접 내려주는 이미지는 우리 서버를 거치지 않고 브라우저가 바로 받는다.
+// (img.lolwiki.kr 는 1년 캐시 헤더를 주므로 재방문 시 요청조차 없다)
+// 직접 로드가 실패하면 아래 error 리스너가 중계 주소로 한 번 바꿔 다시 시도한다.
+var g_lol_direct_image_reg = /^https:\/\/(?:img\.lolwiki\.kr|i\.imgur\.com)\//i
+
 function lol_convert_uri_to_mirror(uri)
 {
 	if(!uri || !uri.startsWith('http'))
 		return uri
+	if(/^http:\/\/i\.imgur\.com\//i.test(uri))
+		uri = uri.replace(/^http:/i, 'https:')
+	if(g_lol_direct_image_reg.test(uri))
+		return uri
 	if(/^https?:\/\/(?:img\.)?lolwiki\.kr(?:\/|$)/i.test(uri) || uri.startsWith('http://'))
-		return format('{0}/lolwiki_mirror?uri={1}', location.origin, encodeURIComponent(uri))
+		return lol_mirror_uri(uri)
 	if(uri.startsWith('https://'))
 		return uri
 
-	return format('{0}/lolwiki_mirror?uri={1}', location.origin, encodeURIComponent(uri))
+	return lol_mirror_uri(uri)
 }
+
+document.addEventListener('error', function(e) {
+	var img = e.target
+	if(!img || img.tagName != 'IMG' || img.dataset.lolMirrored)
+		return
+	var src = img.getAttribute('src') || ''
+	if(!g_lol_direct_image_reg.test(src))
+		return
+	img.dataset.lolMirrored = '1'
+	img.src = lol_mirror_uri(src)
+}, true)
 
 if(typeof socket != 'undefined' && socket.connected)
 	lol_restore_api_session()

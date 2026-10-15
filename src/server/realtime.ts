@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import { isChannelId } from "@/shared/channels";
 import { env } from "./config";
 import { registerLegacyHandlers } from "./legacy/handlers";
+import { registerLolwikiHandlers } from "./legacy/lolwiki-handlers";
 import { logger } from "./logger";
 import { roomConfig } from "./rooms/rooms.config";
 import { getRoomState, releaseRoomIfIdle } from "./rooms/RoomState";
@@ -43,6 +44,7 @@ export function attachRealtime(httpServer: HttpServer): Server {
     const state = getRoomState(room);
     void socket.join(state.id);
     registerLegacyHandlers(io, socket, state, clientIp(socket.request));
+    registerLolwikiHandlers(socket);
 
     socket.on("disconnect", () => {
       releaseRoomIfIdle(state.id, io.sockets.adapter.rooms.get(state.id)?.size ?? 0);
