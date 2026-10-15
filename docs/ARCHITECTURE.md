@@ -281,10 +281,12 @@ CMD ["node", "dist/server.js"]
 - 압축: NPM 기본 설정이 JS/CSS를 압축하지 않으므로 Next(`compress: true`)가 gzip.
 - 로그 로테이션: `logging: { driver: json-file, options: { max-size: 10m, max-file: 3 } }`.
 
-### 6.3 배포 절차 (서버의 다른 앱들과 동일)
-- 최초: `gh repo clone SnowyWalk/LoLWikiDJ2 ~/dj2` → `.env` 작성(`.env.example` 참고) → `./scripts/deploy.sh`
-- 이후: `cd ~/dj2 && ./scripts/deploy.sh` (git pull → `docker compose up -d --build` → `/healthz` 확인)
-- GitHub Actions 는 CI(타입 검사·린트·빌드)만 담당.
+### 6.3 배포 절차
+- 이미지 빌드는 **GitHub Actions(`image.yml`)** 가 하고 GHCR(`ghcr.io/snowywalk/lolwikidj2:<커밋>`)에 올린다.
+- 서버: `cd ~/dj2 && ./scripts/deploy.sh` → git pull → 같은 커밋의 이미지 pull → `docker compose up -d --no-build` → `/healthz` 확인.
+- 최초 1회 GHCR 로그인: `gh auth refresh -h github.com -s read:packages` → `gh auth token | docker login ghcr.io -u SnowyWalk --password-stdin`
+- **서버에서 빌드하지 않는 이유 (2026-10-16 장애)**: 메모리 2GB를 여러 앱이 같이 쓰는 서버에서 Next 빌드를 하다 메모리가 바닥나 서버 전체(다른 앱 포함)가 응답하지 않았다. 비상시 `deploy.sh --build-here` 는 가용 메모리 1.5GB 이상일 때만 동작.
+- 자동 실행 주의: 이 저장소는 push 이벤트로 워크플로가 시작되지 않는 문제가 있어(원인 미확인) 지금은 `gh workflow run image.yml` 로 수동 실행.
 
 ### 6.4 시크릿 (서버 `~/dj2/.env`, 다른 앱들과 동일)
 | 이름 | 기존 위치 |
@@ -293,7 +295,7 @@ CMD ["node", "dist/server.js"]
 | `YOUTUBE_API_KEY` | 소스 하드코딩(`request_youtube_video`) — 재발급 권장 |
 | `TWITCH_CLIENT_ID`, `TWITCH_SECRET` | `twitch_config.txt` |
 | `DANBOORU_LOGIN`, `DANBOORU_API_KEY` | `danbooru_config.txt` |
-| `GOOGLE_TTS_CREDENTIALS_JSON_B64` | `tts-api-*.json` (base64) |
+| `GOOGLE_APPLICATION_CREDENTIALS` (파일 경로, `~/dj2/secrets/google-tts.json` 마운트) | `tts-api-*.json` |
 | `TOONATION_SESSION_ID` | 소스 하드코딩 (재발급 권장) |
 | `MASTER_IP` | 소스 하드코딩 `g_master_ip` |
 
@@ -308,7 +310,7 @@ CMD ["node", "dist/server.js"]
 | P0 (취소) | 레거시 프로젝트는 수정하지 않기로 함. 비용 절감은 P5 전환 시점에 한 번에 반영 | - |
 | **P1 기반 ✅** | Next 16 + TS + Tailwind v4(preflight off) + shadcn(Radix) init, custom server(Socket.IO, 경로 기반 채널 배정), env/config, Docker/compose(NPM `proxy` 네트워크), CI/CD 골격 | `npm run build` 통과, 프로덕션 모드에서 `/healthz` OK, 방 배정 확인 (2026-10-16) |
 | P2 계약 고정 | 소켓 이벤트 전수 목록(서버 on 약 70개, emit 포함) → `shared/events.ts` zod 스키마. 레거시 서버 대상 계약 테스트 | 계약 테스트가 레거시에 대해 통과 |
-| P3 백엔드 이식 | handlers/services/RoomState/DB 풀/이미지 캐시/업로드. **레거시 프론트(dj.html)를 그대로 신규 서버에서 서빙**해서 검증 | 레거시 프론트 + 신규 서버로 친구들과 실사용 1주 |
+| **P3 백엔드 이식 (대부분 ✅, 2026-10-16)** | 레거시 화면(dj.html·CSS·JS)을 새 서버가 그대로 제공(채널 경로). 서버 로직 이식: 로그인·채팅·이미지·아이콘·짤·광고·TTS·재생목록(행 단위)·DJ/재생/좋아요·롤백 게시판(lolwiki-api 그대로)·북마크·메모·패치노트·접속자. 이미지 중계 캐시. 픽셀 비교 4화면×3해상도 diff 0, 소켓 통합 테스트 9개, 롤백 API 단위 테스트 18개 | 남은 것: 시크릿 설정(유튜브·트위치·단부루·TTS), 실데이터 이전 리허설, 친구들과 실사용 |
 | P4 프론트 이식 | 화면 단위로 React 컴포넌트화(로그인 → 플레이어 → 채팅 → 패널들 → 롤백 게시판), 매 단계 시각 회귀 0px | 전체 시나리오 diff 0 |
 | P5 전환 | 옛 서버(lolwiki.xyz)의 각 포트·도메인을 `dj2.snowywalk.me/채널` 로 301 리다이렉트(또는 lolwiki.xyz DNS를 새 서버로 이전), 레거시 node 프로세스 중단, 1주 병행 모니터링 후 레거시 파일 `legacy/`로 이동 | 비용·에러 지표 확인 |
 | P6 정리 | 레거시 CSS → Tailwind 점진 전환, 이미지 WebP(승인분), 불필요 코드 삭제 | 선택 사항 |
