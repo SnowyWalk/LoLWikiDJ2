@@ -80,6 +80,13 @@ export function releaseRoomIfIdle(id: string, connectedSockets: number) {
   }
 }
 
+/** 레거시 /attendants 형식: [{ icon: 'icon/1.png?ver=1', nick }] */
+export function roomAttendants(id: string) {
+  const state = rooms.get(id);
+  if (!state) return [];
+  return [...state.users].map(([nick, u]) => ({ icon: `icon/${u.iconId}.png?ver=${u.iconVer}`, nick }));
+}
+
 export function roomStats() {
   return [...rooms.values()].map((room) => ({ id: room.id, users: room.users.size }));
 }

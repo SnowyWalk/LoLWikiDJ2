@@ -8,7 +8,7 @@ import path from "node:path";
 const TEMPLATE_PATH = path.resolve(process.cwd(), "legacy/dj.html");
 
 // 정적 파일 캐시 무효화용 버전. 레거시는 파일 수정 시각을 썼다.
-const ASSET_VERSION = process.env.APP_VERSION ?? Date.now().toString(36);
+const ASSET_VERSION = (process.env.APP_VERSION || Date.now().toString(36)).slice(0, 12);
 
 let template: string | null = null;
 

@@ -24,6 +24,7 @@ import { logger } from "../logger";
 import type { RoomState } from "../rooms/RoomState";
 import { fetchYoutubePlaylistVideoIds } from "../services/youtube";
 import { fetchDanbooruZzal } from "../services/danbooru";
+import { synthesizeToFile, ttsEnabled } from "../services/tts";
 import { controllerFor } from "./room-controller";
 import { fileSizeLabel, getDateForFilename, getTime, secondsToString } from "./util";
 
@@ -210,9 +211,15 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
     room.recentZzals = [];
   });
 
-  on("tts", (data: { text: string; tts_hash: string; voice_name: string }) => {
-    // TODO(P3): Google TTS 연동 (서비스 계정 키 필요). 지금은 기록만 남긴다.
-    ctl.log({ nick: name(), voice: data.voice_name }, "tts 요청 (미구현)");
+  on("tts", async (data: { text: string; tts_hash: string; voice_name: string }) => {
+    // 레거시: 구글 음성은 파일을 만든 뒤 모두에게 재생 신호. (투네이션 음성은 화면에서 이미 꺼져 있어 옮기지 않음)
+    const hash = String(data.tts_hash ?? "");
+    const voice = String(data.voice_name ?? "");
+    if (!/^[\w\-: ]{1,80}$/.test(hash) || !/^ko-KR-[A-Za-z0-9-]+$/.test(voice) || !ttsEnabled()) return;
+    const text = String(data.text ?? "").slice(0, 500);
+    ctl.log({ nick: name(), voice, hash }, "tts");
+    await synthesizeToFile(text, voice, hash);
+    all.emit("tts", { file_name: `./tts/${hash}`, target_nick: name() });
   });
 
   // ===================== 재생 / DJ =====================

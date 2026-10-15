@@ -20,6 +20,9 @@ RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
 FROM node:22-alpine AS runner
 WORKDIR /app
+# 정적 파일 캐시 무효화용 버전 (GitHub Actions 가 커밋 sha 를 넣는다)
+ARG APP_VERSION=""
+ENV APP_VERSION=${APP_VERSION}
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOST=0.0.0.0 \

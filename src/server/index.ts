@@ -6,7 +6,8 @@ import { closePool, pingDb } from "./db/pool";
 import { serveLolwikiMirror, startMirrorCacheJanitor } from "./images/lolwiki-mirror";
 import { logger } from "./logger";
 import { attachRealtime } from "./realtime";
-import { roomStats } from "./rooms/RoomState";
+import { DEFAULT_CHANNEL } from "@/shared/channels";
+import { roomAttendants, roomStats } from "./rooms/RoomState";
 import { serveDataFile } from "./static-files";
 
 async function main() {
@@ -24,6 +25,13 @@ async function main() {
         res.writeHead(ok ? 200 : 503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
         res.end(JSON.stringify({ ok, db, rooms: roomStats() }));
       });
+      return;
+    }
+    // 레거시 /attendants: 접속자 목록 (채널은 ?channel=, 없으면 기본 채널)
+    if (req.url?.startsWith("/attendants")) {
+      const channel = new URL(req.url, "http://x").searchParams.get("channel") ?? DEFAULT_CHANNEL;
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      res.end(JSON.stringify(roomAttendants(channel)));
       return;
     }
     void (async () => {
