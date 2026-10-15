@@ -11,9 +11,11 @@
     "typecheck": "next typegen && tsc --noEmit",
     "db:migrate": "tsx scripts/db/migrate.ts",
     "db:migrate-legacy": "tsx scripts/db/migrate-legacy.ts",
-    "test:visual": "tsx tests/visual/compare.ts"
+    "test:visual": "tsx tests/visual/compare.ts",
+    "test:e2e": "tsx --test --test-timeout=30000 tests/e2e/legacy-socket.test.ts"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.11",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "lucide-react": "^1.57.0",

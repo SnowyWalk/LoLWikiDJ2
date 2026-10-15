@@ -6,6 +6,7 @@ import { closePool, pingDb } from "./db/pool";
 import { logger } from "./logger";
 import { attachRealtime } from "./realtime";
 import { roomStats } from "./rooms/RoomState";
+import { serveDataFile } from "./static-files";
 
 async function main() {
   await applyMigrations();
@@ -24,7 +25,9 @@ async function main() {
       });
       return;
     }
-    void handle(req, res);
+    void serveDataFile(req, res).then((served) => {
+      if (!served) void handle(req, res);
+    });
   });
 
   attachRealtime(server);
