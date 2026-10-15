@@ -1,18 +1,19 @@
 /*
- * 레이어 순서: theme < base < legacy < components < utilities
- *
  * - Tailwind preflight(기본 스타일 리셋)는 의도적으로 가져오지 않는다.
  *   preflight는 img{display:block}, margin 리셋 등으로 레거시 화면을 바꿔버린다.
- * - legacy 레이어에는 기존 static/index.css 를 그대로 넣는다. (src/styles/legacy.css)
- *   utilities 보다 앞 레이어이므로 새 코드의 Tailwind 클래스로 덮어쓸 수 있다.
+ * - 레거시 화면의 CSS(public/static/index.css)는 번들에 넣지 않고 레거시와 똑같이
+ *   <link> 로 로드한다. CSS 안의 이미지 경로가 상대 경로(url('bg.jpg'))라서 위치가 같아야 한다.
+ * - public/ 의 레거시 JS 에 있는 단어들로 Tailwind 클래스가 생성되지 않도록 스캔에서 뺀다.
  */
-@layer theme, base, legacy, components, utilities;
+@layer theme, base, components, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "../styles/legacy.css" layer(legacy);
+
+@source not "../../public";
+@source not "../../legacy";
 
 @custom-variant dark (&:is([theme="dark"] *));
 

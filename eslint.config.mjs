@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // custom server 번들 출력
     "dist/**",
+    // P3 단계에서 그대로 쓰는 레거시 화면 스크립트 (React 전환 시 제거)
+    "public/static/**",
+    "legacy/**",
   ]),
 ]);
 

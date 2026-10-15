@@ -33,6 +33,8 @@ COPY --from=build --chown=node:node /app/.next ./.next
 COPY --from=build --chown=node:node /app/dist ./dist
 # 서버 시작 시 자동 적용되는 스키마 마이그레이션
 COPY --from=build --chown=node:node /app/db ./db
+# P3: 레거시 화면 템플릿 (src/server/legacy-page.ts)
+COPY --from=build --chown=node:node /app/legacy ./legacy
 RUN mkdir -p /data && chown node:node /data
 USER node
 EXPOSE 3000
