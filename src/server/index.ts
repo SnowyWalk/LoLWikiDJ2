@@ -1,11 +1,15 @@
 import { createServer } from "node:http";
 import next from "next";
 import { env, isDev } from "./config";
+import { applyMigrations } from "./db/migrate";
+import { closePool, pingDb } from "./db/pool";
 import { logger } from "./logger";
 import { attachRealtime } from "./realtime";
 import { roomStats } from "./rooms/RoomState";
 
 async function main() {
+  await applyMigrations();
+
   const app = next({ dev: isDev, hostname: env.HOST, port: env.PORT });
   const handle = app.getRequestHandler();
   await app.prepare();
@@ -13,8 +17,11 @@ async function main() {
   const server = createServer((req, res) => {
     // 컨테이너 헬스체크는 Next를 거치지 않고 바로 응답한다.
     if (req.url === "/healthz") {
-      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-      res.end(JSON.stringify({ ok: true, rooms: roomStats() }));
+      void pingDb().then((db) => {
+        const ok = db !== "error";
+        res.writeHead(ok ? 200 : 503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        res.end(JSON.stringify({ ok, db, rooms: roomStats() }));
+      });
       return;
     }
     void handle(req, res);
@@ -28,7 +35,9 @@ async function main() {
 
   const shutdown = () => {
     logger.info("shutting down");
-    server.close(() => process.exit(0));
+    server.close(() => {
+      void closePool().finally(() => process.exit(0));
+    });
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", shutdown);

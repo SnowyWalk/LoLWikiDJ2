@@ -2,8 +2,15 @@ name: dj2
 
 # snowywalk.me 서버의 다른 앱들과 같은 방식:
 #   서버에서 git pull → docker compose up -d --build
-#   포트를 열지 않고 외부 네트워크 `proxy` 에 붙으면,
+#   app 은 포트를 열지 않고 외부 네트워크 `proxy` 에 붙으면,
 #   nginx-proxy-manager 가 dj2.snowywalk.me → http://dj2:3000 으로 전달한다.
+#   mysql 은 이 프로젝트 내부 네트워크(default)에만 있고 외부에 노출되지 않는다.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
 
 services:
   app:
@@ -12,20 +19,48 @@ services:
     container_name: dj2
     restart: unless-stopped
     env_file: .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
     expose:
       - "3000"
     volumes:
       - app-data:/data
       - ./secrets:/run/secrets/app:ro
     networks:
+      - default
       - proxy
+    depends_on:
+      mysql:
+        condition: service_healthy
     # 메모리 2GB 서버를 다른 서비스와 같이 쓰므로 상한을 둔다.
     mem_limit: 512m
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "3"
+    logging: *logging
+
+  mysql:
+    image: mysql:8.4
+    container_name: dj2-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-lolwikidj_v2}
+      MYSQL_USER: ${DB_USER:?.env 에 DB_USER 가 필요합니다}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?.env 에 DB_PASSWORD 가 필요합니다}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env 에 MYSQL_ROOT_PASSWORD 가 필요합니다}
+      TZ: Asia/Seoul
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/low-memory.cnf:/etc/mysql/conf.d/low-memory.cnf:ro
+      - ./backups:/backups
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    mem_limit: 400m
+    logging: *logging
 
 networks:
   proxy:
@@ -33,3 +68,4 @@ networks:
 
 volumes:
   app-data:
+  mysql-data:

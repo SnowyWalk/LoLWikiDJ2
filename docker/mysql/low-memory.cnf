@@ -1,0 +1,19 @@
+# 메모리 2GB 서버를 여러 앱과 같이 쓰므로 MySQL 메모리를 작게 잡는다.
+# 데이터 규모(레거시 전체 약 60MB)에 비해 충분하다.
+[mysqld]
+character-set-server = utf8mb4
+collation-server     = utf8mb4_unicode_ci
+skip-name-resolve
+
+performance_schema      = OFF
+innodb_buffer_pool_size = 96M
+innodb_log_buffer_size  = 8M
+innodb_redo_log_capacity = 64M
+max_connections         = 40
+table_open_cache        = 256
+table_definition_cache  = 256
+tmp_table_size          = 16M
+max_heap_table_size     = 16M
+sort_buffer_size        = 256K
+join_buffer_size        = 256K
+thread_cache_size       = 8
