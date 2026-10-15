@@ -35,6 +35,8 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
   const name = () => socket.data.name as string;
   const me = () => room.users.get(name());
   /** 로그인한 소켓에서만 처리 (레거시: if(!socket.name) return) */
+  // 레거시 클라이언트가 보내는 데이터는 타입이 정해져 있지 않아 핸들러마다 형태를 적는다.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const on = (event: string, fn: (...args: any[]) => unknown) =>
     socket.on(event, async (...args: unknown[]) => {
       if (!name() || !me()) return;

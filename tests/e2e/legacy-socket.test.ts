@@ -104,7 +104,9 @@ test("다른 채널에는 채팅이 가지 않는다", async () => {
 test("재생목록 만들기·이름 바꾸기·선택·삭제", async () => {
   let snap = next<[unknown, { Id: number; Name: string }[], number, number]>(a, "update_playlist");
   a.emit("new_playlist");
-  let [, lists, , show] = await snap;
+  const first = await snap;
+  let lists = first[1];
+  const show = first[3];
   assert.equal(lists.length, 2);
   const created = lists.find((l) => l.Id === show)!;
   assert.equal(created.Name, "새 재생목록");
@@ -116,9 +118,8 @@ test("재생목록 만들기·이름 바꾸기·선택·삭제", async () => {
 
   snap = next(a, "update_playlist");
   a.emit("select_playlist", created.Id);
-  let current: number;
-  [, lists, current] = await snap;
-  assert.equal(current, created.Id);
+  const selected = await snap;
+  assert.equal(selected[2], created.Id);
 
   snap = next(a, "update_playlist");
   a.emit("delete_playlist", created.Id);
