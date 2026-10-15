@@ -18,5 +18,9 @@ npm run dev        # custom server(Next + Socket.IO), http://localhost:3000
 ```bash
 npm run build      # next build + 서버 번들(dist/server.js)
 npm start
-docker compose up -d --build
 ```
+
+## 배포
+
+`main` 에 푸시하면 GitHub Actions 가 이미지를 GHCR 에 올리고 EC2(`~/dj2`)에서 `docker compose up -d` 한다.
+nginx-proxy-manager 가 `https://dj2.snowywalk.me` → `http://dj2:3000` 으로 전달한다. 자세한 내용은 설계서 6절.

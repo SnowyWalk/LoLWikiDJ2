@@ -1,43 +1,32 @@
-name: lolwikidj
+name: dj2
 
-# DB는 EC2 호스트에서 이미 돌고 있는 MySQL을 그대로 쓴다.
-# 그래서 app/nginx 는 host 네트워크로 띄워 호스트의 localhost:3306 에 지금과 똑같이 접속한다.
-# (MySQL bind-address, 계정 권한을 바꿀 필요가 없다)
-
-x-logging: &logging
-  driver: json-file
-  options:
-    max-size: 10m
-    max-file: "3"
+# EC2(snowywalk.me 서버)에서는 nginx-proxy-manager(NPM)가 80/443과 TLS를 맡는다.
+# 이 앱은 포트를 열지 않고 NPM과 같은 외부 네트워크 `proxy` 에 붙으며,
+# NPM 프록시 호스트가 dj2.snowywalk.me → http://dj2:3000 으로 전달한다.
 
 services:
   app:
-    image: ${APP_IMAGE:-ghcr.io/snowywalk/lolwikidj:latest}
+    image: ${APP_IMAGE:-ghcr.io/snowywalk/lolwikidj2:latest}
     build: .
+    container_name: dj2
     restart: unless-stopped
-    network_mode: host
     env_file: .env
-    environment:
-      # host 네트워크이므로 외부에 직접 노출되지 않도록 루프백에만 바인딩한다.
-      HOST: 127.0.0.1
-      PORT: 3000
     volumes:
       - app-data:/data
       - ./secrets:/run/secrets/app:ro
-    logging: *logging
+    networks:
+      - proxy
+    # 메모리 2GB 서버를 다른 서비스와 같이 쓰므로 상한을 둔다.
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
 
-  nginx:
-    image: nginx:1.27-alpine
-    restart: unless-stopped
-    network_mode: host
-    depends_on:
-      - app
-    volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/www/certbot:/var/www/certbot:ro
-    logging: *logging
+networks:
+  proxy:
+    external: true
 
 volumes:
   app-data:

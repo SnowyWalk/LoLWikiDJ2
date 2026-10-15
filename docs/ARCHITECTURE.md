@@ -55,19 +55,19 @@
 ## 2. 목표 아키텍처
 
 ```
-                 ┌────────────────────────── EC2 (Docker Compose) ───────────────────────────┐
- Browser ──443──▶│ nginx (TLS, gzip, 캐시 헤더 / 구 포트 1004…8083 → /채널번호 301 리다이렉트)   │
-   │             │    │  host 네트워크, 127.0.0.1:3000                                        │
-   │             │    ▼                                                                       │
-   │             │ app (Node 22, Next.js custom server)                                       │
-   │             │   ├─ Next.js App Router  (페이지, Route Handlers: /lolwiki_mirror, /upload)│
-   │             │   ├─ Socket.IO server    (방별 RoomState, 이벤트 계약 그대로)              │
-   │             │   └─ services: lolwiki, youtube, twitch, tts, danbooru, image-cache        │
-   │             │    │                 │                                                     │
-   │             │    ▼                 ▼                                                     │
-   │             │ 호스트의 기존 MySQL(127.0.0.1:3306)   /data volume: cache, uploads, icons, tts │
-   │             └────────────────────────────────────────────────────────────────────────────┘
-   └──────────── img.lolwiki.kr / i.ytimg.com 등 외부 이미지는 **브라우저가 직접** 로드 ────────
+                                     ┌──────────── EC2 snowywalk.me 서버 (Docker, 다른 서비스와 공유) ────────────┐
+ Browser ──▶ Cloudflare ──443──────▶ │ nginx-proxy-manager (TLS, dj2.snowywalk.me → http://dj2:3000)           │
+   │                                 │    │  docker 네트워크 `proxy`                                             │
+   │                                 │    ▼                                                                     │
+   │                                 │ dj2 컨테이너 (Node 22, Next.js custom server, 포트 미노출, mem 512m)      │
+   │                                 │   ├─ Next.js App Router  (페이지, Route Handlers: /lolwiki_mirror, /upload)│
+   │                                 │   ├─ Socket.IO server    (채널별 RoomState, 이벤트 계약 그대로)           │
+   │                                 │   └─ services: lolwiki, youtube, twitch, tts, danbooru, image-cache      │
+   │                                 │        /data volume: cache, uploads, icons, tts                           │
+   │                                 └──────────┬───────────────────────────────────────────────────────────────┘
+   │                                            ▼  (§9-2: 연결 방식 결정 필요)
+   │                                 기존 MySQL — lolwiki.xyz 서버(3.39.119.145)의 localhost
+   └──── img.lolwiki.kr / i.ytimg.com 등 외부 이미지는 **브라우저가 직접** 로드
 ```
 
 ### 2.1 왜 Next.js "custom server"인가
@@ -76,8 +76,8 @@
 - HTTP 성격의 기능(이미지 프록시, 업로드, `/attendants`, `/patch_note`, 헬스체크)은 Route Handler로.
 
 ### 2.2 채널 통합 — 포트 대신 경로
-- 기본 채널: `https://lolwiki.xyz/` (레거시 8080). 다른 채널: `https://lolwiki.xyz/1004` 처럼 경로에 채널 번호. `/8080` 은 `/` 로 301. 목록에 없는 번호는 404.
-- 페이지(`app/page.tsx`, `app/[channel]/page.tsx`)가 채널 번호를 소켓 handshake 쿼리(`channel`)로 보내고, 서버는 그 채널의 `RoomState`(레거시 전역 `g_users_dic`, `g_djs`, `g_queue`… 를 묶은 것)에 소켓을 배정. 예전 포트 주소(`lolwiki.xyz:1004`)는 nginx가 `lolwiki.xyz/1004` 로 301 리다이렉트(북마크 호환, 나중에 제거 가능).
+- 기본 채널: `https://dj2.snowywalk.me/` (레거시 8080). 다른 채널: `https://dj2.snowywalk.me/1004` 처럼 경로에 채널 번호. `/8080` 은 `/` 로 301. 목록에 없는 번호는 404.
+- 페이지(`app/page.tsx`, `app/[channel]/page.tsx`)가 채널 번호를 소켓 handshake 쿼리(`channel`)로 보내고, 서버는 그 채널의 `RoomState`(레거시 전역 `g_users_dic`, `g_djs`, `g_queue`… 를 묶은 것)에 소켓을 배정. 기존 `lolwiki.xyz:포트` 주소는 전환(P5) 시 옛 서버에서 새 주소로 리다이렉트한다.
 - 채널 번호 목록은 `src/shared/channels.ts`, 채널별 공지는 `src/server/rooms/rooms.config.ts`.
 - 효과: 프로세스 18개 → 1개(메모리 대폭 감소 → 더 작은 인스턴스 가능), 롤백 API 토큰 캐시·블록 캐시·이미지 캐시를 방 간 공유.
 
@@ -114,7 +114,7 @@ src/
     db/                   # mysql2 pool + Drizzle(introspect된 기존 스키마)
     config.ts             # env 검증(zod)
 public/static/            # 레거시 정적 자산 (경로 유지: /static/..., /fonts/..., /emoticon/...)
-docker/ nginx/ .github/workflows/
+.github/workflows/   compose.yaml   Dockerfile
 tests/
   contract/  visual/  e2e/
 ```
@@ -133,12 +133,12 @@ tests/
    - 보호: 호스트 allowlist, 사설 IP 차단, 최대 20MB, `image/*` 만, 타임아웃 10s.
    - 용량 관리: 기본 5GB LRU, 매시간 정리 잡.
    - 실패 시 기존처럼 `static/xbox.jpg` 반환(단, `Cache-Control: no-store`).
-   - 추가 옵션: nginx `proxy_cache` 를 앞단에 두면 Node까지 안 오고 끝남.
+   - 추가 옵션: Cloudflare 캐시 규칙으로 `/lolwiki_mirror` 를 엣지 캐시하면 EC2까지 오지도 않는다.
 
 > 예상 효과: 게시판 관련 EC2 아웃바운드가 사실상 0에 수렴 (폴백 비율만큼만 발생).
 
 ### 3.2 정적 자산
-- nginx: `brotli`(또는 gzip) on, `gzip_types`에 js/css/json/svg/woff 아닌 텍스트 전부.
+- 압축: Cloudflare가 사용자 구간을 brotli로 압축하고, EC2→Cloudflare 구간은 Next `compress: true`(gzip)로 줄인다.
 - Next가 빌드하는 JS/CSS는 해시 파일명 → `immutable, max-age=1y`.
 - `public/static/*` 레거시 자산: 빌드 시 콘텐츠 해시로 URL을 만들어(`/static/bg.jpg?v=<hash>`) 1년 캐시. 현재처럼 서버가 매 요청 `fs.stat`으로 `$_version` 치환하던 로직 제거.
 - `bg.jpg` 중복 로드 제거(preload URL과 CSS URL 일치시킴).
@@ -191,9 +191,9 @@ tests/
 
 ## 5. 백엔드 설계
 
-- **서버 엔트리** `server/index.ts`: `http.createServer` → Next request handler + Socket.IO attach. TLS는 nginx 담당(앱은 평문 HTTP 3000).
+- **서버 엔트리** `server/index.ts`: `http.createServer` → Next request handler + Socket.IO attach. TLS는 NPM 담당(앱은 평문 HTTP 3000).
 - **DB**: `mysql2/promise` 커넥션 풀(현재의 단일 커넥션 + 수동 재연결 제거), Drizzle로 기존 테이블 introspect(`Accounts`, `Playlists`, `Icons`, `Bans`, `Secures`, `LoLWikiArchive`, …). 스키마는 **변경하지 않음**(무중단 이전).
-- **클라이언트 IP**: nginx가 넣는 `X-Forwarded-For`를 신뢰 프록시 1단계로만 해석.
+- **클라이언트 IP**: `X-Forwarded-For` 를 신뢰 프록시 단계 수(`TRUST_PROXY_HOPS`, 운영 2 = Cloudflare+NPM)만큼만 해석.
 - **롤백 API**: `lolwiki-api.js`와 테스트(`lolwiki-api.test.js`)를 TS로 이식, 응답 캐시(목록 10~30초, 상세 60초, 블록 30초)는 방 간 공유.
 - **TTS**: 생성한 음성 파일은 텍스트+보이스 해시로 캐시해 재사용(`/data/tts`).
 - **로깅**: pino(JSON) → `docker logs`. 기존 `log('INFO', …)` 포맷 유지 가능.
@@ -215,26 +215,28 @@ HEALTHCHECK CMD wget -qO- http://localhost:3000/healthz || exit 1
 CMD ["node", "dist/server.js"]
 ```
 
-### 6.2 compose.yaml
-- `nginx`: host 네트워크. 443(서비스) + 구 포트(리다이렉트 전용), `/etc/letsencrypt` 읽기 전용 마운트, 인증서 갱신은 webroot(`/var/www/certbot`) 방식.
-- `app`: 내부 네트워크만, `/data` 볼륨.
-- MySQL: **EC2 호스트에 이미 있는 MySQL을 그대로 사용**. app 컨테이너를 host 네트워크로 띄워 지금처럼 `127.0.0.1:3306` 으로 접속하므로 bind-address·계정 권한·데이터 이전이 필요 없다. app은 `127.0.0.1:3000` 에만 바인딩되어 외부 노출 없음.
+### 6.2 compose.yaml (EC2 snowywalk.me 서버)
+- 서버에는 이미 nginx-proxy-manager(NPM)가 80/443을 점유하고 있고, 다른 서비스들은 외부 docker 네트워크 `proxy` 에 붙어 NPM이 컨테이너 이름으로 프록시한다. 같은 방식을 따른다.
+- `app`: `container_name: dj2`, 포트 미노출, `proxy` 네트워크, `/data` 볼륨, `mem_limit: 512m` (RAM 2GB 서버를 공유하므로).
+- TLS·도메인: NPM 프록시 호스트 `dj2.snowywalk.me → http://dj2:3000`, Websockets Support 켬. DNS는 Cloudflare.
+- 클라이언트 IP: Cloudflare → NPM 두 단계라 `TRUST_PROXY_HOPS=2`.
+- 압축: NPM 기본 설정이 JS/CSS를 압축하지 않으므로 Next(`compress: true`)가 gzip.
 - 로그 로테이션: `logging: { driver: json-file, options: { max-size: 10m, max-file: 3 } }`.
 
 ### 6.3 GitHub Actions
 1. `ci.yml` (PR): typecheck, lint, unit(lolwiki-api 등), contract, **visual regression**.
-2. `deploy.yml` (main push): Docker build → GHCR push → EC2에 SSH → `docker compose pull && docker compose up -d` → health 확인, 실패 시 이전 태그로 롤백.
+2. `deploy.yml` (main push, 저장소 변수 `DEPLOY_ENABLED=true` 일 때): GitHub Actions에서 Docker build → GHCR push(서버 메모리가 작아 서버에서 빌드하지 않음) → SSH로 `~/dj2` 에 compose.yaml/.env 업로드 → 잡 토큰으로 GHCR 로그인·pull·로그아웃 → `docker compose up -d` → `/healthz` 확인.
 
 ### 6.4 시크릿 (GitHub Secrets → 배포 시 EC2 `.env`로 기록)
 | 이름 | 기존 위치 |
 | --- | --- |
-| `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | `db_config.txt` |
+| `DB_USER`, `DB_PASSWORD` (+ 변수 `DB_HOST`, `DB_PORT`, `DB_NAME`) | `db_config.txt` |
 | `TWITCH_CLIENT_ID`, `TWITCH_SECRET` | `twitch_config.txt` |
 | `DANBOORU_LOGIN`, `DANBOORU_API_KEY` | `danbooru_config.txt` |
-| `GOOGLE_TTS_CREDENTIALS_JSON` (base64) | `tts-api-*.json` |
+| `GOOGLE_TTS_CREDENTIALS_JSON_B64` | `tts-api-*.json` (base64) |
 | `TOONATION_SESSION_ID` | 소스 하드코딩 (재발급 권장) |
 | `MASTER_IP` | 소스 하드코딩 `g_master_ip` |
-| `EC2_HOST`, `EC2_SSH_KEY` | 배포용 |
+| `EC2_SSH_KEY` (+ 변수 `EC2_HOST`, `EC2_USER`, `DEPLOY_ENABLED`) | 배포용 |
 
 `.gitignore`에 `.env*`, `data/`, `*.json` 자격증명 패턴 추가. 위 설정 파일들은 git 이력에 커밋된 적 없음을 확인함(`git log --all`).
 
@@ -245,11 +247,11 @@ CMD ["node", "dist/server.js"]
 | 단계 | 내용 | 완료 기준 |
 | --- | --- | --- |
 | P0 (취소) | 레거시 프로젝트는 수정하지 않기로 함. 비용 절감은 P5 전환 시점에 한 번에 반영 | - |
-| **P1 기반 ✅** | Next 16 + TS + Tailwind v4(preflight off) + shadcn(Radix) init, custom server(Socket.IO, 경로 기반 채널 배정), env/config, Docker/compose/nginx, CI/CD 골격 | `npm run build` 통과, 프로덕션 모드에서 `/healthz` OK, 방 배정 확인 (2026-10-16) |
+| **P1 기반 ✅** | Next 16 + TS + Tailwind v4(preflight off) + shadcn(Radix) init, custom server(Socket.IO, 경로 기반 채널 배정), env/config, Docker/compose(NPM `proxy` 네트워크), CI/CD 골격 | `npm run build` 통과, 프로덕션 모드에서 `/healthz` OK, 방 배정 확인 (2026-10-16) |
 | P2 계약 고정 | 소켓 이벤트 전수 목록(서버 on 약 70개, emit 포함) → `shared/events.ts` zod 스키마. 레거시 서버 대상 계약 테스트 | 계약 테스트가 레거시에 대해 통과 |
 | P3 백엔드 이식 | handlers/services/RoomState/DB 풀/이미지 캐시/업로드. **레거시 프론트(dj.html)를 그대로 신규 서버에서 서빙**해서 검증 | 레거시 프론트 + 신규 서버로 친구들과 실사용 1주 |
 | P4 프론트 이식 | 화면 단위로 React 컴포넌트화(로그인 → 플레이어 → 채팅 → 패널들 → 롤백 게시판), 매 단계 시각 회귀 0px | 전체 시나리오 diff 0 |
-| P5 전환 | 호스트 nginx·레거시 node 프로세스 중단(443/80 포트 반환) 후 compose 기동, certbot 갱신 방식을 webroot로 전환, 1주 병행 모니터링 후 레거시 파일 `legacy/`로 이동 | 비용·에러 지표 확인 |
+| P5 전환 | 옛 서버(lolwiki.xyz)의 각 포트·도메인을 `dj2.snowywalk.me/채널` 로 301 리다이렉트(또는 lolwiki.xyz DNS를 새 서버로 이전), 레거시 node 프로세스 중단, 1주 병행 모니터링 후 레거시 파일 `legacy/`로 이동 | 비용·에러 지표 확인 |
 | P6 정리 | 레거시 CSS → Tailwind 점진 전환, 이미지 WebP(승인분), 불필요 코드 삭제 | 선택 사항 |
 
 ---
@@ -270,8 +272,11 @@ CMD ["node", "dist/server.js"]
 ## 9. 결정이 필요한 항목
 
 1. ~~방 범위~~ → **결정됨**: 포트 대신 경로(`/채널번호`)로 채널 구분. 컨트롤타워 폐기. (`4444`/`7777` 롤러팅/`index_neural`/`8079`/`1024`/`8000 youtubetitle`/`9000 RTMP` 는 미정 — 현재 범위 밖)
-2. ~~MySQL~~ → **결정됨**: 기존 호스트 MySQL 그대로 사용.
+2. ~~MySQL~~ → **결정됨**: 기존 MySQL 그대로 사용. **단, 기존 MySQL은 다른 서버(lolwiki.xyz, 3.39.119.145)의 localhost에 있으므로 새 서버에서 접속할 경로가 필요** (P3 전까지 결정):
+   - (a) 옛 서버 MySQL을 새 서버 IP(54.180.125.84)에만 열기: 보안그룹 3306 인바운드 1개 + `bind-address` + 해당 IP 전용 계정. 간단하지만 DB 포트가 인터넷에 노출됨(IP 제한).
+   - (b) SSH 터널: 새 서버에서 옛 서버로 autossh 터널(컨테이너). 포트 노출 없음, 구성 요소 하나 추가.
+   - (c) 데이터를 새 서버로 이전(MySQL 컨테이너). 전환 시 덤프/복원 필요, 2GB RAM 서버에 메모리 부담.
 3. **`eval`/`evalall`(원격 코드 실행) 기능**: 유지/삭제.
 4. **이미지 손실 압축(WebP 등)** 허용 범위: 기본은 무손실만.
-5. **인스턴스 사양**: 프로세스 통합 후 더 작은 인스턴스(예: t4g.small)로 내릴지 — 전송비 외 고정비 절감.
+5. **옛 서버(lolwiki.xyz) 처리**: 전환 후 인스턴스 종료 시 고정비 절감. 단 MySQL 위치(2번)와 연동.
 6. 레거시 저장소의 이전 시도 산출물(`src/app`, `dist/`, `.omx/`, `data/*-smoke`) 및 `LoLWikiDJ2 (유기)` 폴더 정리 여부.

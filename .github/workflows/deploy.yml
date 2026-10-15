@@ -10,11 +10,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/lolwikidj
+  IMAGE: ghcr.io/snowywalk/lolwikidj2
 
 jobs:
   build:
-    # EC2·시크릿 준비가 끝나면 저장소 Variables 에 DEPLOY_ENABLED=true 를 추가해 배포를 켠다.
+    # 저장소 Variables 에 DEPLOY_ENABLED=true 가 있을 때만 배포한다.
     if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -28,6 +28,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # 서버(메모리 2GB, 다른 서비스와 공유)에서 빌드하지 않고 여기서 빌드한다.
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -42,24 +43,28 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    environment: production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DEPLOY_DIR: dj2
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: |
-            compose.yaml
-            docker
+          sparse-checkout: compose.yaml
+          sparse-checkout-cone-mode: false
       - name: Write .env and secrets
         run: |
           umask 077
           mkdir -p secrets
           cat > .env <<EOF
           APP_IMAGE=${{ env.IMAGE }}:${{ github.sha }}
-          DB_HOST=127.0.0.1
-          DB_PORT=3306
+          TRUST_PROXY_HOPS=2
+          DB_HOST=${{ vars.DB_HOST }}
+          DB_PORT=${{ vars.DB_PORT || '3306' }}
           DB_USER=${{ secrets.DB_USER }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          DB_NAME=${{ secrets.DB_NAME }}
+          DB_NAME=${{ vars.DB_NAME || 'LoLWikiDJ_DB' }}
           TWITCH_CLIENT_ID=${{ secrets.TWITCH_CLIENT_ID }}
           TWITCH_SECRET=${{ secrets.TWITCH_SECRET }}
           DANBOORU_LOGIN=${{ secrets.DANBOORU_LOGIN }}
@@ -68,30 +73,37 @@ jobs:
           TOONATION_SESSION_ID=${{ secrets.TOONATION_SESSION_ID }}
           MASTER_IP=${{ secrets.MASTER_IP }}
           EOF
-          echo '${{ secrets.GOOGLE_TTS_CREDENTIALS_JSON_B64 }}' | base64 -d > secrets/google-tts.json
-      - name: Copy files to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "compose.yaml,docker,.env,secrets"
-          target: ~/lolwikidj
+          printf '%s' '${{ secrets.GOOGLE_TTS_CREDENTIALS_JSON_B64 }}' | base64 -d > secrets/google-tts.json
+      - name: Set up SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ vars.EC2_HOST }}" >> ~/.ssh/known_hosts
+      - name: Upload compose and env
+        run: |
+          SSH="ssh -i ~/.ssh/deploy_key ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}"
+          $SSH "mkdir -p ~/$DEPLOY_DIR/secrets && chmod 700 ~/$DEPLOY_DIR/secrets"
+          scp -i ~/.ssh/deploy_key compose.yaml .env "${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:~/$DEPLOY_DIR/"
+          scp -i ~/.ssh/deploy_key secrets/google-tts.json "${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:~/$DEPLOY_DIR/secrets/"
       - name: Pull and restart
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-            cd ~/lolwikidj
-            echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-            docker compose pull app
-            docker compose up -d --remove-orphans
-            for i in $(seq 1 30); do
-              docker compose exec -T app wget -qO- http://127.0.0.1:3000/healthz && exit 0
-              sleep 2
-            done
-            docker compose logs --tail=100 app
-            exit 1
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}" bash -s <<EOF
+          set -e
+          cd ~/$DEPLOY_DIR
+          chmod 600 .env
+          # 이 잡 동안만 유효한 토큰으로 GHCR 에서 이미지를 받고 바로 로그아웃한다.
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker compose pull app
+          docker logout ghcr.io
+          docker compose up -d --remove-orphans
+          for i in \$(seq 1 30); do
+            if docker exec dj2 wget -qO- http://127.0.0.1:3000/healthz; then
+              docker image prune -f >/dev/null
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs --tail=100 app
+          exit 1
+          EOF
