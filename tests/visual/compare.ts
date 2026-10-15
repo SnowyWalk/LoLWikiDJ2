@@ -51,7 +51,34 @@ interface Scenario {
   prepare?: (page: Page) => Promise<void>;
 }
 
-const SCENARIOS: Scenario[] = [{ name: "login", path: "/" }];
+// 운영 중인 레거시에 테스트 계정을 만들지 않도록, 로그인하지 않고 로그인 화면만 걷어서 메인 레이아웃을 비교한다.
+async function revealMainLayout(page: Page) {
+  await page.evaluate(() => {
+    const ids = ["init_block", "login_bg", "login_port", "login_id", "login_pw", "login_button", "login_remember_nick_holder"];
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "none";
+    }
+    (window as unknown as { resize?: () => void }).resize?.();
+  });
+}
+
+async function openPlaylistPanel(page: Page) {
+  await revealMainLayout(page);
+  await page.evaluate(() => (window as unknown as { toggle_playlist_control_panel?: () => void }).toggle_playlist_control_panel?.());
+}
+
+async function darkTheme(page: Page) {
+  await revealMainLayout(page);
+  await page.evaluate(() => document.documentElement.setAttribute("theme", "dark"));
+}
+
+const SCENARIOS: Scenario[] = [
+  { name: "login", path: "/" },
+  { name: "main", path: "/", prepare: revealMainLayout },
+  { name: "main-dark", path: "/", prepare: darkTheme },
+  { name: "playlist-panel", path: "/", prepare: openPlaylistPanel },
+];
 
 async function capture(url: string, viewport: { width: number; height: number }, scenario: Scenario) {
   const browser = await chromium.launch();
