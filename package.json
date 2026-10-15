@@ -10,7 +10,8 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "db:migrate": "tsx scripts/db/migrate.ts",
-    "db:migrate-legacy": "tsx scripts/db/migrate-legacy.ts"
+    "db:migrate-legacy": "tsx scripts/db/migrate-legacy.ts",
+    "test:visual": "tsx tests/visual/compare.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -29,13 +30,17 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24.19.2",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.4.1",
+    "pixelmatch": "^8.0.0",
+    "pngjs": "^7.0.0",
     "shadcn": "^4.21.5",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
