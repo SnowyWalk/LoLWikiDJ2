@@ -1,7 +1,7 @@
-import { CHANNEL_IDS, type ChannelId } from "@/shared/channels";
+import type { ChannelId } from "@/shared/channels";
 
-// 레거시 포트별 서버 파일(1004.js, 1111.js …)에서 가져온 채널 공지.
-const NOTICES: Record<ChannelId, string> = {
+// 레거시 포트별 서버 파일(1004.js, 1111.js …)에서 가져온 채널 공지. 그 밖의 채널은 공지 없음.
+const NOTICES: Record<string, string> = {
   "8080": "",
   "8081": "여기는 8081 음악 감상 채널 입니당",
   "8082": "여기는 8082 영화 감상 채널 입니당 ",
@@ -25,4 +25,6 @@ export interface RoomConfig {
   notice: string;
 }
 
-export const ROOMS: readonly RoomConfig[] = CHANNEL_IDS.map((id) => ({ id, notice: NOTICES[id] }));
+export function roomConfig(id: ChannelId): RoomConfig {
+  return { id, notice: NOTICES[id] ?? "" };
+}

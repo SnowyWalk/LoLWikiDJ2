@@ -25,6 +25,13 @@ export function getRoomState(config: RoomConfig): RoomState {
   return state;
 }
 
+/** 채널이 0~100000 까지 열려 있으므로, 아무도 없는 방은 메모리에서 내린다. */
+export function releaseRoomIfIdle(id: string, connectedSockets: number) {
+  const state = rooms.get(id);
+  if (state && connectedSockets === 0 && state.users.size === 0 && state.djs.length === 0 && state.queue.length === 0)
+    rooms.delete(id);
+}
+
 export function roomStats() {
   return [...rooms.values()].map((room) => ({ id: room.id, users: room.users.size }));
 }

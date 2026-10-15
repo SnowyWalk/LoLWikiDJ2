@@ -4,8 +4,8 @@ import type { ClientToServerEvents, ServerToClientEvents, SocketData } from "@/s
 import { env } from "./config";
 import { logger } from "./logger";
 import { isChannelId } from "@/shared/channels";
-import { ROOMS } from "./rooms/rooms.config";
-import { getRoomState } from "./rooms/RoomState";
+import { roomConfig } from "./rooms/rooms.config";
+import { getRoomState, releaseRoomIfIdle } from "./rooms/RoomState";
 
 export type IoServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 
@@ -36,7 +36,7 @@ export function attachRealtime(httpServer: HttpServer): IoServer {
     const req = socket.request;
     // 클라이언트가 접속한 경로("/" 또는 "/1004")에서 채널을 정해 handshake 쿼리로 보낸다.
     const channel = socket.handshake.query.channel;
-    const room = isChannelId(channel) ? ROOMS.find((r) => r.id === channel) : undefined;
+    const room = isChannelId(channel) ? roomConfig(channel) : undefined;
     if (!room) {
       logger.warn({ channel }, "unknown channel");
       socket.disconnect(true);
@@ -49,6 +49,10 @@ export function attachRealtime(httpServer: HttpServer): IoServer {
     socket.data.ip = clientIp(req);
     void socket.join(state.id);
     socket.emit("room_info", { room: state.id });
+
+    socket.on("disconnect", () => {
+      releaseRoomIfIdle(state.id, io.sockets.adapter.rooms.get(state.id)?.size ?? 0);
+    });
   });
 
   return io;

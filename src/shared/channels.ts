@@ -1,30 +1,19 @@
-// 채널 목록. 레거시에서는 포트(lolwiki.xyz:1004)로 채널을 나눴지만,
-// 이제는 경로로 나눈다: "/" = 기본 채널, "/1004" = 1004 채널.
+// 채널은 경로로 구분한다: "/" = 기본 채널, "/1004" = 1004 채널.
+// 0 ~ 100000 사이의 정수면 어떤 번호든 채널이 된다 (방은 처음 접속할 때 만들어진다).
 export const DEFAULT_CHANNEL = "8080";
+export const MIN_CHANNEL = 0;
+export const MAX_CHANNEL = 100000;
 
-export const CHANNEL_IDS = [
-  DEFAULT_CHANNEL,
-  "8081",
-  "8082",
-  "8083",
-  "1004",
-  "1111",
-  "1128",
-  "1224",
-  "1337",
-  "1557",
-  "2250",
-  "3939",
-  "4010",
-  "49415",
-  "5599",
-] as const;
+export type ChannelId = string & { readonly __brand: "ChannelId" };
 
-export type ChannelId = (typeof CHANNEL_IDS)[number];
-
+/** 앞자리 0 없는 십진수(예: "0", "1004")이고 범위 안이면 채널 id. "01004" 같은 표기는 받지 않는다. */
 export function isChannelId(value: unknown): value is ChannelId {
-  return typeof value === "string" && (CHANNEL_IDS as readonly string[]).includes(value);
+  if (typeof value !== "string" || !/^(0|[1-9]\d{0,5})$/.test(value)) return false;
+  const n = Number(value);
+  return n >= MIN_CHANNEL && n <= MAX_CHANNEL;
 }
+
+export const DEFAULT_CHANNEL_ID = DEFAULT_CHANNEL as ChannelId;
 
 export function channelPath(channel: ChannelId): string {
   return channel === DEFAULT_CHANNEL ? "/" : `/${channel}`;
