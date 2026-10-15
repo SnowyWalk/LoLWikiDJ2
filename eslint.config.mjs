@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // custom server 번들 출력
+    "dist/**",
   ]),
 ]);
 
