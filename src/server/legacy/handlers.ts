@@ -3,6 +3,7 @@
 //
 // 보안상 옮기지 않은 레거시 이벤트:
 //   debug(서버에서 임의 코드 실행), query / test_begin / test_commit(인증 없이 임의 SQL 실행)
+import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Server, Socket } from "socket.io";
@@ -23,7 +24,6 @@ import { writeIcon } from "../icons";
 import { logger } from "../logger";
 import type { RoomState } from "../rooms/RoomState";
 import { fetchYoutubePlaylistVideoIds } from "../services/youtube";
-import { fetchDanbooruZzal } from "../services/danbooru";
 import { synthesizeToFile, ttsEnabled } from "../services/tts";
 import { controllerFor } from "./room-controller";
 import { fileSizeLabel, getDateForFilename, getTime, secondsToString } from "./util";
@@ -67,7 +67,8 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
     socket.emit("check_user", Boolean(existing && existing.ip === ip));
   });
 
-  socket.on("login", async (nick: unknown) => {
+  // [v2] 두 번째 인자 sessionToken: 재연결 시 클라이언트가 보내는 토큰 (로그인 성공 때 'session_token' 으로 받음)
+  socket.on("login", async (nick: unknown, sessionToken?: unknown) => {
     if (typeof nick !== "string" || !nick) {
       socket.emit("login", false);
       return;
@@ -76,10 +77,16 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
 
     const existing = room.users.get(nick);
     if (existing) {
-      if (existing.ip === ip) {
-        ctl.log({ nick }, "중복 로그인 교체 연결");
+      // 같은 IP(레거시 규칙), 또는 재연결 토큰이 맞으면(모바일 IP 변경 등) 기존 연결을 교체한다.
+      // 기존 연결이 이미 끊긴 상태면 그냥 정리한다.
+      const tokenMatches = typeof sessionToken === "string" && sessionToken.length > 0 && sessionToken === existing.sessionToken;
+      if (existing.ip === ip || tokenMatches || !existing.socket.connected) {
+        ctl.log({ nick, reconnect: tokenMatches }, "중복 로그인 교체 연결");
         disconnectProcess(existing.socket);
-        existing.socket.disconnect(true);
+        if (existing.socket.connected) {
+          existing.socket.emit("session_replaced");
+          existing.socket.disconnect(true);
+        }
       } else {
         socket.data.name = "";
         socket.emit("login", false);
@@ -100,8 +107,10 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
         { nick, ip, newUser: r.isNewUser, count: r.connectCount, suspicious: !r.isNewUser && r.isNewOnThisIp, comment: r.ipComment },
         "login",
       );
-      room.users.set(nick, { socket, userId: r.user.id, iconId: r.user.icon_id!, iconVer: r.user.icon_ver, ip });
+      const newToken = randomBytes(18).toString("base64url");
+      room.users.set(nick, { socket, userId: r.user.id, iconId: r.user.icon_id!, iconVer: r.user.icon_ver, ip, sessionToken: newToken });
       socket.join(`user:${r.user.id}`);
+      socket.emit("session_token", newToken);
       socket.emit("login", true);
       ctl.updateCurrentVideo(socket);
       ctl.updateCurrentQueue(socket);
@@ -201,14 +210,6 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
     u.iconVer += 1;
     socket.emit("chat_update", { type: "system_message", message: "아이콘이 변경되었습니다." });
     ctl.updateUsers();
-  });
-
-  on("zzal", async (tag: string) => {
-    const result = await fetchDanbooruZzal(tag, room.recentZzals);
-    all.emit("chat_update", { type: "system_message", message: result });
-  });
-  on("zzal_clear", () => {
-    room.recentZzals = [];
   });
 
   on("tts", async (data: { text: string; tts_hash: string; voice_name: string }) => {

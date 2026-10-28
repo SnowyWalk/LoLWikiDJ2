@@ -62,7 +62,7 @@
    │                                 │ dj2 컨테이너 (Node 22, Next.js custom server, 포트 미노출, mem 512m)      │
    │                                 │   ├─ Next.js App Router  (페이지, Route Handlers: /lolwiki_mirror, /upload)│
    │                                 │   ├─ Socket.IO server    (채널별 RoomState, 이벤트 계약 그대로)           │
-   │                                 │   └─ services: lolwiki, youtube, twitch, tts, danbooru, image-cache      │
+   │                                 │   └─ services: lolwiki, youtube, twitch, tts, image-cache                │
    │                                 │        /data volume: cache, uploads, icons, tts                           │
    │                                 └──────────┬───────────────────────────────────────────────────────────────┘
    │                                            ▼  (§9-2: 연결 방식 결정 필요)
@@ -108,8 +108,8 @@ src/
   server/
     index.ts              # custom server 엔트리 (http + next + socket.io)
     rooms/RoomState.ts
-    handlers/             # login, chat, playlist, dj, rating, zzal, tts, lolwiki, image
-    services/             # lolwiki-api(기존 lolwiki-api.js 이식), youtube, twitch, tts, danbooru
+    handlers/             # login, chat, playlist, dj, rating, tts, lolwiki, image
+    services/             # lolwiki-api(기존 lolwiki-api.js 이식), youtube, twitch, tts
     images/               # image-cache.ts, upload-store.ts
     db/                   # mysql2 pool + Drizzle(introspect된 기존 스키마)
     config.ts             # env 검증(zod)
@@ -294,7 +294,7 @@ CMD ["node", "dist/server.js"]
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | `db_config.txt` |
 | `YOUTUBE_API_KEY` | 소스 하드코딩(`request_youtube_video`) — 재발급 권장 |
 | `TWITCH_CLIENT_ID`, `TWITCH_SECRET` | `twitch_config.txt` |
-| `DANBOORU_LOGIN`, `DANBOORU_API_KEY` | `danbooru_config.txt` |
+| ~~`DANBOORU_*`~~ | 짤 검색 기능 제거로 사용 안 함 (2026-10-29) |
 | `GOOGLE_APPLICATION_CREDENTIALS` (파일 경로, `~/dj2/secrets/google-tts.json` 마운트) | `tts-api-*.json` |
 | `TOONATION_SESSION_ID` | 소스 하드코딩 (재발급 권장) |
 | `MASTER_IP` | 소스 하드코딩 `g_master_ip` |

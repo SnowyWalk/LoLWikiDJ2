@@ -3,9 +3,14 @@ socket.on('connect', function () {
 	g_isConnected = true
 	if(typeof lol_restore_api_session == 'function')
 		lol_restore_api_session()
+	// [v2] 재연결: 새로고침 없이 같은 닉네임으로 다시 로그인한다 (결과는 'login' 핸들러에서 처리)
 	if(g_isLogin)
 	{
-		add_message({type: 'system_message', message: '로그인 세션 만료.\n새로고침하고 다시 로그인 해주세요.'})
+		if(g_reconnect.replaced)
+			return
+		g_reconnect.waiting_login = true
+		update_reconnect_message('다시 로그인하는 중입니다…')
+		socket.emit('login', g_nick, g_session_token)
 		return
 	}
 
@@ -70,9 +75,75 @@ socket.on('check_user', function(is_duplicated) {
 	socket.emit('login', g_nick)
 })
 
-socket.on('disconnect', function () {
-	add_message({type: 'system_message', message: '연결 끊김', bg: 'red'})
+/* [v2] 연결 끊김 → 재연결 중 → 연결됨 흐름 */
+var g_session_token = '' // 재연결 때 같은 사람임을 증명하는 토큰 (로그인 성공 시 서버가 줌)
+var g_reconnect = { message: null, was_djing: false, waiting_login: false, replaced: false }
+
+socket.on('session_token', function(token) {
+	g_session_token = token
 })
+
+// 같은 닉네임으로 다른 곳(다른 탭·기기)에서 접속해 이 연결이 교체된 경우: 재연결하지 않는다
+socket.on('session_replaced', function() {
+	g_reconnect.replaced = true
+})
+
+function update_reconnect_message(text)
+{
+	if(!g_reconnect.message)
+		return
+	var body = g_reconnect.message.querySelector('temp')
+	if(body)
+		body.textContent = text
+}
+
+socket.on('disconnect', function (reason) {
+	g_isConnected = false
+	if(!g_isLogin)
+		return
+
+	if(g_reconnect.replaced || reason == 'io server disconnect')
+	{
+		g_reconnect.replaced = true
+		add_message({type: 'system_message', message: '같은 닉네임으로 다른 곳에서 접속해 이 창의 연결이 끊겼습니다.\n이 창에서 계속하려면 새로고침해 주세요.', bg: 'var(--채팅_떠남)'})
+		return
+	}
+
+	// 이미 재연결 중이면 메시지를 새로 만들지 않는다
+	if(!g_reconnect.message)
+	{
+		g_reconnect.was_djing = g_is_djing
+		g_reconnect.message = add_message({type: 'system_message', message: '서버와 연결이 끊겼습니다.\n재연결 중입니다…', bg: 'var(--채팅_떠남)'})
+	}
+	g_reconnect.waiting_login = false
+})
+
+socket.io.on('reconnect_attempt', function(attempt) {
+	if(g_isLogin && g_reconnect.message)
+		update_reconnect_message(format('서버와 연결이 끊겼습니다.\n재연결 중입니다… ({0}번째 시도)', attempt))
+})
+
+/* 재연결 후 다시 로그인한 결과. 일반 로그인 흐름(로그인 화면)과 분리해서 처리한다. */
+function on_reconnect_login(isSuccess)
+{
+	g_reconnect.waiting_login = false
+	// "재연결 중…" 메시지는 기록으로 남기고 문구만 정리한다
+	update_reconnect_message('서버와 연결이 끊겼습니다.')
+	g_reconnect.message = null
+
+	if(!isSuccess)
+	{
+		add_message({type: 'system_message', message: '다시 로그인하지 못했습니다.\n새로고침한 뒤 다시 로그인해 주세요.', bg: 'var(--채팅_떠남)'})
+		return
+	}
+
+	add_message({type: 'system_message', message: '다시 연결되었습니다.', bg: 'var(--채팅_접속)'})
+
+	socket.emit('chat_newUser') // 다른 사람들의 참가자 목록 갱신
+	if(g_reconnect.was_djing) // 끊기기 전에 DJ 대기열에 있었다면 다시 들어간다
+		socket.emit('dj_enter')
+	g_reconnect.was_djing = false
+}
 
 /* 밴 안내 */
 socket.on('ban', function(reason) {
@@ -93,7 +164,11 @@ socket.on('eval', function(code) {
 /* 서버로부터 로그인 인증을 받은 경우 */
 socket.on('login', function(isSuccess) {
 	if(g_isLogin)
+	{
+		if(g_reconnect.waiting_login)
+			on_reconnect_login(isSuccess)
 		return
+	}
 	g_isLogin = isSuccess
 	if(!isSuccess)
 	{

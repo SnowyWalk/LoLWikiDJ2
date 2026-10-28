@@ -10,6 +10,8 @@ export interface RoomUser {
   iconId: number;
   iconVer: number;
   ip: string;
+  /** 재연결용 토큰: 연결이 끊겼다가 다시 붙을 때(IP 가 바뀌어도) 같은 사람임을 확인 */
+  sessionToken: string;
 }
 
 export interface QueueEntry {
@@ -46,8 +48,6 @@ export class RoomState {
   goodList: string[] = [];
   badList: string[] = [];
   recentVideos: RecentVideo[] = [];
-  /** 짤 중복 방지 (3분) */
-  recentZzals: { date: number; url: string }[] = [];
 
   constructor(readonly config: RoomConfig) {}
 

@@ -357,8 +357,6 @@ var requestReg = /^\/request\s+(\S+)/i
 var selectPlaylistReg = /^\/select_playlist\s+(\d+)/i
 var pushReg = /^\/push\s+(\S+)\s+(\d+)/i
 var queryReg = /^\/query\s+(.+)/i
-var zzalReg = /^\/짤\s+(.+)/i
-var zzalClearReg = /^\/(짤클리어|짤clear)/i
 var iconReg = /^\/icon\s+(.+)/i
 var muteReg = /^\/mute\s+(.+)/i
 var ttsMuteReg = /^\/ttsmute\s+(.+)/i
@@ -374,6 +372,13 @@ var twitchReg = /^\/(?:twitch|xmdnlcl|트위치|ㅌㅇㅊ|ㅅ|t)\s+(.+)/i
 function send(force_tts = false) {
 	if(!g_isLogin)
 		return
+
+	// [v2] 연결이 끊긴 동안 보낸 메시지는 재연결 직후(로그인 전)에 서버로 가서 버려지므로, 입력 내용은 그대로 두고 알린다
+	if(!socket.connected || (typeof g_reconnect != 'undefined' && g_reconnect.waiting_login))
+	{
+		add_system_message('서버와 다시 연결되는 중이라 메시지를 보내지 못했습니다.\n연결되면 다시 보내 주세요.')
+		return
+	}
 
 	// 입력되어있는 데이터 가져오기
 	var message = chat_input.value 
@@ -425,17 +430,6 @@ function send(force_tts = false) {
 
 		window.open('https://github.com/SnowyWalk/LoLWikiDJ/blob/develop/도움말.md', '도움말')
 		return
-	}
-
-	if(zzalReg.test(message))
-	{
-		var tag = zzalReg.exec(message)[1]
-		socket.emit('zzal', tag)
-	}
-
-	if(zzalClearReg.test(message))
-	{
-		socket.emit('zzal_clear')
 	}
 
 	// play url 테스트

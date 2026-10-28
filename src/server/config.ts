@@ -17,8 +17,6 @@ const EnvSchema = z.object({
   YOUTUBE_API_KEY: z.string().default(""),
   TWITCH_CLIENT_ID: z.string().default(""),
   TWITCH_SECRET: z.string().default(""),
-  DANBOORU_LOGIN: z.string().default(""),
-  DANBOORU_API_KEY: z.string().default(""),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().default(""),
   TOONATION_SESSION_ID: z.string().default(""),
   MASTER_IP: z.string().default(""),
