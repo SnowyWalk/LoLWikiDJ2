@@ -5208,6 +5208,26 @@ function lol_convert_uri_to_mirror(uri)
 	return lol_mirror_uri(uri)
 }
 
+// [v2] 롤백 이미지 서버는 원본·리사이즈 이미지에 다른 사이트 Referer 가 붙으면 대체 이미지("BG.GG 접속시 확인 가능")를 준다.
+// (예전에는 서버가 대신 받아서 Referer 가 없었다.) 직접 로드하는 이미지는 Referer 를 보내지 않도록,
+// img.src 에 이 주소들이 들어가는 순간 referrerPolicy 를 먼저 no-referrer 로 맞춘다.
+// 페이지 전체(meta referrer)로 끄면 유튜브 임베드가 동작하지 않으므로 이미지에만 적용한다.
+;(function() {
+	var desc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src')
+	if(!desc || !desc.set)
+		return
+	Object.defineProperty(HTMLImageElement.prototype, 'src', {
+		configurable: true,
+		enumerable: desc.enumerable,
+		get: desc.get,
+		set: function(value) {
+			if(typeof value == 'string' && g_lol_direct_image_reg.test(value))
+				this.referrerPolicy = 'no-referrer'
+			desc.set.call(this, value)
+		}
+	})
+})()
+
 document.addEventListener('error', function(e) {
 	var img = e.target
 	if(!img || img.tagName != 'IMG' || img.dataset.lolMirrored)
