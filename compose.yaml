@@ -53,6 +53,10 @@ services:
       - ./backups:/backups
     networks:
       - default
+    # 서버 내부(127.0.0.1)에서만 접속 가능 — 외부에는 열리지 않는다.
+    # MySQL Workbench 는 "Standard TCP/IP over SSH" 로 SSH 터널을 거쳐 127.0.0.1:3306 에 접속한다.
+    ports:
+      - "127.0.0.1:3306:3306"
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
       interval: 10s
