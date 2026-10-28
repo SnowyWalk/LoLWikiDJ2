@@ -102,12 +102,16 @@ socket.on('disconnect', function (reason) {
 	if(!g_isLogin)
 		return
 
-	if(g_reconnect.replaced || reason == 'io server disconnect')
+	// 서버가 '다른 곳에서 접속함(session_replaced)'을 알려 준 경우에만 재연결하지 않는다
+	if(g_reconnect.replaced)
 	{
-		g_reconnect.replaced = true
 		add_message({type: 'system_message', message: '같은 닉네임으로 다른 곳에서 접속해 이 창의 연결이 끊겼습니다.\n이 창에서 계속하려면 새로고침해 주세요.', bg: 'var(--채팅_떠남)'})
 		return
 	}
+
+	// 그 밖의 이유로 서버가 끊은 경우 socket.io 는 스스로 재연결하지 않으므로 직접 다시 연결한다
+	if(reason == 'io server disconnect')
+		setTimeout(function() { if(!socket.connected && !g_reconnect.replaced) socket.connect() }, 1000)
 
 	// 이미 재연결 중이면 메시지를 새로 만들지 않는다
 	if(!g_reconnect.message)
