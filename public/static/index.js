@@ -305,7 +305,7 @@ window.onload = function () {
 	lol_lpanel_userinfo_menu_button_nickname_change.onclick = lol_onclick_userinfo_nickname_change
 	lol_lpanel_userinfo_menu_button_icon_change.onclick = lol_onclick_userinfo_icon_change
 	lol_lpanel_userinfo_menu_button_blocklist_reset.onclick = lol_onclick_userinfo_blocklist_reset
-	lol_lpanel_userinfo_menu_button_api_logout.onclick = lol_onclick_userinfo_api_logout
+	// [v2] 쓰기 계정 로그아웃 버튼은 롤디자게 로그아웃으로 합침
 	lol_lpanel_userinfo_menu_button_logout.onclick = lol_onclick_userinfo_logout
 
 

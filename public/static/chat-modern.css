@@ -1,0 +1,363 @@
+/*
+ * 채팅 영역 새 디자인 (2026-10-28)
+ *
+ * <html chat-modern> 일 때만 적용된다. 되돌리려면 legacy/dj.html 의 chat-modern 속성을 지우면
+ * CSS 와 JS(연속 메시지 묶기·즉시 표시) 모두 예전 동작으로 돌아간다.
+ * 채팅 패널(#mainchat) 안쪽만 바꾸고, 화면의 다른 부분은 건드리지 않는다.
+ */
+
+:root[chat-modern] {
+  --cm-font: "Nanum Gothic", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --cm-bubble: #ffffff;
+  --cm-bubble-me: #fff6d8;
+  --cm-text: #1f2329;
+  --cm-muted: #7b8494;
+  --cm-name: #4f46e5;
+  --cm-name-me: #d6336c;
+  --cm-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 1px 1px rgba(15, 23, 42, 0.04);
+  --cm-system-bg: rgba(255, 255, 255, 0.55);
+  --cm-system-text: #3d4654;
+  --cm-join: #12a37f;
+  --cm-leave: #d9534f;
+  --cm-input-bg: #ffffff;
+  --cm-input-border: rgba(15, 23, 42, 0.14);
+  --cm-input-focus: #4f8cff;
+  --cm-accent: #4f8cff;
+  --cm-accent-text: #ffffff;
+  --cm-scrollbar: rgba(15, 23, 42, 0.22);
+}
+
+:root[chat-modern][theme=dark] {
+  --cm-bubble: #23262d;
+  --cm-bubble-me: #2c3140;
+  --cm-text: #e3e6eb;
+  --cm-muted: #8a93a3;
+  --cm-name: #9db7ff;
+  --cm-name-me: #f08aa6;
+  --cm-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --cm-system-bg: rgba(255, 255, 255, 0.06);
+  --cm-system-text: #b8bfcc;
+  --cm-join: #4cc9a0;
+  --cm-leave: #ef7d7a;
+  --cm-input-bg: #1d2026;
+  --cm-input-border: rgba(255, 255, 255, 0.12);
+  --cm-input-focus: #6f9dff;
+  --cm-accent: #4f7fe0;
+  --cm-scrollbar: rgba(255, 255, 255, 0.18);
+}
+
+/* ---------- 메시지 목록 ---------- */
+
+:root[chat-modern] #chat {
+  font-family: var(--cm-font);
+  padding: 4px 0 8px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cm-scrollbar) transparent;
+}
+
+:root[chat-modern] #chat > .chat {
+  width: auto;
+  margin: 8px 10px 0;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* 일반 메시지: [아바타] [이름 · 시간 ··· TTS] / [본문] */
+:root[chat-modern] #chat > .chat_balloon {
+  display: grid;
+  grid-template-columns: 36px auto 1fr auto;
+  column-gap: 8px;
+  align-items: baseline;
+  padding: 8px 12px 9px 10px;
+  background: var(--cm-bubble);
+  color: var(--cm-text);
+  border-radius: 12px;
+  box-shadow: var(--cm-shadow);
+  text-align: left;
+  top: 0;
+  opacity: 1;
+  animation: cm-in 0.18s ease-out;
+}
+
+:root[chat-modern] #chat > .chat_balloon.me {
+  background: var(--cm-bubble-me);
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_profile {
+  grid-column: 1;
+  grid-row: 1 / span 9;
+  align-self: start;
+  width: 36px;
+  height: 36px;
+  margin: 1px 0 0;
+  border-radius: 50%;
+  object-fit: cover;
+  float: none;
+}
+
+:root[chat-modern] #chat .chat_balloon > .nick {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  padding-left: 0 !important;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cm-name);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+:root[chat-modern] #chat .chat_balloon.me > .nick {
+  color: var(--cm-name-me);
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_time {
+  grid-column: 3;
+  grid-row: 1;
+  margin: 0;
+  font-size: 11px;
+  color: var(--cm-muted);
+  white-space: nowrap;
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_tts_icon {
+  grid-column: 4;
+  grid-row: 1;
+  float: none;
+  align-self: center;
+  opacity: 0.75;
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_tts_icon:hover {
+  opacity: 1;
+}
+
+:root[chat-modern] #chat .chat_balloon > temp,
+:root[chat-modern] #chat .chat_balloon > .chat_img,
+:root[chat-modern] #chat .chat_balloon > .chat_lol_link,
+:root[chat-modern] #chat .chat_balloon > div {
+  grid-column: 2 / -1;
+  min-width: 0;
+}
+
+:root[chat-modern] #chat .chat_balloon > temp {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_img {
+  width: 100%;
+  margin-top: 6px;
+  border-radius: 8px;
+}
+
+/* 같은 사람이 이어서 보낸 메시지는 아바타·이름을 숨기고 붙여 보여 준다 */
+:root[chat-modern] #chat > .chat_balloon[continued] {
+  margin-top: 3px;
+  padding-top: 6px;
+  padding-bottom: 7px;
+}
+
+:root[chat-modern] #chat > .chat_balloon[continued] > .chat_profile {
+  visibility: hidden;
+  height: 0;
+}
+
+:root[chat-modern] #chat > .chat_balloon[continued] > .nick,
+:root[chat-modern] #chat > .chat_balloon[continued] > .chat_time {
+  display: none;
+}
+
+:root[chat-modern] #chat > .chat_balloon[continued] > temp {
+  margin-top: 0;
+}
+
+/* 보내는 중(서버 확인 전) */
+:root[chat-modern] #chat > .chat_balloon[pending] {
+  opacity: 0.6;
+}
+
+/* 같은 사람 메시지 묶음은 맞닿는 모서리를 작게 해서 한 덩어리로 보이게 */
+:root[chat-modern] #chat > .chat_balloon:has(+ .chat_balloon[continued]) {
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+:root[chat-modern] #chat > .chat_balloon[continued] {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+/* 이모지 하나만 보낸 경우: 말풍선 없이 크게 */
+:root[chat-modern] #chat .chat_balloon > temp[emoji] {
+  font-size: 56px;
+  line-height: 1.1;
+}
+
+:root[chat-modern] #chat > .chat_balloon:has(> temp[emoji]) {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ---------- 시스템 / 입장·퇴장 ---------- */
+
+:root[chat-modern] #chat > .system_message {
+  width: auto;
+  margin: 8px 18px 0;
+  padding: 7px 14px;
+  background: var(--cm-system-bg);
+  color: var(--cm-system-text);
+  border-radius: 12px;
+  font-family: var(--cm-font);
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* 입장/퇴장: 박스 대신 작은 점 + 흐린 문구 */
+:root[chat-modern] #chat > .connect,
+:root[chat-modern] #chat > .disconnect {
+  width: auto;
+  margin: 8px 18px 0;
+  padding: 2px 0;
+  background: transparent !important;
+  color: var(--cm-muted);
+  font-family: var(--cm-font);
+  font-size: 12px;
+  text-align: center;
+}
+
+:root[chat-modern] #chat > .connect::before,
+:root[chat-modern] #chat > .disconnect::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 1px;
+  background: var(--cm-join);
+}
+
+:root[chat-modern] #chat > .disconnect::before {
+  background: var(--cm-leave);
+}
+
+/* 지금 재생 카드 */
+:root[chat-modern] #chat > .system_message.play_info {
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--cm-bubble);
+  color: var(--cm-text);
+  box-shadow: var(--cm-shadow);
+  text-align: left;
+  font-size: 13px;
+}
+
+:root[chat-modern] #chat > .play_info > img {
+  border: 0;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+:root[chat-modern] #chat > .play_info > .play_info_dj {
+  color: var(--cm-muted);
+  font-size: 12px;
+}
+
+:root[chat-modern] #chat > .play_info > .play_info_title {
+  font-weight: 700;
+}
+
+/* ---------- 입력창 ---------- */
+
+:root[chat-modern] #chat_extra > div {
+  height: 37px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  gap: 6px;
+}
+
+:root[chat-modern] #chat_input {
+  flex: 1;
+  width: auto;
+  height: 30px;
+  margin: 7px 0 0;
+  padding: 0 14px;
+  border: 1px solid var(--cm-input-border);
+  border-radius: 999px;
+  background: var(--cm-input-bg);
+  color: var(--cm-text);
+  font-family: var(--cm-font);
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+:root[chat-modern] #chat_input:focus {
+  border-color: var(--cm-input-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cm-input-focus) 22%, transparent);
+}
+
+:root[chat-modern] #chat_input::placeholder {
+  color: var(--cm-muted);
+}
+
+:root[chat-modern] #chat_emoticon_button {
+  top: 4px;
+  margin: 0;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  font-size: 20px;
+  border-radius: 50%;
+  transition: transform 0.12s;
+}
+
+:root[chat-modern] #chat_emoticon_button:hover {
+  transform: scale(1.12);
+}
+
+:root[chat-modern] #chat_send {
+  top: 4px;
+  left: 0;
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cm-accent);
+  color: var(--cm-accent-text);
+  font-family: var(--cm-font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+:root[chat-modern] #chat_send:hover {
+  filter: brightness(1.08);
+}
+
+:root[chat-modern] #chat_scroller {
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-family: var(--cm-font);
+  font-size: 12.5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+@keyframes cm-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

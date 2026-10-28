@@ -1,4 +1,4 @@
-<html theme="default">
+<html theme="default" chat-modern>
 <title>LoLWiki.DJ</title>
 
 <head>
@@ -9,6 +9,8 @@
   <link rel="preload" href="/static/bg.jpg?ver=$_version" as="image">
   <link rel="shortcut icon" href="/static/favicon.ico?ver=$_version" type="image/x-icon">
   <link rel="stylesheet" href="/static/index.css?ver=$_version">
+  <!-- [v2] 새 채팅 디자인 (html 의 chat-modern 속성을 지우면 예전 채팅으로 돌아감) -->
+  <link rel="stylesheet" href="/static/chat-modern.css?ver=$_version">
   <!-- [v2] 소켓 클라이언트는 socket.io 서버가 직접 제공, 채널은 경로(/1004)로 정해져 서버가 넣어 준다 -->
   <script src="/socket.io/socket.io.js"></script>
   <script>window.__DJ_CHANNEL__ = "$_channel";</script>
@@ -402,7 +404,6 @@
             <div id="lol_lpanel_userinfo_menu_button_nickname_change" menu-button>닉네임 변경</div>
             <div id="lol_lpanel_userinfo_menu_button_icon_change" menu-button>아이콘 제작</div>
             <div id="lol_lpanel_userinfo_menu_button_blocklist_reset" menu-button>차단목록 초기화</div>
-            <div id="lol_lpanel_userinfo_menu_button_api_logout" menu-button>쓰기 계정 로그아웃</div>
             <div id="lol_lpanel_userinfo_menu_button_logout" menu-button red-button>롤디자게 로그아웃</div>
             <div id="lol_lpanel_userinfo_menu_label_account_code">----------------</div>
           </div>

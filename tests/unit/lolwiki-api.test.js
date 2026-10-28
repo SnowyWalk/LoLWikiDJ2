@@ -411,6 +411,50 @@ test('mine article list reports authentication failure without downgrading to a 
 	assert.equal(errorEvent.payload.status_code, 401)
 })
 
+// 닉네임 우클릭 → 그 유저 글 보기. API 의 mode=mine 은 author_id 를 무시하므로 mode=latest + author_id 여야 한다.
+function listClient(calls) {
+	return createLolWikiClient(async options => {
+		calls.push(options)
+		if(options.uri.endsWith('/legacy-read-compat/posts'))
+			return { results: [samplePost], has_more: false }
+		if(options.uri.endsWith('/blocks'))
+			return { results: [] }
+		if(options.uri.endsWith('/memos'))
+			return { results: [], unread_count: 0 }
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+}
+
+test('guest can list another author\'s posts with mode=latest and author_id', async () => {
+	const calls = []
+	const client = listClient(calls)
+	const posts = await client.getArticleList(fakeSocket(), 'author-key-9', 0, 30, '', '', false, true, null)
+	const listCall = calls.find(call => call.uri.endsWith('/legacy-read-compat/posts'))
+	assert.equal(posts.length, 1)
+	assert.equal(listCall.qs.mode, 'latest')
+	assert.equal(listCall.qs.author_id, 'author-key-9')
+})
+
+test('logged-in viewer listing another author still uses mode=latest', async () => {
+	const calls = []
+	const client = listClient(calls)
+	const { auth } = browserAuth(client, { access_token: 'acc', device_id: 'browser-x', user_key: 'viewer-1' })
+	await client.getArticleList(fakeSocket(), 'author-key-9', 0, 30, '', '', false, true, auth)
+	const listCall = calls.find(call => call.uri.endsWith('/legacy-read-compat/posts'))
+	assert.equal(listCall.qs.mode, 'latest')
+	assert.equal(listCall.qs.author_id, 'author-key-9')
+})
+
+test('viewer listing own posts keeps mode=mine', async () => {
+	const calls = []
+	const client = listClient(calls)
+	const { auth } = browserAuth(client, { access_token: 'acc', device_id: 'browser-x', user_key: 'viewer-1' })
+	await client.getArticleList(fakeSocket(), 'viewer-1', 0, 30, '', '', false, true, auth)
+	const listCall = calls.find(call => call.uri.endsWith('/legacy-read-compat/posts'))
+	assert.equal(listCall.qs.mode, 'mine')
+	assert.equal(listCall.qs.author_id, 'viewer-1')
+})
+
 test('image upload stays unauthenticated and uses the browser device identifier', async () => {
 	const calls = []
 	const client = createLolWikiClient(async options => {

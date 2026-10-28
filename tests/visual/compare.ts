@@ -91,7 +91,13 @@ async function capture(url: string, viewport: { width: number; height: number },
     await page.evaluate(() => document.fonts.ready);
     if (scenario.prepare) await scenario.prepare(page);
     await page.waitForTimeout(1500);
-    return await page.screenshot({ animations: "disabled", caret: "hide" });
+    // 채팅 영역은 2026-10-28 새 디자인(chat-modern.css)으로 의도적으로 바꿨으므로 가리고 비교한다.
+    return await page.screenshot({
+      animations: "disabled",
+      caret: "hide",
+      mask: [page.locator("#chat"), page.locator("#chat_extra")],
+      maskColor: "#ff00ff",
+    });
   } finally {
     await browser.close();
   }

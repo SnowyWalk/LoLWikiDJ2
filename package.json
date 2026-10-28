@@ -13,7 +13,7 @@
     "db:migrate-legacy": "tsx scripts/db/migrate-legacy.ts",
     "test:visual": "tsx tests/visual/compare.ts",
     "test:e2e": "tsx --test --test-timeout=30000 tests/e2e/legacy-socket.test.ts",
-    "test:unit": "node --test tests/unit/"
+    "test:unit": "node --test tests/unit/lolwiki-api.test.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.11",

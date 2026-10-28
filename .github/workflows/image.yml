@@ -38,3 +38,15 @@ jobs:
             ghcr.io/snowywalk/lolwikidj2:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # 서버에 GHCR 로그인이 없어도 배포할 수 있게 이미지 파일도 남긴다 (scripts/deploy-via-artifact.sh)
+      - name: Save image as artifact
+        run: |
+          docker pull ghcr.io/snowywalk/lolwikidj2:${{ github.sha }}
+          docker save ghcr.io/snowywalk/lolwikidj2:${{ github.sha }} | gzip -1 > dj2-image.tar.gz
+          ls -la dj2-image.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dj2-image-${{ github.sha }}
+          path: dj2-image.tar.gz
+          retention-days: 3
+          compression-level: 0

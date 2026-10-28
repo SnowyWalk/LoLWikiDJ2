@@ -12,6 +12,8 @@ var byteReg = /[\da-zA-Z-_=\|\/\*-\+\.`~'\/,\!@#\$%\^\&\(\)\[\] "]/i
 var callReg = /@(\S+)/g
 var callRegPre = /@(\S+)/
 var emojiReg = /\p{Extended_Pictographic}/u
+// [v2] 새 채팅 디자인 사용 여부 (<html chat-modern>). 속성을 빼면 예전 채팅으로 돌아간다.
+var g_chat_modern = document.documentElement.hasAttribute('chat-modern')
 function add_message(data) 
 {
 	if(g_nick == 'OBS' && data.type != 'message')
@@ -23,9 +25,27 @@ function add_message(data)
 		return
 	}
 
+	// [v2] 새 채팅 디자인: 내가 보낸 메시지는 먼저 화면에 그려 두었으므로(send) 서버 확인만 반영한다
+	if(g_chat_modern && data.client_id && data.name == g_nick)
+	{
+		var pending = chat.querySelector('[client_id="' + data.client_id + '"]')
+		if(pending)
+		{
+			pending.removeAttribute('pending')
+			var pending_time = pending.querySelector('.chat_time')
+			if(pending_time && data.time)
+				pending_time.textContent = '  ' + data.time
+			return pending
+		}
+	}
+
 	var need_scroll = is_scroll_bottom() || g_nick == 'OBS'
 
 	var message = document.createElement('div')
+	if(g_chat_modern && data.client_id)
+		message.setAttribute('client_id', data.client_id)
+	if(g_chat_modern && data.pending)
+		message.toggleAttribute('pending', true)
 	
 	var text = ''
 	var nick = ''
@@ -100,6 +120,15 @@ function add_message(data)
 				className = 'me'
 			else
 				className = 'other'
+
+			// [v2] 같은 사람이 연달아 보낸 메시지는 묶어서 보여 준다 (이미지·TTS 메시지는 따로)
+			message.setAttribute('chat_name', data.name)
+			if(g_chat_modern && !data.tts_hash && !imgReg.test(text) && !videoReg.test(text))
+			{
+				var prev = chat.lastElementChild
+				if(prev && prev.classList.contains('chat_balloon') && prev.getAttribute('chat_name') == data.name && !prev.querySelector('.chat_img'))
+					message.toggleAttribute('continued', true)
+			}
 		break
 
 		case 'connect':
@@ -164,6 +193,9 @@ function add_message(data)
 		else
 		{
 			var temporary_element = document.createElement('temp')
+			// [v2] 새 디자인은 이름 줄과 본문이 분리된 레이아웃이라 본문 앞 줄바꿈이 필요 없다
+			if(g_chat_modern && data.type == 'message')
+				text = text.replace(/^\n/, '')
 			temporary_element.appendChild(document.createTextNode(text))
 			temporary_element.toggleAttribute('emoji', emoji_mode)
 			message.appendChild(temporary_element)
@@ -694,7 +726,16 @@ function send(force_tts = false) {
 
 
 	// 서버로 message 이벤트 전달 + 데이터와 함께
-	socket.emit('chat_message', { type: 'message', message: message, tts_hash: tts_hash })
+	// [v2] 새 채팅 디자인: 서버 왕복을 기다리지 않고 내 메시지를 바로 그린다 (서버 확인이 오면 흐림이 풀림)
+	var client_id = ''
+	var me = g_chat_modern && g_nick != 'OBS' && typeof g_users != 'undefined' && g_users ? g_users.find(function(u) { return u.nick == g_nick }) : null
+	if(me)
+	{
+		client_id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+		var local_time = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul' })
+		add_message({ type: 'message', message: message, tts_hash: tts_hash, name: g_nick, time: local_time, icon_id: me.icon_id, icon_ver: me.icon_ver, client_id: client_id, pending: true })
+	}
+	socket.emit('chat_message', { type: 'message', message: message, tts_hash: tts_hash, client_id: client_id })
 	scrollDown()
 }
 

@@ -4108,19 +4108,22 @@ function lol_onclick_userinfo_blocklist_reset()
 	alert('만들기 귀찮아서 유기')
 }
 
-/* 내 정보 - 롤백과사전 계정 로그아웃 클릭 */
-function lol_onclick_userinfo_api_logout()
-{
-	event.stopPropagation()
-	socket.emit('lol_api_logout', { auth: lol_get_api_auth() })
-}
-
 /* 내 정보 - 롤디자게 로그아웃 클릭 */
+// [v2] 예전 '쓰기 계정 로그아웃' 버튼과 합침: 롤백과사전 서버에서 이 기기의 로그인만 끝내고(all_devices: false)
+// 브라우저에 저장된 계정 정보도 지운다. 서버 응답을 기다리지 않고 바로 게스트로 돌아간다.
+var g_lol_logout_in_progress = false
 function lol_onclick_userinfo_logout()
 {
 	var ans = confirm('롤디자게를 로그아웃 할까요?')
 	if(!ans)
 		return
+
+	var auth = lol_get_api_auth()
+	if(auth && auth.access_token)
+	{
+		g_lol_logout_in_progress = true
+		socket.emit('lol_api_logout', { auth: auth })
+	}
 
 	lol_forget_api_credentials()
 	g_lol_android_id = g_lol_guest_id

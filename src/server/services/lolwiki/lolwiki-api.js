@@ -490,19 +490,24 @@ function createLolWikiClient(request) {
 		const numericLimit = Math.max(1, Math.min(50, Number(limit) || 30))
 		let viewerUserKey = auth && auth.userKey || ''
 		let requestAuth = canRecoverAuth(auth) ? auth : null
+		// [v2] 'mine' 은 두 가지 용도로 쓰인다: 내 글 보기 / 닉네임 우클릭으로 다른 유저 글 보기.
+		// API 의 mode=mine 은 "로그인한 나의 글" 이라 author_id 를 무시하므로, 다른 유저 글은 mode=latest + author_id 로 조회한다.
+		const explicitAuthor = mine && targetUserKey && targetUserKey !== GUEST_DEVICE_ID ? asString(targetUserKey) : ''
 		if(!viewerUserKey && requestAuth) {
 			try {
 				viewerUserKey = (await getUserInfo(auth)).local_user_key
 			}
 			catch(error) {
-				if(mine || !error || error.statusCode !== 401)
+				if((mine && !explicitAuthor) || !error || error.statusCode !== 401)
 					throw error
 				requestAuth = null
 			}
 		}
+		const myPosts = mine && (!explicitAuthor || explicitAuthor === viewerUserKey)
+		const otherAuthor = mine && !myPosts ? explicitAuthor : ''
 		const pageKey = JSON.stringify({ targetUserKey, viewerUserKey, searchBody, searchNickname, popular, mine, numericLimit })
 		let query = {
-			mode: mine ? 'mine' : popular ? 'popular' : 'latest',
+			mode: myPosts ? 'mine' : popular ? 'popular' : 'latest',
 			limit: numericLimit
 		}
 		const savedPage = socket && numericOffset > 0 ? paginationBySocket.get(socket) : null
@@ -525,8 +530,10 @@ function createLolWikiClient(request) {
 			query.nickname = searchNickname
 		if(viewerUserKey && requestAuth)
 			query.viewer_id = viewerUserKey
-		if(mine)
-			query.author_id = targetUserKey && targetUserKey !== GUEST_DEVICE_ID ? targetUserKey : viewerUserKey
+		if(otherAuthor)
+			query.author_id = otherAuthor
+		else if(myPosts)
+			query.author_id = viewerUserKey
 
 		let response
 		try {
@@ -537,7 +544,7 @@ function createLolWikiClient(request) {
 			})
 		}
 		catch(error) {
-			if(mine || !requestAuth || !error || error.statusCode !== 401)
+			if(myPosts || !requestAuth || !error || error.statusCode !== 401)
 				throw error
 			requestAuth = null
 			viewerUserKey = ''

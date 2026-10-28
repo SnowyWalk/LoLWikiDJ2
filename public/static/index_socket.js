@@ -618,6 +618,12 @@ socket.on('lol_change_nickname', function(is_success) {
 })
 
 socket.on('lol_api_error', function(error) {
+	// [v2] 로그아웃 중 서버 세션 종료가 실패해도(이미 만료 등) 브라우저 쪽은 이미 로그아웃됐으므로 알리지 않는다
+	if(g_lol_logout_in_progress)
+	{
+		g_lol_logout_in_progress = false
+		return
+	}
 	var message = typeof error == 'string' ? error : error && error.message
 	var code = error && typeof error == 'object' ? error.code : ''
 	var statusCode = error && typeof error == 'object' ? Number(error.status_code) : 0
@@ -633,6 +639,12 @@ socket.on('lol_api_error', function(error) {
 })
 
 socket.on('lol_api_logout', function() {
+	// [v2] 롤디자게 로그아웃 버튼이 이미 게스트로 돌려놓았으므로 조용히 끝낸다
+	if(g_lol_logout_in_progress)
+	{
+		g_lol_logout_in_progress = false
+		return
+	}
 	lol_forget_api_credentials()
 	g_lol_android_id = g_lol_guest_id
 	g_lol_user_info = null
