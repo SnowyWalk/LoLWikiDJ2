@@ -91,13 +91,21 @@ async function capture(url: string, viewport: { width: number; height: number },
     await page.evaluate(() => document.fonts.ready);
     if (scenario.prepare) await scenario.prepare(page);
     await page.waitForTimeout(1500);
-    // 채팅 영역은 2026-10-28 새 디자인(chat-modern.css)으로 의도적으로 바꿨으므로 가리고 비교한다.
-    return await page.screenshot({
-      animations: "disabled",
-      caret: "hide",
-      mask: [page.locator("#chat"), page.locator("#chat_extra")],
-      maskColor: "#ff00ff",
+    // 채팅 영역(목록·입력창)은 2026-10-28 새 디자인으로 의도적으로 바꿨으므로 가리고 비교한다.
+    // 입력창 줄의 높이가 레거시와 달라 요소 단위로 가리면 가림 영역이 서로 달라지므로,
+    // 채팅 목록 윗변부터 화면 아래까지 같은 고정 영역을 양쪽에 덮는다. (상단 탭 줄은 비교 대상에 남김)
+    await page.evaluate(() => {
+      const chat = document.getElementById("chat");
+      const panel = document.getElementById("mainchat");
+      if (!chat || !panel) return;
+      const top = chat.getBoundingClientRect().top;
+      const rect = panel.getBoundingClientRect();
+      if (rect.width === 0) return;
+      const cover = document.createElement("div");
+      cover.style.cssText = `position:fixed;left:${rect.left}px;top:${top}px;width:${rect.width}px;bottom:0;background:#ff00ff;z-index:2147483647;pointer-events:none`;
+      document.body.appendChild(cover);
     });
+    return await page.screenshot({ animations: "disabled", caret: "hide" });
   } finally {
     await browser.close();
   }

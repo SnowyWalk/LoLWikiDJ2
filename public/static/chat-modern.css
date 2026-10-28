@@ -327,22 +327,6 @@
   color: var(--cm-muted);
 }
 
-:root[chat-modern] #chat_emoticon_button {
-  top: 4px;
-  margin: 0;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  line-height: 30px;
-  font-size: 20px;
-  border-radius: 50%;
-  transition: transform 0.12s;
-}
-
-:root[chat-modern] #chat_emoticon_button:hover {
-  transform: scale(1.12);
-}
-
 :root[chat-modern] #chat_send {
   top: 4px;
   left: 0;

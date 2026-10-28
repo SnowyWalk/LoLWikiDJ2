@@ -258,13 +258,16 @@ socket.on('update_current_video', function(data) {
 		flv_player.volume = eval(video_info_volume_slider.value) / 100
 		if(player)
 			flv_player.muted = player.isMuted() 
-		g_flv = flvjs.createPlayer({
-			type: 'flv',
-			url: data.video_id // 'https://lolwiki.xyz:9002/live/1224.flv'
+		// [v2] flv.js 는 개인방송(.flv) 재생 때만 필요하므로 그때 불러온다 (예전엔 모든 페이지가 느린 외부 CDN 에서 받음)
+		load_flvjs(function() {
+			g_flv = flvjs.createPlayer({
+				type: 'flv',
+				url: data.video_id // 'https://lolwiki.xyz:9002/live/1224.flv'
+			})
+			g_flv.attachMediaElement(flv_player)
+			g_flv.load()
+			g_flv.play()
 		})
-		g_flv.attachMediaElement(flv_player)
-		g_flv.load()
-		g_flv.play()
 
 		SetVideoBlock(!g_current_video_id)
 	}
@@ -718,3 +721,22 @@ socket.on('lol_get_new_memo', function() {
 	var toast = make_toast(lol_lpanel, '쪽지가 도착 했습니다.', 2, 'flex-end')
 	toast.text.style.marginBottom = '5vh'
 })
+
+/* [v2] flv.js 지연 로드 */
+var g_flvjs_loading = null
+function load_flvjs(callback)
+{
+	if(typeof flvjs != 'undefined')
+		return callback()
+	if(!g_flvjs_loading)
+	{
+		g_flvjs_loading = new Promise(function(resolve, reject) {
+			var script = document.createElement('script')
+			script.src = '/static/flv.min.js'
+			script.onload = resolve
+			script.onerror = reject
+			document.head.appendChild(script)
+		})
+	}
+	g_flvjs_loading.then(callback)
+}

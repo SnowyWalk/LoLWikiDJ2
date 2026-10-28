@@ -813,14 +813,6 @@ function ondrop_chat_input_file(e)
 }
 
 /* 이미지 저장소 버튼 클릭 이벤트 */
-function onclick_chat_emoticon_button()
-{
-	g_image_storage_panel_show = !g_image_storage_panel_show
-
-	image_storage.style.display = g_image_storage_panel_show ? 'flex' : 'none'
-
-	// image_storage.
-}
 
 function chat_scroll() {
 	var to = is_scroll_bottom() ? 'none' : 'inline'

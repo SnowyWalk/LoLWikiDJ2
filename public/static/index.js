@@ -11,7 +11,6 @@ var g_icon_id = 0
 var g_current_chat_category = mainchat_header_chat // 채팅 카테고리 초기화 (기본값: 채팅) [채팅|접속자(DJ)|최근곡|옵션]
 var g_chat_noti_count = 0 // 내가 보지 못한 채팅 카운트
 var g_last_tts = new Date() // TTS 쿨타임 기록용
-var g_image_storage_panel_show = false // 이미지 저장소 패널 show/hide
 
 /* 최근 재생된 영상 데이터 */
 var g_recent_video_list = [] // [ { video_id, thumbnail, title, dj }, ... ]
@@ -100,7 +99,9 @@ var toonatReg = /"tts_link":"(.*?)"/
 var lessy_socket = null
 var toonat_voices = ['lessy', 'maoruya', 'changu', 'beube', 'somnyang']
 
-window.onload = function () {
+// [v2] 예전에는 window.onload(모든 이미지·유튜브 iframe 로딩 완료) 뒤에 실행돼 로그인 박스가 늦게 떴다.
+// 이제 DOM 이 준비되는 즉시 실행한다 (파일 끝의 DOMContentLoaded 연결 참고).
+function on_page_ready() {
 	g_twitch_player = new Twitch.Player('twitch_player', {
 		channel: 'lessy_virtual',
 		parent: [location.host]
@@ -256,7 +257,6 @@ window.onload = function () {
 	chat_input.ondragover = function (e) { e.stopPropagation(); e.preventDefault(); }
 	chat_input.ondragleave = function (e) { e.stopPropagation(); e.preventDefault(); }
 	chat_input.ondrop = ondrop_chat_input_file
-	chat_emoticon_button.onclick = onclick_chat_emoticon_button
 
 	/* 하단 볼륨 컨트롤러 */
 	video_info_volume_btn.onclick = onclick_video_info_volume_btn
@@ -378,26 +378,6 @@ window.onload = function () {
 
 	chat_scroller.style.display = 'none'
 
-	// $('#image_storage_justified_gallery').justifiedGallery({ maxRowsCount: 5})
-
-	// $(window).scroll(function() {
-	// 	if($(window).scrollTop() + $(window).height() == $(document).height()) {
-	// 		for (var i = 0; i < 5; i++) {
-	// 			$('#image_storage_justified_gallery').append('<div class="jg-entry jg-entry-visible">' +
-	// 				'<img src="/static/ //TODO" />' + 
-	// 				'</div>');
-	// 		}
-	// 		$('#gallery').justifiedGallery('norewind');
-	// 	}
-	// });
-
-	// $('#image_storage_justified_gallery').justifiedGallery( { 
-	// 	rowHeight: 300,
-	// 	maxRowHeight: 600,
-	// 	lastRow: 'nojustify',
-	// 	margins: 20
-	//  })
-
 	// create_lessy_socket()
 }
 
@@ -443,3 +423,9 @@ function createSnow() {
 		snow.remove();
 	}, 6000);
 }
+
+// [v2] 페이지 초기화: 이미지 로딩을 기다리지 않고 DOM 준비 즉시
+if(document.readyState === 'loading')
+	document.addEventListener('DOMContentLoaded', on_page_ready)
+else
+	on_page_ready()
