@@ -123,10 +123,10 @@ function add_message(data)
 
 			// [v2] 같은 사람이 연달아 보낸 메시지는 묶어서 보여 준다 (이미지·TTS 메시지는 따로)
 			message.setAttribute('chat_name', data.name)
-			if(g_chat_modern && !data.tts_hash && !imgReg.test(text) && !videoReg.test(text))
+			if(g_chat_modern && !emoji_mode && !data.tts_hash && !imgReg.test(text) && !videoReg.test(text))
 			{
 				var prev = chat.lastElementChild
-				if(prev && prev.classList.contains('chat_balloon') && prev.getAttribute('chat_name') == data.name && !prev.querySelector('.chat_img'))
+				if(prev && prev.classList.contains('chat_balloon') && prev.getAttribute('chat_name') == data.name && !prev.querySelector('.chat_img') && !prev.querySelector('temp[emoji]'))
 					message.toggleAttribute('continued', true)
 			}
 		break
