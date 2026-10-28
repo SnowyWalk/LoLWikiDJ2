@@ -76,9 +76,11 @@
   border-radius: 12px;
   box-shadow: var(--cm-shadow);
   text-align: left;
+  /* 예전 애니메이션(top 을 2px 옮김)은 픽셀 단위로 끊겨 보였다 → transform/opacity 만 써서 GPU 로 부드럽게 */
   top: 0;
   opacity: 1;
-  animation: cm-in 0.18s ease-out;
+  animation: cm-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity 0.2s ease-out;
 }
 
 :root[chat-modern] #chat > .chat_balloon.me {
@@ -351,13 +353,28 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
+/* opacity 는 키프레임에 넣지 않는다: 보내는 중(pending, 0.6) → 확정(1) 전환이 transition 으로 자연스럽게 이어지도록 */
 @keyframes cm-in {
   from {
-    opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(8px) scale(0.98);
+    filter: opacity(0);
   }
   to {
-    opacity: 1;
     transform: none;
+    filter: opacity(1);
+  }
+}
+
+/* 시스템·입장 메시지도 같은 방식으로 */
+:root[chat-modern] #chat > .system_message,
+:root[chat-modern] #chat > .connect,
+:root[chat-modern] #chat > .disconnect {
+  animation: cm-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[chat-modern] #chat > * {
+    animation: none !important;
+    transition: none !important;
   }
 }

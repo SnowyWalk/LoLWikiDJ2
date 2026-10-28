@@ -888,3 +888,9 @@ function play_tts_audio_this()
 	new_tts.onended = destroy_self
 	new_tts.play()
 }
+// [v2] 새 채팅 디자인: 부드럽게 내려가는 중에 사용자가 직접 스크롤하면 바로 멈춘다
+if(g_chat_modern)
+{
+	chat.addEventListener('wheel', function() { stop_chat_scroll_animation() }, { passive: true })
+	chat.addEventListener('touchstart', function() { stop_chat_scroll_animation() }, { passive: true })
+}

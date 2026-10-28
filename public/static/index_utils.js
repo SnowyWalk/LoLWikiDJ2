@@ -87,13 +87,42 @@ function format()
 	return arguments[0].replace (/\{(\d+)\}/g, function (match, index) { return args[index]; }); 
 }
 
+// [v2] 새 채팅 디자인: 맨 아래로 순간이동하지 않고 짧게(180ms) 부드럽게 따라 내려간다.
+// 내려가는 도중에도 '맨 아래에 있음'으로 취급하고, 사용자가 휠/터치로 직접 스크롤하면 바로 멈춘다.
+var g_chat_scroll_anim = 0
 function scrollDown()
 {
-	chat.scrollTop = chat.scrollHeight
+	var smooth = typeof g_chat_modern != 'undefined' && g_chat_modern && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+	if(!smooth)
+	{
+		chat.scrollTop = chat.scrollHeight
+		return
+	}
+
+	cancelAnimationFrame(g_chat_scroll_anim)
+	var start = chat.scrollTop
+	var start_time = performance.now()
+	function step(now)
+	{
+		var target = chat.scrollHeight - chat.clientHeight
+		var t = Math.min(1, (now - start_time) / 180)
+		var eased = 1 - Math.pow(1 - t, 3)
+		chat.scrollTop = start + (target - start) * eased
+		g_chat_scroll_anim = t < 1 ? requestAnimationFrame(step) : 0
+	}
+	g_chat_scroll_anim = requestAnimationFrame(step)
+}
+
+function stop_chat_scroll_animation()
+{
+	cancelAnimationFrame(g_chat_scroll_anim)
+	g_chat_scroll_anim = 0
 }
 
 function is_scroll_bottom(offset = 0)
 {
+	if(g_chat_scroll_anim)
+		return true
 	if(offset > 0)
 		console.log(offset, chat.scrollHeight-chat.scrollTop, chat.clientHeight+offset, chat.scrollHeight-chat.scrollTop <= chat.clientHeight+offset ? 'bottom' : 'scrolled')
 	return chat.scrollHeight-chat.scrollTop <= chat.clientHeight+offset+20
