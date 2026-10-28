@@ -302,19 +302,20 @@
   gap: 6px;
 }
 
+/* 다크 테마 전환 함수(set_theme)가 입력창 테두리·전송 버튼 색을 인라인 스타일로 넣으므로 !important 로 덮는다 */
 :root[chat-modern] #chat_input {
   flex: 1;
   width: auto;
   height: 30px;
   margin: 7px 0 0;
   padding: 0 14px;
-  border: 1px solid var(--cm-input-border);
+  border: 1px solid var(--cm-input-border) !important;
   border-radius: 999px;
   background: var(--cm-input-bg);
   color: var(--cm-text);
   font-family: var(--cm-font);
   font-size: 13.5px;
-  outline: none;
+  outline: none !important;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -332,9 +333,9 @@
   left: 0;
   height: 30px;
   padding: 0 14px;
-  border: 0;
+  border: 0 !important;
   border-radius: 999px;
-  background: var(--cm-accent);
+  background: var(--cm-accent) !important;
   color: var(--cm-accent-text);
   font-family: var(--cm-font);
   font-size: 13px;

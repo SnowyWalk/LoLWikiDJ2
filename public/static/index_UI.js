@@ -1095,6 +1095,7 @@ function update_video_volume()
 		return
 
 	video_info_volume_btn.style.backgroundImage = player.isMuted() ? 'url("static/tts_x.png")' : 'url("static/tts.png")'
+	video_info_volume_btn.toggleAttribute('muted', player.isMuted()) // [v2] 새 디자인 아이콘용
 	video_info_volume_slider.value = player.getVolume()
 
 	if(g_mute_video_id != '' && !player.isMuted())
@@ -1287,10 +1288,14 @@ function update_dj_state()
 		etc_dj_button.style.width = '100%'
 	}
 
+	// [v2] 새 디자인(<html site-modern>)에서는 대괄호 없이 버튼 모양으로 보여 준다
+	var modern = document.documentElement.hasAttribute('site-modern')
+	etc_dj_button.toggleAttribute('djing', g_is_djing)
+	etc_skip_button.innerText = modern ? '스킵' : '[스킵]'
 	if(g_is_djing)
-		etc_dj_button.innerText = '[대기열 나가기]'
+		etc_dj_button.innerText = modern ? '대기열 나가기' : '[대기열 나가기]'
 	else
-		etc_dj_button.innerText = '[대기열 입장]'
+		etc_dj_button.innerText = modern ? '대기열 입장' : '[대기열 입장]'
 }
 
 /* 현재 영상 스킵 버튼 onclick */ 

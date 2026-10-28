@@ -1,4 +1,4 @@
-<html theme="default" chat-modern>
+<html theme="default" chat-modern site-modern>
 <title>LoLWiki.DJ</title>
 
 <head>
@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="/static/index.css?ver=$_version">
   <!-- [v2] 새 채팅 디자인 (html 의 chat-modern 속성을 지우면 예전 채팅으로 돌아감) -->
   <link rel="stylesheet" href="/static/chat-modern.css?ver=$_version">
+  <!-- [v2] 사이트 전체 새 디자인 (html 의 site-modern 속성을 지우면 예전 디자인) -->
+  <link rel="stylesheet" href="/static/site-modern.css?ver=$_version">
   <!-- [v2] 소켓 클라이언트는 socket.io 서버가 직접 제공, 채널은 경로(/1004)로 정해져 서버가 넣어 준다 -->
   <script src="/socket.io/socket.io.js"></script>
   <script>window.__DJ_CHANNEL__ = "$_channel";</script>

@@ -230,6 +230,7 @@ function on_page_ready() {
 		login_id.focus()
 	}
 
+	update_dj_state() // [v2] 대기열 버튼 문구를 디자인에 맞게 처음부터 맞춘다
 	setInterval(update_video_volume, 100)
 	setInterval(update_video_time, 100)
 

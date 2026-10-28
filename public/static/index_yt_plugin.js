@@ -43,7 +43,9 @@ function onPlayerReady(event)
 		return
 	}
 
-	if(g_nick)
+	// [v2] 로그인 박스가 플레이어 준비보다 먼저 뜨게 바뀌어서, 이미 로그인했다면 다시 보내지 않는다
+	// (다시 보내면 서버가 같은 닉네임 중복 접속으로 보고 연결을 교체했다)
+	if(g_nick && !g_isLogin)
 	{
 		console.log('onPlayerReady에서 login')
 		socket.emit('login', g_nick)

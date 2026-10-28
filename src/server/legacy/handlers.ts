@@ -76,6 +76,11 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
     socket.data.name = nick;
 
     const existing = room.users.get(nick);
+    if (existing && existing.socket === socket) {
+      // 같은 연결이 로그인을 한 번 더 보낸 경우(레거시 클라이언트의 중복 호출): 교체하지 않고 성공만 다시 알린다
+      socket.emit("login", true);
+      return;
+    }
     if (existing) {
       // 같은 IP(레거시 규칙), 또는 재연결 토큰이 맞으면(모바일 IP 변경 등) 기존 연결을 교체한다.
       // 기존 연결이 이미 끊긴 상태면 그냥 정리한다.

@@ -4202,6 +4202,7 @@ function lol_onclick_aritcle_bookmark()
 
 	g_lol_current_detail.isBookmarked = !g_lol_current_detail.isBookmarked
 	lol_rpanel_bookmark.style.backgroundImage = g_lol_current_detail.isBookmarked ? "url('static/star_full.png')" : "url('static/star_empty.png')"
+	lol_rpanel_bookmark.toggleAttribute('bookmarked', Boolean(g_lol_current_detail.isBookmarked)) // [v2] 새 디자인 아이콘용
 }
 
 /* 글 새로고침 버튼 */
@@ -4262,6 +4263,7 @@ function lol_rpanel_update()
 
 	lol_rpanel_bookmark.style.display = is_invalid ? 'none' : 'block'
 	lol_rpanel_bookmark.style.backgroundImage = g_lol_current_detail.isBookmarked ? "url('static/star_full.png')" : "url('static/star_empty.png')"
+	lol_rpanel_bookmark.toggleAttribute('bookmarked', Boolean(g_lol_current_detail.isBookmarked)) // [v2] 새 디자인 아이콘용
 
 	// 영상
 	if(!g_lol_same_article_prev)
