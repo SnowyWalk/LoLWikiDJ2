@@ -29,6 +29,8 @@ else
   fi
   nice -n 15 docker buildx build --builder "$BUILDER" --load \
     --build-arg "APP_VERSION=$(git rev-parse HEAD)" -t dj2:local .
+  # 빌드가 끝나면 빌더 컨테이너를 멈춰 메모리를 돌려준다 (빌드 캐시는 남아 다음 빌드가 빨라짐)
+  docker buildx stop "$BUILDER" >/dev/null 2>&1 || true
 fi
 
 docker compose up -d --no-build app
