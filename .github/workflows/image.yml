@@ -3,9 +3,8 @@ name: Image
 # 서버(메모리 2GB, 여러 앱 공유)에서 Next 빌드를 하면 메모리가 바닥나 서버 전체가 멈춘다 (2026-10-16 장애).
 # 그래서 이미지는 여기서 빌드해 GHCR 에 올리고, 서버는 scripts/deploy.sh 로 받기만 한다.
 
+# 평소 배포는 서버에서 빌드한다 (scripts/deploy.sh, 메모리 상한 빌더). 이 워크플로는 필요할 때만 수동 실행.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
