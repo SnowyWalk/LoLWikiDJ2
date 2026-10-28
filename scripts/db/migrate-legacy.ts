@@ -30,7 +30,7 @@ const KNOWN: Record<keyof LegacyData, { table: string; columns: string[]; option
   playlists: { table: "Playlists", columns: ["Id", "Name", "VideoList", "Deleted"] },
   videos: { table: "Videos", columns: ["Id", "Name", "VideoId", "Length", "Thumbnail", "Author"] },
   bans: { table: "Bans", columns: ["IP", "Reason", "Comment"], optional: true },
-  secures: { table: "Secures", columns: ["IP", "ConnectData", "Comment"], optional: true },
+  secures: { table: "Secures", columns: ["IP", "ConnectData", "Comment", "android_id"], optional: true },
   archive: {
     table: "LoLWikiArchive",
     columns: [
@@ -170,7 +170,7 @@ async function writeTarget(conn: Connection, v2: V2Data) {
     await insertMany(conn, "bans", ["ip_pattern", "reason", "comment"], v2.bans.map((b) => [b.ip_pattern, b.reason, b.comment]));
     await insertMany(conn, "ip_user_stats", ["ip", "user_name", "connect_count", "first_login", "last_login"],
       v2.ipStats.map((s) => [s.ip, s.user_name, s.connect_count, s.first_login, s.last_login]));
-    await insertMany(conn, "ip_notes", ["ip", "comment"], v2.ipNotes.map((n) => [n.ip, n.comment]));
+    await insertMany(conn, "ip_notes", ["ip", "comment", "android_id"], v2.ipNotes.map((n) => [n.ip, n.comment, n.android_id]));
     await insertMany(conn, "lolwiki_bookmarks",
       ["id", "owner", "post_seq", "post_title", "nickname", "icon_img", "badge_use", "post_date", "likes", "views", "reply_cnt", "youtube_url", "doodlr", "pic_new", "pic_multi", "detail"],
       v2.bookmarks.map((b) => [b.id, b.owner, b.post_seq, b.post_title, b.nickname, b.icon_img, b.badge_use, b.post_date, b.likes, b.views, b.reply_cnt, b.youtube_url, b.doodlr, b.pic_new, b.pic_multi, JSON.stringify(b.detail)]),

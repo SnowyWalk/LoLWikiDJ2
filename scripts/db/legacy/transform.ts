@@ -71,7 +71,9 @@ export interface IpStatRow {
 }
 export interface IpNoteRow {
   ip: string;
-  comment: string;
+  comment: string | null;
+  /** 레거시 Secures.android_id (이 IP 에서 인증한 롤백과사전 계정 id) */
+  android_id: string | null;
 }
 export interface BookmarkRow {
   id: number;
@@ -397,7 +399,9 @@ export function transformLegacy(legacy: LegacyData): V2Data {
       continue;
     }
     const comment = toStr(row.Comment);
-    if (comment !== null && comment !== "") ipNotes.push({ ip, comment });
+    const androidId = toStr(row.android_id);
+    if ((comment !== null && comment !== "") || (androidId !== null && androidId !== ""))
+      ipNotes.push({ ip, comment: comment || null, android_id: androidId || null });
 
     const parsed = parseJsonValue(row.ConnectData);
     if (!Array.isArray(parsed)) {

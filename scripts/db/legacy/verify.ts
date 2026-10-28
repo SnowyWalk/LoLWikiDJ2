@@ -153,6 +153,18 @@ export async function verifyMigration(conn: Connection, legacy: LegacyData, v2: 
     const raw = parseJsonValue(r.UserMemos);
     return sum + (raw && typeof raw === "object" && !Array.isArray(raw) ? Object.keys(raw).length : 0);
   }, 0);
+  // IP 별 인증 android_id·메모가 그대로인지
+  const notes = new Map((await all(conn, "SELECT ip, comment, android_id FROM ip_notes")).map((r) => [s(r.ip), r]));
+  for (const ls of legacy.secures) {
+    const ip = s(ls.IP)?.trim();
+    if (!ip) continue;
+    const androidId = s(ls.android_id) || null;
+    const comment = s(ls.Comment) || null;
+    const note = notes.get(ip);
+    if ((androidId || comment) && !note) fail(`ip_notes 누락: ${ip}`);
+    else if (note && (s(note.android_id) !== androidId || s(note.comment) !== comment)) fail(`ip_notes 값 불일치: ${ip}`);
+  }
+
   const memoCount = await count("lolwiki_memos");
   if (memoCount !== legacyMemoCount && issueCount("duplicate_memo_owner") === 0)
     fail(`lolwiki_memos 개수 불일치: legacy ${legacyMemoCount}, v2 ${memoCount}`);
