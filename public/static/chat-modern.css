@@ -369,11 +369,38 @@
 }
 
 :root[chat-modern] #chat_scroller {
+  /* 스크롤을 올려 채팅이 멈췄을 때 입력창 위에 뜨는 알약 (누르면 맨 아래로). 표시는 index_chat.js 가 display:inline-block 으로 */
+  top: -88px;
+  width: fit-content; /* 입력창 줄 규칙(#chat_extra > div: 폭 100%, 높이 37px)이 같이 걸려서 덮는다 */
+  height: auto;
+  padding: 11px 20px 11px 16px;
   border-radius: 999px;
-  padding: 6px 16px;
+  background-color: color-mix(in srgb, var(--cm-accent) 92%, black);
+  color: var(--cm-accent-text);
   font-family: var(--cm-font);
-  font-size: 12.5px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  font-size: calc(13.5px * var(--font-scale));
+  font-weight: 700;
+  line-height: 18px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--cm-accent) 35%, rgba(0, 0, 0, 0.25));
+  transition: background-color 0.12s, transform 0.12s;
+}
+
+:root[chat-modern] #chat_scroller:hover {
+  background-color: var(--cm-accent);
+  transform: translateY(-1px);
+}
+
+/* 아래 화살표 */
+:root[chat-modern] #chat_scroller::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 10px 3px 2px;
+  border-right: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  transform: rotate(45deg);
+  vertical-align: middle;
 }
 
 /* opacity 는 키프레임에 넣지 않는다: 보내는 중(pending, 0.6) → 확정(1) 전환이 transition 으로 자연스럽게 이어지도록 */
