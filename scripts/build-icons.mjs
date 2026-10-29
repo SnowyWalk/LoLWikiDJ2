@@ -18,6 +18,8 @@ const ICONS = {
   "tab-users": ["users", "base"],
   "tab-recent": ["history", "base"],
   "tab-option": ["ellipsis", "base"],
+  "tab-lol": ["newspaper", "base"], // 모바일 하단 탭바
+  "tab-playlist": ["list-music", "base"], // 모바일 하단 탭바
   volume: ["volume-2", "base"],
   "volume-x": ["volume-x", "base"],
   "mute-once": ["volume-off", "muted"],

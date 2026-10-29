@@ -535,6 +535,7 @@ function lol_onrclick_article()
 		lol_rpanel_refresh.style.display = 'block'
 		g_lol_rpanel_scroll_top_switch = true
 		lol_rpanel_update()
+		lol_mobile_show_detail(true)
 	}
 }
 
@@ -4511,6 +4512,8 @@ function lol_rpanel_update()
 /* 아이콘 변경 창 열기 */
 function lol_rpanel_show_icon_change_panel()
 {
+	lol_mobile_show_detail(true)
+
 	// 아이콘
 	lol_rpanel_header_icon.src = ''
 	lol_rpanel_header_icon.onmouseenter = image_onmouseenter
@@ -4868,32 +4871,24 @@ function lol_panel_update()
 		lol_panel.style.display = 'flex'
 		if(g_lol_android_id == g_lol_guest_id)
 			lol_lpanel_write_button.style.display = 'none'
-		lol_panel_resize()
 	}
 	else
 	{
 		lol_panel.style.display = 'none'
 	}
 
-}
-
-function lol_panel_resize()
-{
-	var window_width = window.innerWidth
-	var window_height = window.innerHeight
-	var bottom_height = 86 // 하단 박스 높이
-
-	// 패널 판크기 조절
-	lol_panel.style.width = (window_width - mainchat_width)
-	lol_panel.style.height = (window_height - bottom_height)
-
-	lol_rpanel.style.maxWidth = (window_width - mainchat_width) - 485 // lol_panel 크기 - 왼쪽패널 크기
-	lol_rpanel_body.style.height = (window_height - bottom_height - 74 - 35 - 4 - 18) // 헤더
+	mobile_tab_sync()
 }
 
 /* 글 쓰기 패널 토글 */
 function lol_write_panel_toggle(isShow)
 {
+	// 모바일: 글쓰기를 열면 상세 화면으로, 글쓰기를 닫으면(취소·등록) 글목록으로
+	if(isShow)
+		lol_mobile_show_detail(true)
+	else if(lol_write.style.display == 'flex')
+		lol_mobile_show_detail(false)
+
 	if(isShow)
 	{
 		lol_rpanel.style.display = 'none'
@@ -4901,10 +4896,33 @@ function lol_write_panel_toggle(isShow)
 	}
 	else
 	{
-		lol_rpanel.style.display = 'block'
+		lol_rpanel.style.display = '' // 데스크톱은 block, 모바일은 CSS의 flex
 		lol_write.style.display = 'none'
 	}
 }
+
+/* 모바일: 글목록과 글상세(글쓰기 포함) 중 하나만 보여준다. 데스크톱은 둘 다 보이므로 CSS에서 무시된다 */
+function lol_mobile_show_detail(isDetail)
+{
+	if(lol_panel.hasAttribute('mobile_detail') == isDetail)
+		return
+	lol_panel.toggleAttribute('mobile_detail', isDetail)
+
+	// 폰의 뒤로가기 버튼으로 글목록에 돌아올 수 있게 히스토리 한 칸 쌓기 (이미 쌓여 있으면 그대로)
+	if(isDetail && g_mobile_media.matches && !(history.state && history.state.lol_detail))
+		history.pushState({ lol_detail: true }, '')
+}
+
+/* 모바일 글상세 ← 버튼 */
+function lol_onclick_rpanel_back()
+{
+	if(history.state && history.state.lol_detail)
+		history.back() // popstate에서 글목록으로 돌아간다
+	else
+		lol_mobile_show_detail(false)
+}
+
+window.addEventListener('popstate', _ => lol_mobile_show_detail(false))
 
 /* 글 쓰기 - 이미지 첨부란 불필요한 문자 입력 시 제거 처리 */
 async function lol_write_image_clear_text()

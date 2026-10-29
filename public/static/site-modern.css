@@ -24,6 +24,8 @@
   --icon-tab-users: url(icons/light/tab-users.svg);
   --icon-tab-recent: url(icons/light/tab-recent.svg);
   --icon-tab-option: url(icons/light/tab-option.svg);
+  --icon-tab-lol: url(icons/light/tab-lol.svg);
+  --icon-tab-playlist: url(icons/light/tab-playlist.svg);
   --icon-volume: url(icons/light/volume.svg);
   --icon-volume-x: url(icons/light/volume-x.svg);
   --icon-mute-once: url(icons/light/mute-once.svg);
@@ -74,6 +76,8 @@
   --icon-tab-users: url(icons/dark/tab-users.svg);
   --icon-tab-recent: url(icons/dark/tab-recent.svg);
   --icon-tab-option: url(icons/dark/tab-option.svg);
+  --icon-tab-lol: url(icons/dark/tab-lol.svg);
+  --icon-tab-playlist: url(icons/dark/tab-playlist.svg);
   --icon-volume: url(icons/dark/volume.svg);
   --icon-volume-x: url(icons/dark/volume-x.svg);
   --icon-mute-once: url(icons/dark/mute-once.svg);
@@ -438,4 +442,65 @@
 :root[site-modern] .sort_button:hover,
 :root[site-modern] .play_now_button:hover {
   background-color: var(--sm-btn-hover);
+}
+
+/* ======================= 모바일 (index.css 끝의 모바일 @media 와 같은 조건) ======================= */
+
+@media (max-width: 768px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  /* 하단 탭바: 이모지 대신 Lucide 아이콘 */
+  :root[site-modern] #mobile_tabbar {
+    font-family: var(--sm-font);
+    color: var(--sm-text);
+    border-top-color: var(--sm-border);
+    background-color: var(--채팅_카테고리_배경색);
+  }
+
+  :root[site-modern] #mobile_tabbar > div > span {
+    width: 22px;
+    height: 22px;
+    font-size: 0px;
+    background: center / 22px 22px no-repeat;
+  }
+
+  :root[site-modern] #mobile_tabbar > [mobile_tab=chat] > span { background-image: var(--icon-tab-chat); }
+  :root[site-modern] #mobile_tabbar > [mobile_tab=lol] > span { background-image: var(--icon-tab-lol); }
+  :root[site-modern] #mobile_tabbar > [mobile_tab=playlist] > span { background-image: var(--icon-tab-playlist); }
+  :root[site-modern] #mobile_tabbar > [mobile_tab=djlist] > span { background-image: var(--icon-tab-users); }
+  :root[site-modern] #mobile_tabbar > [mobile_tab=recent] > span { background-image: var(--icon-tab-recent); }
+  :root[site-modern] #mobile_tabbar > [mobile_tab=option] > span { background-image: var(--icon-tab-option); }
+
+  :root[site-modern] #mobile_tabbar > div[selected] {
+    color: var(--sm-accent);
+    background-color: var(--채팅_카테고리_선택);
+    box-shadow: inset 0 3px 0 var(--sm-accent);
+  }
+
+  :root[site-modern] #mobile_tabbar #mobile_tab_djlist_badge {
+    background-color: var(--sm-badge);
+    color: var(--sm-badge-text);
+  }
+
+  /* 정보바 줄 높이(30px)에 맞춘 대기열·스킵 버튼 */
+  :root[site-modern] #etc_dj_button,
+  :root[site-modern] #etc_skip_button {
+    border-width: 3px;
+    border-radius: 10px;
+    line-height: 24px;
+    font-size: 14px;
+  }
+
+  :root[site-modern] #playlist_control_panel {
+    box-shadow: none;
+  }
+
+  :root[site-modern] #playlist_control_panel_playlist_info_select {
+    font-size: 16px;
+  }
+
+  :root[site-modern] #playlist_control_panel_playlist_info_shuffle,
+  :root[site-modern] #playlist_control_panel_playlist_info_new_video_button,
+  :root[site-modern] #playlist_control_panel_playlist_info_rename_button,
+  :root[site-modern] #playlist_control_panel_playlist_info_delete_button {
+    background-size: 22px 22px;
+  }
 }

@@ -395,3 +395,10 @@
     transition: none !important;
   }
 }
+
+/* 모바일: 글자 16px 미만 입력창은 iOS 가 포커스할 때 화면을 확대해버린다 (index.css 끝의 모바일 @media 와 같은 조건) */
+@media (max-width: 768px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  :root[chat-modern] #chat_input {
+    font-size: 16px;
+  }
+}

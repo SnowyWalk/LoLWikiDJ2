@@ -231,7 +231,7 @@ socket.on('chat_update', function (data) {
 	if(!g_isLogin)
 		return
 
-	if(g_current_chat_category != mainchat_header_chat)
+	if(g_current_chat_category != mainchat_header_chat || mobile_chat_hidden())
 	{
 		g_chat_noti_count += 1
 		update_chat_noti()
@@ -613,6 +613,7 @@ socket.on('lol_article_detail', function(data) {
 	lol_write_panel_toggle(false)
 	lol_rpanel_refresh.style.display = 'block'
 	lol_rpanel_update()
+	lol_mobile_show_detail(true)
 })
 
 /* 북마크 아카이브 디테일 수신 */
@@ -631,6 +632,7 @@ socket.on('lol_bookmark_archived', function(data) {
 	lol_write_panel_toggle(false)
 	lol_rpanel_refresh.style.display = 'block'
 	lol_rpanel_update()
+	lol_mobile_show_detail(true)
 })
 
 

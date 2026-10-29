@@ -704,8 +704,7 @@ function send(force_tts = false) {
 	if(message == '/chat' || message == '/챗' || message == '/CHAT' || message == '/촘ㅅ' || message == '/촘ㅆ' || message == '/cot' || message == '/COT')
 	{
 		g_is_chat_mode = !g_is_chat_mode
-		mainchat.toggleAttribute('chat_mode', g_is_chat_mode)
-		mainchat.style.width = g_is_chat_mode ? '100%' : mainchat_width
+		mainchat.toggleAttribute('chat_mode', g_is_chat_mode) // 폭은 CSS #mainchat[chat_mode]
 		resize()
 		return
 	}
@@ -846,8 +845,8 @@ function image_expander_set_pos(x, y)
 	if(y < 0)
 		y = 0
 
-	image_expander.style.left = x
-	image_expander.style.top = y
+	image_expander.style.left = x + 'px'
+	image_expander.style.top = y + 'px'
 }
 
 function play_call_audio(start_time = 0.0)

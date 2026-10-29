@@ -33,10 +33,10 @@ var livechat_stored_window_height = livechat_const_window_height
 function livechat_initial_resize()
 {
 	// Box
-	youtube_live_chat_box.style.top = livechat_window_top
-	youtube_live_chat_box.style.left = livechat_window_left
-	youtube_live_chat_box.style.width = livechat_window_width
-	youtube_live_chat_box.style.height = livechat_window_height
+	youtube_live_chat_box.style.top = livechat_window_top + 'px'
+	youtube_live_chat_box.style.left = livechat_window_left + 'px'
+	youtube_live_chat_box.style.width = livechat_window_width + 'px'
+	youtube_live_chat_box.style.height = livechat_window_height + 'px'
 
 	// 헤더
 	youtube_live_chat_box_header.style.opacity = livechat_is_mouse_on_header ? 1 : clamp(livechat_opacity * livechat_const_header_opacity_max, livechat_const_header_opacity_min, livechat_const_header_opacity_max)
@@ -48,7 +48,7 @@ function livechat_initial_resize()
 	youtube_live_chat_iframe.style.opacity = livechat_opacity
 	
 	// 리사이즈 영역
-	youtube_live_chat_header_resize_box.style.top = livechat_window_height - livechat_const_header_height - livechat_const_resizer_size
+	youtube_live_chat_header_resize_box.style.top = (livechat_window_height - livechat_const_header_height - livechat_const_resizer_size) + 'px'
 	youtube_live_chat_header_resize_box.style.opacity = livechat_opacity
 
 	// Events
@@ -115,15 +115,15 @@ function livechat_onmousemove_resize_panel(ev)
 	if(diff_x != 0)
 	{
 		livechat_window_width = clamp(livechat_drag_start_ww + diff_x, livechat_const_window_width_min, 50000)
-		youtube_live_chat_box.style.width = livechat_window_width
+		youtube_live_chat_box.style.width = livechat_window_width + 'px'
 	}
 
 	if(diff_y != 0)
 	{
 		livechat_window_height = clamp(livechat_drag_start_wh + diff_y, livechat_const_window_height_min, 50000)
-		youtube_live_chat_box.style.height = livechat_window_height
+		youtube_live_chat_box.style.height = livechat_window_height + 'px'
 		youtube_live_chat_iframe.style.height = (livechat_window_height - livechat_const_header_height) + 'px'
-		youtube_live_chat_header_resize_box.style.top = livechat_window_height - livechat_const_header_height - livechat_const_resizer_size
+		youtube_live_chat_header_resize_box.style.top = (livechat_window_height - livechat_const_header_height - livechat_const_resizer_size) + 'px'
 	}
 }
 
@@ -137,15 +137,15 @@ function livechat_onmouseup_resize_panel(ev)
 	if(diff_x != 0)
 	{
 		livechat_window_width = clamp(livechat_drag_start_ww + diff_x, livechat_const_window_width_min, 50000)
-		youtube_live_chat_box.style.width = livechat_window_width
+		youtube_live_chat_box.style.width = livechat_window_width + 'px'
 	}
 
 	if(diff_y != 0)
 	{
 		livechat_window_height = clamp(livechat_drag_start_wh + diff_y, livechat_const_window_height_min, 50000)
-		youtube_live_chat_box.style.height = livechat_window_height
+		youtube_live_chat_box.style.height = livechat_window_height + 'px'
 		youtube_live_chat_iframe.style.height = (livechat_window_height - livechat_const_header_height) + 'px'
-		youtube_live_chat_header_resize_box.style.top = livechat_window_height - livechat_const_header_height - livechat_const_resizer_size
+		youtube_live_chat_header_resize_box.style.top = (livechat_window_height - livechat_const_header_height - livechat_const_resizer_size) + 'px'
 	}
 
 	console.log(livechat_window_width, livechat_window_height)
@@ -160,29 +160,29 @@ function livechat_window_clamp()
 	{
 		livechat_window_left = clamp(livechat_window_left, 0, window_width - livechat_window_width)
 		livechat_window_left = clamp(livechat_window_left, 0, window_width - livechat_window_width)
-		youtube_live_chat_box.style.left = livechat_window_left
+		youtube_live_chat_box.style.left = livechat_window_left + 'px'
 	}
 
 	if(livechat_window_top + livechat_window_height > window_height || livechat_window_top < 0)
 	{
 		livechat_window_top = clamp(livechat_window_top, 0, window_height - livechat_window_height)
 		livechat_window_top = clamp(livechat_window_top, 0, window_height - livechat_window_height)
-		youtube_live_chat_box.style.top = livechat_window_top
+		youtube_live_chat_box.style.top = livechat_window_top + 'px'
 	}
 
 	// 줄였는데 사이즈가 윈도우크기보다 큰 경우..
 	if(livechat_window_left + livechat_window_width > window_width)
 	{
 		livechat_window_width = window_width - livechat_window_left
-		youtube_live_chat_box.style.width = livechat_window_width
+		youtube_live_chat_box.style.width = livechat_window_width + 'px'
 	}
 
 	if(livechat_window_top + livechat_window_height > window_height)
 	{
 		livechat_window_height = window_height - livechat_window_top
-		youtube_live_chat_box.style.height = livechat_window_height
+		youtube_live_chat_box.style.height = livechat_window_height + 'px'
 		youtube_live_chat_iframe.style.height = (livechat_window_height - livechat_const_header_height) + 'px'
-		youtube_live_chat_header_resize_box.style.top = livechat_window_height - livechat_const_header_height - livechat_const_resizer_size
+		youtube_live_chat_header_resize_box.style.top = (livechat_window_height - livechat_const_header_height - livechat_const_resizer_size) + 'px'
 	}
 }
 
@@ -230,14 +230,14 @@ function livechat_onmousemove_drag_panel(ev)
 	{
 		var window_width = window.innerWidth
 		livechat_window_left = clamp(livechat_drag_start_wx + diff_x, 0, window_width - livechat_window_width)
-		youtube_live_chat_box.style.left = livechat_window_left
+		youtube_live_chat_box.style.left = livechat_window_left + 'px'
 	}
 
 	if(diff_y != 0)
 	{
 		var window_height = window.innerHeight
 		livechat_window_top = clamp(livechat_drag_start_wy + diff_y, 0, window_height - livechat_window_height)
-		youtube_live_chat_box.style.top = livechat_window_top
+		youtube_live_chat_box.style.top = livechat_window_top + 'px'
 	}
 }
 
@@ -252,14 +252,14 @@ function livechat_onmouseup_drag_panel(ev)
 	{
 		var window_width = window.innerWidth
 		livechat_window_left = clamp(livechat_drag_start_wx + diff_x, 0, window_width - livechat_window_width)
-		youtube_live_chat_box.style.left = livechat_window_left
+		youtube_live_chat_box.style.left = livechat_window_left + 'px'
 	}
 
 	if(diff_y != 0)
 	{
 		var window_height = window.innerHeight
 		livechat_window_top = clamp(livechat_drag_start_wy + diff_y, 0, window_height - livechat_window_height)
-		youtube_live_chat_box.style.top = livechat_window_top
+		youtube_live_chat_box.style.top = livechat_window_top + 'px'
 	}
 }
 
@@ -290,10 +290,10 @@ function livechat_set_video_id(video_id)
 	livechat_window_left = livechat_const_window_left
 	livechat_opacity = 1.0
 
-	youtube_live_chat_box.style.top = livechat_window_top
-	youtube_live_chat_box.style.left = livechat_window_left
-	youtube_live_chat_box.style.width = livechat_window_width
-	youtube_live_chat_box.style.height = livechat_window_height
+	youtube_live_chat_box.style.top = livechat_window_top + 'px'
+	youtube_live_chat_box.style.left = livechat_window_left + 'px'
+	youtube_live_chat_box.style.width = livechat_window_width + 'px'
+	youtube_live_chat_box.style.height = livechat_window_height + 'px'
 	youtube_live_chat_iframe.style.opacity = livechat_opacity
 	youtube_live_chat_box_header.style.opacity = livechat_is_mouse_on_header ? 1 : clamp(livechat_opacity * livechat_const_header_opacity_max, livechat_const_header_opacity_min, livechat_const_header_opacity_max)
 	

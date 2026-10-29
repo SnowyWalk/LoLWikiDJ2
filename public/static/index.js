@@ -299,6 +299,7 @@ function on_page_ready() {
 	lol_lpanel_search_menu_button_award.onclick = lol_onclick_search_award
 
 	lol_lpanel_write_button.onclick = lol_onclick_write
+	lol_rpanel_back.onclick = lol_onclick_rpanel_back
 
 	lol_lpanel_userinfo.onclick = lol_onclick_userinfo_button
 	lol_lpanel_userinfo_menu_background.onclick = lol_onclick_userinfo_background

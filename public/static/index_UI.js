@@ -1,27 +1,15 @@
-/* 캐싱 */
-var g_progress_bar_width = 0
-var mainchat_width = 350
-var playlist_control_panel_playlist_container_width = 300
-var playlist_control_panel_videolist_header_top = 100 // playlist_control_panel_playlist_info_height 와 동일
-
 var current_theme = 'default' // [default, dark]
 
-/* UI 사이즈 셋업 (최초에 한번만 실행)*/
+/* UI 초기 셋업 (최초에 한번만 실행)
+   화면 배치는 index.css의 레이아웃 변수(--mainchat-width, --bottom-height 등)가 맡는다. */
 function initial_resize()
 {
-	var bottom_height = 86 // 하단 박스 높이
-
 	/* 춤추는 캐릭터 */
 	// dancing_character.onclick = function() { dancing_character.style.display = 'none'; }
 
 	/* 우측 채팅 */
-	mainchat.style.width = mainchat_width
-	var category_count = mainchat_header.childElementCount
 	for(var e of mainchat_header.children)
-	{
-		e.style.width = mainchat_width / category_count
 		e.onclick = onclick_chat_category_btn
-	}
 
 	option_checkbox_mention.onclick = onclick_chat_category_option_mention
 	option_checkbox_tts.onclick = onclick_chat_category_option_tts
@@ -38,187 +26,83 @@ function initial_resize()
 	option_tts_6_sample.onclick = onclick_chat_category_option_tts_6_sample
 	option_tts_7_sample.onclick = onclick_chat_category_option_tts_7_sample
 	option_tts_8_sample.onclick = onclick_chat_category_option_tts_8_sample
-	
 
-	/* 좌하단 재생목록 정보 */
-	current_playlist_info_box.style.width = 232 + 100
-	current_playlist_info_box.style.height = bottom_height
-
-	/* 하단 현재 영상 정보 */
-	video_info.style.left = current_playlist_info_box.clientWidth
-	my_progress_bar.style.left = current_playlist_info_box.clientWidth + 11 // 프로그레스 바 패딩 : 양옆 11px
-	my_progress_bar_after.style.left = current_playlist_info_box.clientWidth + 11
-	video_info_time.style.left = current_playlist_info_box.clientWidth + 11
-
-	/* 우하단 기타 박스 */
-	etc_box.style.width = 216
-	etc_box.style.height = bottom_height
-
-	/* 재생목록 컨트롤 패널 */
-	playlist_control_panel_playlist_container.style.width = playlist_control_panel_playlist_container_width
-	playlist_control_panel_videolist_header.style.left = playlist_control_panel_playlist_container_width // 위와 같아야 함.
-	playlist_control_panel_playlist_info.style.left = playlist_control_panel_playlist_container_width // 위와 같아야 함.
-	playlist_control_panel_playlist_info.style.height = 100
+	/* 모바일 하단 탭바 */
+	for(var e of mobile_tabbar.children)
+		e.onclick = onclick_mobile_tab
+	mobile_tab_sync()
 
 	resize()
 
 	livechat_initial_resize() // 라이브챗 이니셜 리사이즈
 }
 
-/* UI 리사이즈 */
-function resize() {
-	var window_width = window.innerWidth
-	var window_height = window.innerHeight
-	var bottom_height = 86 // 하단 박스 높이
+/* 모바일 레이아웃 여부 (index.css 끝의 모바일 @media 조건과 같아야 한다) */
+var g_mobile_media = window.matchMedia('(max-width: 768px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse)')
 
-	/* 로그인 창 */
-	login_bg.style.left = (window_width - login_bg.clientWidth) / 2
-	login_bg.style.top = (window_height - login_bg.clientHeight) / 2 - 30
+/* 모바일 탭 클릭: 채팅·접속자·최근곡·옵션은 기존 채팅 카테고리, 롤백·재생목록은 패널 열기 */
+function onclick_mobile_tab()
+{
+	var tab = this.getAttribute('mobile_tab')
 
-	login_port.style.left = (window_width - login_bg.clientWidth) / 2 + 4
-	login_port.style.top = (window_height - login_bg.clientHeight) / 2 - 30 + 4
-
-	login_id.style.left = (window_width - login_bg.clientWidth) / 2 + 13
-	login_id.style.top = window_height / 2 - login_id.clientHeight - 7.5 - 10
-
-	login_pw.style.left = (window_width - login_bg.clientWidth) / 2 + 13
-	login_pw.style.top = window_height / 2 + 7.5 - 10 
-
-	login_button.style.left = (window_width - login_bg.clientWidth) / 2 + 13 + login_id.clientWidth + 15
-	login_button.style.top = window_height / 2 - login_id.clientHeight - 8 - 10
-
-	login_remember_nick_holder.style.left = (window_width - login_bg.clientWidth) / 2 + 13
-	login_remember_nick_holder.style.top = window_height / 2 + 66 - 10 
-
-
-	/* 채팅 */
-	if(g_is_chat_mode)
-		mainchat.style.marginLeft = 0
-	else
-		mainchat.style.marginLeft = (window_width - mainchat_width) // 350
-	mainchat.style.height = window_height // 350
-
-	chat.style.height = (window_height - 50 - 50)
-	djlist.style.height = (window_height - 50)
-	djlist_users.style.height = (window_height - 50 - 20 - 16 - 16 - 50 - 16 - 16 - 22 - 22 - 86) / 2
-	djlist_djs.style.height = (window_height - 50 - 20 - 16 - 16 - 50 - 16 - 16 - 22 - 22 - 86) / 2
-	recent.style.height = (window_height - 50)
-	option.style.height = (window_height - 50)
-
-	var category_count = mainchat_header.childElementCount
-	for(var e of mainchat_header.children)
+	if(tab == 'lol')
 	{
-		e.style.width = g_is_chat_mode ? window_width / category_count : mainchat_width / category_count
-		e.onclick = onclick_chat_category_btn
+		if(!g_lol_panel_show)
+			onrclick_playlist_info_box()
+		lol_mobile_show_detail(false) // 탭을 누르면 항상 글목록부터
+	}
+	else if(tab == 'playlist')
+	{
+		if(!g_show_playlist_control_panel)
+			show_playlist_control_panel(true)
+	}
+	else
+	{
+		// 채팅 영역을 덮고 있던 패널 닫기
+		if(g_lol_panel_show)
+			onrclick_playlist_info_box()
+		if(g_show_playlist_control_panel)
+			show_playlist_control_panel(false)
+
+		set_chat_category(document.getElementById('mainchat_header_' + tab))
+
+		if(tab == 'chat') // 패널에 가려져 있던 동안 쌓인 알림 지우기
+		{
+			chat_scroll()
+			g_chat_noti_count = 0
+			update_chat_noti()
+		}
 	}
 
-	/* 유튜브 플레이어 */
-	if(player)
-		player.setSize(window_width - mainchat_width, window_height - bottom_height)
-	m3u8_player.style.width = window_width - mainchat_width
-	m3u8_player.style.height = window_height - bottom_height
-	flv_player.style.width = window_width - mainchat_width
-	flv_player.style.height = window_height - bottom_height
-	twitch_player_panel.style.width = window_width - mainchat_width
-	twitch_player_panel.style.height = window_height - bottom_height
-
-	block_video.style.width = (window_width - mainchat_width)
-	block_video.style.height = (window_height - bottom_height)
-	block_video.style.lineHeight = (window_height - bottom_height) + 'px'
-	
-	if(!g_current_video_id)
-		block_video.style.display = 'block'
-	else
-		block_video.style.display = 'none'
-
-	marquee_screen.style.width = (window_width - mainchat_width)
-	marquee_screen.style.height = (window_height - bottom_height)
-
-	/* 좌하단 재생목록 정보 */
-	current_playlist_info_box.style.top = (window_height - bottom_height) 
-
-	/* 하단 영상 정보 */ 
-	var video_info_width = window_width - mainchat_width - current_playlist_info_box.clientWidth - etc_box.clientWidth - 3 // 798
-	video_info.style.top = (window_height - bottom_height)
-	video_info.style.width = video_info_width
-
-	my_progress_bar.style.width = (video_info_width - 22)
-	g_progress_bar_width = (video_info_width - 22) // 위와 같음
-	my_progress_bar.style.top = (window_height - 29)
-	
-	my_progress_bar_after.style.top = (window_height - 29)
-	update_video_time()
-	
-	video_info_time.style.top = (window_height - 20)
-	video_info_time.style.width = (video_info_width - 22)
-
-	/* 우하단 기타 패널 */
-	etc_box.style.top = (window_height - bottom_height) 
-	etc_box.style.left = current_playlist_info_box.clientWidth + video_info.clientWidth + 2
-
-	etc_good_button.style.left = etc_box.offsetLeft + 50
-	etc_good_button.style.top = etc_box.offsetTop + 45
-	etc_good_count.style.left = etc_good_button.offsetLeft + etc_good_button.clientWidth
-	etc_good_count.style.top = etc_good_button.offsetTop
-
-	etc_bad_button.style.left = etc_box.offsetLeft + 121
-	etc_bad_button.style.top = etc_box.offsetTop + 45
-	etc_bad_count.style.left = etc_bad_button.offsetLeft + etc_bad_button.clientWidth
-	etc_bad_count.style.top = etc_bad_button.offsetTop
-
-	/* 플레이리스트 패널 */
-	if(g_show_playlist_control_panel)
-		control_panel_resize()
-
-	/* 이미지 돋보기 */
-	image_expander_src.style.maxWidth = window_width - mainchat_width
-	image_expander_src.style.maxHeight = window_height
-
-	/* 라이브챗 */
-	livechat_window_clamp()
-
-	/* 롤백 패널 */
-	if(g_lol_panel_show)
-		lol_panel_resize()
+	mobile_tab_sync()
 }
 
-/* UI 리사이즈 - 컨트롤 패널만 */
-function control_panel_resize()
+/* 지금 보이는 화면에 맞춰 탭 선택 표시. CSS가 html[mobile_tab] 값으로 패널 배치를 바꾼다 */
+function mobile_tab_sync()
 {
-	var window_width = window.innerWidth
-	var window_height = window.innerHeight
-	var bottom_height = 86 // 하단 박스 높이
+	var tab = g_lol_panel_show ? 'lol'
+		: g_show_playlist_control_panel ? 'playlist'
+		: g_current_chat_category.id.replace('mainchat_header_', '')
 
-	// 패널 판크기 조절
-	playlist_control_panel.style.width = (window_width - mainchat_width)
-	playlist_control_panel.style.height = (window_height - bottom_height)
+	document.documentElement.setAttribute('mobile_tab', tab)
+	for(var e of mobile_tabbar.children)
+		e.toggleAttribute('selected', e.getAttribute('mobile_tab') == tab)
+}
 
-	// 재생목록 헤더 크기 조절
-	playlist_control_panel_playlist_container.style.height = (window_height - bottom_height - 1)
+/* 모바일 세로 화면에서 롤백·재생목록 패널이 채팅을 가리고 있는지 (CSS가 visibility로 숨긴다) */
+function mobile_chat_hidden()
+{
+	return getComputedStyle(mainchat).visibility == 'hidden'
+}
 
-	// 재생목록 인포 크기 조절
-	playlist_control_panel_playlist_info.style.width = (window_width - playlist_control_panel_playlist_container_width - mainchat_width - 1)
+/* UI 리사이즈 (window.onresize)
+   크기·위치는 CSS가 맡고, 여기엔 CSS로 못 하는 것만 남았다. */
+function resize() {
+	/* 재생 중인 영상이 없으면 커버 표시 */
+	SetVideoBlock(!g_current_video_id)
 
-	// 영상 목록 헤더 크기 조절
-	playlist_control_panel_videolist_header.style.width = (window_width - playlist_control_panel_playlist_container_width - mainchat_width - 1)
-	playlist_control_panel_videolist_header.style.height = (window_height - bottom_height - playlist_control_panel_videolist_header_top - 1)
-
-	// 영상 목록 헤더 타이틀 길이 조절
-	// var w1 = playlist_control_panel_playlist_info_new_video_button.clientWidth
-	// var w2 = playlist_control_panel_playlist_info_delete_button.clientWidth
-	// var w3 = playlist_control_panel_playlist_info_rename_button.clientWidth
-	// var w4 = playlist_control_panel_playlist_info_shuffle.clientWidth
-	// var w5 = playlist_control_panel_playlist_info_select.clientWidth
-	var w1 = 96
-	var w2 = 96
-	var w3 = 96
-	var w4 = 96
-	var w5 = 185
-	playlist_control_panel_playlist_info_name.style.width = (window_width - playlist_control_panel_playlist_container_width - mainchat_width - 1) - w1 - w2 - w3 - w4 - w5 - 2 - 30
-
-	// 영상 목록의 텍스트 길이 조절 -> (2022.01.21 Flex로 바꿨음)
-	// for(var e of document.querySelectorAll('.videolist_button > .text'))
-	// 	e.style.width = (window_width - playlist_control_panel_playlist_container_width - mainchat_width - 204 - 120 - 10 - 10 - 1 - 110 * 2)
+	/* 사용자가 옮겨둔 라이브챗 창을 화면 안으로 되돌리기 */
+	livechat_window_clamp()
 }
 
 /* 플레이리스트 컨트롤패널 열기/닫기 */
@@ -237,7 +121,7 @@ function show_playlist_control_panel(isShow)
 		update_playlist()
 
 	playlist_control_panel.style.display = isShow ? 'block' : 'none'
-	control_panel_resize()
+	mobile_tab_sync()
 }
 
 // ========================= 컨트롤패널 - 재생목록 =========================
@@ -520,8 +404,6 @@ function select_playlist_button(playlist_id)
 
 		i++
 	}
-
-	control_panel_resize()
 }
 
 function event_preventDefault()
@@ -782,6 +664,7 @@ function set_chat_category(category_element) // category_element : mainchat_head
 		}
 	}
 
+	mobile_tab_sync()
 }
 
 function get_chat_category_panel(category_element) // category_element : mainchat_header_(chat|djlist|recent|option)
@@ -811,11 +694,14 @@ function update_chat_noti() // 내가 안 본 채팅 카운트 출력
 		if(chat_noti_count.style.display != 'none')
 			chat_noti_count.style.display = 'none'
 	}
+
+	mobile_tab_chat_badge.textContent = g_chat_noti_count > 0 ? g_chat_noti_count : '' // 비어 있으면 CSS가 숨김
 }
 
 function update_users_count()
 {
 	user_count.firstChild.textContent = g_users.length
+	mobile_tab_djlist_badge.textContent = g_users.length
 }
 
 // ========================= 메인 화면 - 우측 채팅 - 멤버 리스트 =========================
@@ -1007,9 +893,7 @@ function AddMarqueeChat(txt, hRate) {
     p.appendChild(document.createTextNode(txt))
     div.appendChild(p)
 
-	var window_height = window.innerHeight
-	var bottom_height = 86 // 하단 박스 높이
-	var marquee_screen_height = window_height - bottom_height - 60 // 폰트크기 43이지만 보정으로 넉넉하게 60
+	var marquee_screen_height = marquee_screen.clientHeight - 60 // 폰트크기 43이지만 보정으로 넉넉하게 60
 	var place_h = marquee_screen_height * hRate
 
 	div.style.top = place_h + 'px'
@@ -1120,10 +1004,10 @@ function update_video_time()
 			cached_my_progress_bar_after_innerText = ''
 		}
 
-		if(isDirty(cached_my_progress_bar_after_style_width, 0))
+		if(isDirty(cached_my_progress_bar_after_style_width, '0%'))
 		{
-			my_progress_bar_after.style.width = 0
-			cached_my_progress_bar_after_style_width = 0
+			my_progress_bar_after.style.width = '0%'
+			cached_my_progress_bar_after_style_width = '0%'
 		}
 
 		if(isDirty(cached_video_info_time_innerText, '--:-- / --:--'))
@@ -1137,10 +1021,10 @@ function update_video_time()
 	var duration = g_current_duration
 	if(duration == 0)
 	{
-		if(isDirty(cached_my_progress_bar_after_style_width, g_progress_bar_width))
+		if(isDirty(cached_my_progress_bar_after_style_width, '100%'))
 		{
-			my_progress_bar_after.style.width = g_progress_bar_width
-			cached_my_progress_bar_after_style_width = g_progress_bar_width
+			my_progress_bar_after.style.width = '100%'
+			cached_my_progress_bar_after_style_width = '100%'
 		}
 
 		if(isDirty(cached_video_info_time_innerText, '실시간'))
@@ -1155,7 +1039,7 @@ function update_video_time()
 	if(duration < currentTime)
 		currentTime = duration
 
-	var bar_width = g_progress_bar_width * (currentTime / duration)
+	var bar_width = (100 * currentTime / duration).toFixed(2) + '%'
 	if(isDirty(cached_my_progress_bar_after_style_width, bar_width))
 	{
 		my_progress_bar_after.style.width = bar_width
@@ -1351,9 +1235,9 @@ function ui_tooltip_onmouseenter()
 	ui_tooltip.style.display = 'block'
 	ui_tooltip.firstChild.nodeValue = target.getAttribute('ui_tooltip_alt')
 	var extra_margin_top = target.getAttribute('ui_tooltip_y_offset')
-	ui_tooltip.style.marginTop = (extra_margin_top ? extra_margin_top : 0)
+	ui_tooltip.style.marginTop = (extra_margin_top ? extra_margin_top : 0) + 'px'
 	var extra_margin_left = target.getAttribute('ui_tooltip_x_offset')
-	ui_tooltip.style.marginLeft = (extra_margin_left ? extra_margin_left : 0)
+	ui_tooltip.style.marginLeft = (extra_margin_left ? extra_margin_left : 0) + 'px'
 	ui_tooltip_set_pos(event.clientX, event.clientY)
 }
 
@@ -1380,8 +1264,8 @@ function ui_tooltip_set_pos(x, y)
 	if(y < 0)
 		y = 0
 
-	ui_tooltip.style.left = x
-	ui_tooltip.style.top = y
+	ui_tooltip.style.left = x + 'px'
+	ui_tooltip.style.top = y + 'px'
 }
 
 // (--\S+):\s+(.*);\s*/\*\s*(.+?)\s*\*/
