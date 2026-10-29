@@ -4401,7 +4401,7 @@ function lol_rpanel_update()
 		g_lol_current_detail['post_title'] = '글이 존재하지 않습니다.'
 		g_lol_current_detail['post_text'] = '글이 존재하지 않습니다.'
 		g_lol_current_detail['nickname'] = '사용자'
-		g_lol_current_detail['stack'] = '0'
+		g_lol_current_detail['stack'] = '' // 없는 글에 "(0 스택)"이 뜨지 않게
 		g_lol_current_detail['likes'] = '0'
 		g_lol_current_detail['views'] = '0'
 		g_lol_current_detail['post_date'] = '시간'
@@ -4425,7 +4425,7 @@ function lol_rpanel_update()
 
 	lol_rpanel_header_title.firstChild.nodeValue = g_lol_current_detail['post_title']
 	lol_rpanel_header_nick.firstChild.nodeValue = g_lol_current_detail['nickname']
-	lol_rpanel_header_spec.innerHTML = format('{0} 조회 <b>{1}</b>', g_lol_current_detail['stack'] ? g_lol_current_detail['stack'] : "", g_lol_current_detail['views'])
+	lol_rpanel_header_spec.innerHTML = format('{0}조회 <b>{1}</b>', g_lol_current_detail['stack'] ? format('({0} 스택) ', g_lol_current_detail['stack']) : '', g_lol_current_detail['views'])
 
 	lol_rpanel_header_memo_button.style.display = 'block'
 	lol_rpanel_header_memo_body.style.display = 'none'
