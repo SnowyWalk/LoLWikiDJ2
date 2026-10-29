@@ -2772,6 +2772,80 @@ top: 0;
 } }
 
 
+/* ---------- 롤백 글 불러오는 중 자리표시(스켈레톤) ----------
+   #lol_rpanel[skeleton]: 글을 연 직후 본문이 오기 전. 헤더·본문을 자리표시로 바꾼다 (모바일 ← 버튼은 남긴다)
+   #lol_rpanel_reply_board[skeleton]: 본문은 왔지만 댓글이 아직 안 온 상태 */
+.lol_skeleton {
+  display: none;
+}
+
+.lol_skeleton i {
+  display: block;
+  height: 14px;
+  margin: 6px 0px;
+  border-radius: 4px;
+  background-color: color-mix(in srgb, currentColor 14%, transparent); /* 밝은·어두운 테마 모두 글자색 기준으로 */
+  animation: lol_skeleton_pulse 1.2s ease-in-out infinite;
+}
+
+.lol_skeleton i[short] {
+  width: 40%;
+}
+
+.lol_skeleton i[circle] {
+  flex: none;
+  width: 60px;
+  height: 60px;
+  margin: 0px;
+  border-radius: 50%;
+}
+
+.lol_skeleton div {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@keyframes lol_skeleton_pulse {
+  50% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lol_skeleton i { animation: none; }
+}
+
+/* JS가 인라인 display를 넣는 자식들이 있어서 !important */
+#lol_rpanel[skeleton] > #lol_rpanel_header > :not(#lol_rpanel_back):not(.lol_skeleton),
+#lol_rpanel[skeleton] > #lol_rpanel_body > :not(.lol_skeleton),
+#lol_rpanel_reply_board[skeleton] > #lol_rpanel_reply_board_list {
+  display: none !important;
+}
+
+#lol_rpanel[skeleton] #lol_rpanel_header_skeleton {
+  display: flex;
+  flex: 1 1 0;
+  gap: 10px;
+  align-items: center;
+}
+
+#lol_rpanel[skeleton] #lol_rpanel_body_skeleton,
+#lol_rpanel_reply_board[skeleton] #lol_rpanel_reply_skeleton {
+  display: block;
+  margin-right: 15px;
+}
+
+#lol_rpanel_reply_skeleton > [row] {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--롤백_보더색);
+}
+
+#lol_rpanel_reply_skeleton i[circle] {
+  width: 36px;
+  height: 36px;
+}
+
+
 /* ================================ 모바일 레이아웃 ======================================== */
 /* 데스크톱에서는 숨기는 모바일 전용 요소 */
 #mobile_tabbar, #lol_rpanel_back {
@@ -3286,7 +3360,7 @@ top: 0;
     cursor: pointer;
   }
 
-  #lol_rpanel_header_icon {
+  #lol_rpanel_header_icon, #lol_rpanel_header_skeleton i[circle] {
     width: 44px;
     height: 44px;
     margin-top: 0px;

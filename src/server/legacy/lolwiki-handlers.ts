@@ -33,10 +33,10 @@ export function registerLolwikiHandlers(socket: Socket) {
   const apiError = (error: { code?: string; statusCode?: number }, message: string) =>
     socket.emit("lol_api_error", { code: error.code || "", status_code: error.statusCode || 0, message });
 
-  async function detailWithReplies(androidId: string, postSeq: string, data: Data) {
-    const ret = await lolwiki.getArticleDetail(androidId, postSeq, lolwiki.socketAuth(socket, data.auth));
-    ret.replys = await lolwiki.getArticleReplies(androidId, postSeq, lolwiki.socketAuth(socket, data.auth));
-    return ret;
+  // 댓글 작성·삭제 뒤에는 댓글만 다시 받는다 (롤백은 글 수정이 없어서 본문은 그대로)
+  async function repliesOnly(data: Data) {
+    const replys = await lolwiki.getArticleReplies(data.android_id, data.post_seq, lolwiki.socketAuth(socket, data.auth));
+    return { post_seq: String(data.post_seq), replys };
   }
 
   on("lol_get_article_list", async (data) => {
@@ -46,10 +46,37 @@ export function registerLolwikiHandlers(socket: Socket) {
     socket.emit("lol_article_list", ret);
   });
 
+  // 본문과 댓글을 동시에 요청하고 먼저 온 쪽부터 따로 보낸다. 브라우저는 그동안 스켈레톤을 보여 준다.
+  // requested_seq: 글이 삭제돼 post_seq가 비어도 브라우저가 어느 요청의 응답인지 알 수 있게 한다
   on("lol_get_article_detail", async (data) => {
-    const ret = await detailWithReplies(data.android_id, data.post_seq, data);
-    if (data.android_id !== GUEST && (await isBookmarked(data.android_id, data.post_seq))) ret.isBookmarked = true;
-    socket.emit("lol_article_detail", ret);
+    const postSeq = String(data.post_seq ?? "");
+    const auth = lolwiki.socketAuth(socket, data.auth); // 두 요청이 같은 인증 정보를 써야 토큰 갱신이 한 번으로 묶인다
+
+    const post = (async () => {
+      try {
+        const [ret, bookmarked] = await Promise.all([
+          lolwiki.getArticleDetail(data.android_id, postSeq, auth),
+          data.android_id !== GUEST ? isBookmarked(data.android_id, postSeq) : false,
+        ]);
+        if (bookmarked) ret.isBookmarked = true;
+        socket.emit("lol_article_detail", { ...ret, requested_seq: postSeq });
+      } catch (error) {
+        logger.warn({ err: error, nick: who(), postSeq }, "글 본문 조회 실패");
+        socket.emit("lol_article_detail", { post_seq: "", requested_seq: postSeq });
+      }
+    })();
+
+    const replies = (async () => {
+      try {
+        const replys = await lolwiki.getArticleReplies(data.android_id, postSeq, auth);
+        socket.emit("lol_article_replies", { post_seq: postSeq, replys });
+      } catch (error) {
+        logger.warn({ err: error, nick: who(), postSeq }, "글 댓글 조회 실패");
+        socket.emit("lol_article_replies", { post_seq: postSeq, replys: [], failed: true });
+      }
+    })();
+
+    await Promise.all([post, replies]);
   });
 
   on("lol_user_info", async (data) => {
@@ -70,7 +97,7 @@ export function registerLolwikiHandlers(socket: Socket) {
       logger.warn({ err: error }, "lol_write_reply 실패");
       return apiError(error as object, "댓글 작성에 실패했습니다. 롤백과사전 계정 정보 또는 API 연결 상태를 확인해주세요.");
     }
-    socket.emit("lol_write_reply", await detailWithReplies(data.android_id, data.post_seq, data));
+    socket.emit("lol_write_reply", await repliesOnly(data));
   });
 
   on("lol_like", async (data) => {
@@ -79,7 +106,7 @@ export function registerLolwikiHandlers(socket: Socket) {
 
   on("lol_delete_reply", async (data) => {
     await lolwiki.deleteReply(data.android_id, data.post_seq, data.reply_seq, lolwiki.socketAuth(socket, data.auth));
-    socket.emit("lol_delete_reply", await detailWithReplies(data.android_id, data.post_seq, data));
+    socket.emit("lol_delete_reply", await repliesOnly(data));
   });
 
   on("lol_write", async (data) => {

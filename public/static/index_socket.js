@@ -599,34 +599,24 @@ socket.on('lol_bookmark_list', function(data) {
 })
 
 
-socket.on('lol_article_detail', function(data) {
-	if(data.post_seq.length == 0)
-		return
-
-	if(g_lol_current_detail && g_lol_current_detail['post_seq'] == data.post_seq)
-		g_lol_same_article_prev = true
-	else
-		g_lol_same_article_prev = false
-
-	g_lol_current_detail = data
-
-	lol_write_panel_toggle(false)
-	lol_rpanel_refresh.style.display = 'block'
-	lol_rpanel_update()
-	lol_mobile_show_detail(true)
-})
+/* 글 상세: 본문과 댓글이 따로, 먼저 온 쪽부터 온다 (index_lol.js의 lol_request_article_detail) */
+// index_lol.js가 이 파일보다 늦게 로드되므로 함수를 바로 넘기지 않고 감싼다
+socket.on('lol_article_detail', data => lol_on_article_detail(data))
+socket.on('lol_article_replies', data => lol_on_article_replies(data))
 
 /* 북마크 아카이브 디테일 수신 */
 socket.on('lol_bookmark_archived', function(data) {
 	if(data.post_seq.length == 0)
 		return
 
+	lol_cancel_article_loading()
+
 	if(g_lol_current_detail && g_lol_current_detail['post_seq'] == data.post_seq)
 		g_lol_same_article_prev = true
 	else
 		g_lol_same_article_prev = false
 
-	data.replys = JSON.parse(data.replys)
+	data.replys = JSON.parse(data.replys) || []
 	g_lol_current_detail = data
 
 	lol_write_panel_toggle(false)
@@ -738,17 +728,20 @@ socket.on('lol_api_logout', function() {
 	alert('롤백과사전 계정에서 로그아웃했습니다.')
 })
 
+/* 댓글 작성·삭제 뒤에는 서버가 댓글만 보낸다 ({ post_seq, replys }) */
+function lol_replace_current_replys(data)
+{
+	if(!g_lol_current_detail || g_lol_current_detail['post_seq'] != data.post_seq)
+		return false // 그사이 다른 글로 넘어갔다
+	g_lol_current_detail['replys'] = data.replys
+	lol_rpanel_update_replys()
+	return true
+}
+
 socket.on('lol_write_reply', function(data) {
-	if(g_lol_current_detail && g_lol_current_detail['post_seq'] == data.post_seq)
-		g_lol_same_article_prev = true
-	else
-		g_lol_same_article_prev = false
-
-	g_lol_current_detail = data
 	lol_rpanel_reply_board_input.value = ''
-
-	lol_rpanel_update()
-	lol_rpanel_body.scroll(0, 99999999)
+	if(lol_replace_current_replys(data))
+		lol_rpanel_body.scroll(0, 99999999)
 })
 
 socket.on('lol_like', function(isSuccess) {
@@ -759,17 +752,7 @@ socket.on('lol_like', function(isSuccess) {
 	lol_rpanel_update()
 })
 
-socket.on('lol_delete_reply', function(data) {
-	if(g_lol_current_detail && g_lol_current_detail['post_seq'] == data.post_seq)
-		g_lol_same_article_prev = true
-	else
-		g_lol_same_article_prev = false
-
-	g_lol_current_detail = data
-
-	lol_rpanel_update()
-	// lol_rpanel_body.scroll(0, 99999999)
-})
+socket.on('lol_delete_reply', lol_replace_current_replys)
 
 socket.on('lol_write', function() {
 	lol_write_subject.value = ''

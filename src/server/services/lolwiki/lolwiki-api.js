@@ -284,6 +284,18 @@ function createLolWikiClient(request) {
 		}
 	}
 
+	// 같은 인증 정보로 동시에 보낸 요청(글 본문·댓글)이 함께 401을 받으면 갱신을 한 번만 한다.
+	// refresh 토큰이 1회용이면 두 번째 갱신이 실패하면서 막 받은 토큰까지 지워 버리기 때문
+	function recoverAuth(auth, deviceId) {
+		if(!auth)
+			return Promise.resolve(false)
+		if(!auth.recovering) {
+			auth.recovering = (async () => await refreshAuth(auth, deviceId) || await loginAuth(auth, deviceId))()
+				.finally(() => { auth.recovering = null })
+		}
+		return auth.recovering
+	}
+
 	async function apiRequest(method, path, options = {}) {
 		function buildRequestOptions() {
 			const requestOptions = {
@@ -307,7 +319,7 @@ function createLolWikiClient(request) {
 		}
 		catch(error) {
 			if(error && error.statusCode === 401 && options.allowReauth !== false) {
-				const recovered = await refreshAuth(options.auth, options.deviceId) || await loginAuth(options.auth, options.deviceId)
+				const recovered = await recoverAuth(options.auth, options.deviceId)
 				if(!recovered) {
 					error.code = 'LOLWIKI_REAUTH_REQUIRED'
 					throw error
@@ -615,6 +627,8 @@ function createLolWikiClient(request) {
 		const responsePost = firstValue(response, ['post', 'result'], null)
 		const cachedPost = postCache.get(asString(postSeq))
 		const post = responsePost ? Object.assign({}, cachedPost || {}, responsePost) : cachedPost
+		if(responsePost)
+			rememberPost(asString(postSeq), post)
 		return post ? normalizeDetailPost(post, identity) : normalizeDetailPost({}, identity)
 	}
 
@@ -635,6 +649,12 @@ function createLolWikiClient(request) {
 	}
 
 	async function getArticleAuthorId(postSeq) {
+		// 롤백은 글 수정이 없어서 작성자는 바뀌지 않는다 → 목록·상세에서 받아 둔 글이 있으면 그대로 쓴다
+		const cachedPost = postCache.get(asString(postSeq))
+		const cachedAuthorId = cachedPost ? asString(firstValue(cachedPost, ['author_id'], '')) : ''
+		if(cachedAuthorId)
+			return cachedAuthorId
+
 		const response = await apiRequest('GET', '/legacy-read-compat/post', {
 			deviceId: GUEST_DEVICE_ID,
 			query: { post_seq: postSeq }

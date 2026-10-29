@@ -503,7 +503,101 @@ function lol_onclick_article()
 		onrclick_playlist_info_box()
 
 	g_lol_rpanel_scroll_top_switch = true
+	lol_request_article_detail(seq)
+}
+
+/* 글 상세 요청. 서버는 본문(lol_article_detail)과 댓글(lol_article_replies)을 따로, 먼저 온 쪽부터 보낸다.
+   다른 글이면 응답을 기다리지 않고 바로 상세 화면으로 넘어가 자리표시(스켈레톤)를 보여 준다.
+   같은 글(새로고침)이면 지금 내용을 그대로 두고 응답이 오면 덮어쓴다 */
+var g_lol_detail_loading = null // { seq, post, replys, timer }
+const LOL_DETAIL_TIMEOUT_MS = 35000 // 서버는 요청마다 15초 제한 + 토큰 갱신 후 재시도
+
+function lol_request_article_detail(seq)
+{
+	if(g_lol_detail_loading)
+		clearTimeout(g_lol_detail_loading.timer)
+
+	var loading = g_lol_detail_loading = { seq: seq, post: null, replys: null, timer: 0 }
+	// 응답이 끝내 안 오면(연결 끊김 등) 자리표시에 갇히지 않게 실패로 처리
+	loading.timer = setTimeout(function() {
+		if(g_lol_detail_loading == loading && !loading.post)
+			lol_on_article_detail({ post_seq: '', requested_seq: seq })
+		if(g_lol_detail_loading == loading && !loading.replys)
+			lol_on_article_replies({ post_seq: seq, replys: [], failed: true })
+	}, LOL_DETAIL_TIMEOUT_MS)
+
+	var is_same = g_lol_current_detail && g_lol_current_detail['post_seq'] == seq
+	if(!is_same)
+	{
+		lol_write_panel_toggle(false)
+		lol_rpanel_body_youtube_container.style.display = 'none'
+		iframe_set_src(lol_rpanel_body_youtube_player, '') // 숨겨진 채로 이전 글 영상 소리가 계속 나지 않게
+		lol_rpanel.toggleAttribute('skeleton', true)
+		lol_rpanel_reply_board.toggleAttribute('skeleton', true)
+		lol_rpanel_body.scroll(0, 0)
+		lol_mobile_show_detail(true)
+	}
+
 	socket.emit('lol_get_article_detail', lol_add_api_auth({ post_seq: seq, android_id: g_lol_android_id }))
+}
+
+/* 본문 수신 (글이 없거나 실패하면 post_seq가 비어 있고 requested_seq만 있다) */
+function lol_on_article_detail(data)
+{
+	var loading = g_lol_detail_loading
+	if(!loading || loading.seq != (data.requested_seq || data.post_seq))
+		return // 그사이 다른 글을 눌렀다
+	loading.post = data
+	if(loading.replys)
+		clearTimeout(loading.timer)
+
+	g_lol_same_article_prev = Boolean(g_lol_current_detail && data.post_seq && g_lol_current_detail['post_seq'] == data.post_seq)
+
+	// 댓글: 먼저 와 있으면 그것, 새로고침이면 새 댓글이 올 때까지 지금 댓글, 아니면 불러오는 중(null)
+	if(loading.replys)
+		data.replys = loading.replys
+	else if(g_lol_same_article_prev)
+		data.replys = g_lol_current_detail['replys']
+	else
+		data.replys = null
+
+	g_lol_current_detail = data
+
+	lol_write_panel_toggle(false)
+	lol_rpanel_refresh.style.display = 'block'
+	lol_rpanel_update()
+	lol_mobile_show_detail(true)
+}
+
+/* 댓글 수신 */
+function lol_on_article_replies(data)
+{
+	var loading = g_lol_detail_loading
+	if(!loading || loading.seq != data.post_seq || loading.replys)
+		return
+	loading.replys = data.replys
+	if(loading.post)
+		clearTimeout(loading.timer)
+	if(data.failed)
+		loading.replys.failed = true
+
+	// 본문이 아직이면 본문이 올 때 같이 그린다
+	if(loading.post && g_lol_current_detail && g_lol_current_detail['post_seq'] == data.post_seq)
+	{
+		g_lol_current_detail['replys'] = loading.replys
+		lol_rpanel_update_replys()
+	}
+}
+
+/* 불러오던 글 버리기: 서버 응답 없이 상세를 채우는 경로(어워드·북마크 보관본·아이콘 변경)에서,
+   늦게 온 응답이 그 화면을 덮지 않게 한다 */
+function lol_cancel_article_loading()
+{
+	if(g_lol_detail_loading)
+		clearTimeout(g_lol_detail_loading.timer)
+	g_lol_detail_loading = null
+	lol_rpanel.removeAttribute('skeleton')
+	lol_rpanel_reply_board.removeAttribute('skeleton')
 }
 
 /* 글 우클릭 -> 해당 글의 아카이브 정보 요청 */
@@ -529,6 +623,7 @@ function lol_onrclick_article()
 	}
 	else if(g_lol_is_award)
 	{
+		lol_cancel_article_loading()
 		g_lol_current_detail = lol_award_articles_body.filter(x => x['post_seq'] == seq)[0]
 
 		lol_write_panel_toggle(false)
@@ -4198,8 +4293,10 @@ function lol_onclick_aritcle_bookmark()
 			return
 	}
 
-	g_lol_current_detail.reply_cnt = g_lol_current_detail.replys.length
-	socket.emit('lol_bookmark', { android_id: g_lol_android_id, data: g_lol_current_detail, isRegister: g_lol_current_detail.isBookmarked ? false : true})
+	// 댓글이 아직 안 왔으면 빈 댓글로 보관한다
+	var replys = g_lol_current_detail.replys || []
+	var bookmark = Object.assign({}, g_lol_current_detail, { replys: replys, reply_cnt: replys.length })
+	socket.emit('lol_bookmark', { android_id: g_lol_android_id, data: bookmark, isRegister: g_lol_current_detail.isBookmarked ? false : true})
 
 	g_lol_current_detail.isBookmarked = !g_lol_current_detail.isBookmarked
 	lol_rpanel_bookmark.style.backgroundImage = g_lol_current_detail.isBookmarked ? "url('static/star_full.png')" : "url('static/star_empty.png')"
@@ -4210,7 +4307,7 @@ function lol_onclick_aritcle_bookmark()
 function lol_onclick_aritcle_refresh()
 {
 	lol_rpanel_refresh.style.display = 'none'
-	socket.emit('lol_get_article_detail', lol_add_api_auth({ post_seq: g_lol_current_detail['post_seq'], android_id: g_lol_android_id }))
+	lol_request_article_detail(g_lol_current_detail['post_seq'])
 }
 
 /* 글 내용 패널 업데이트 */
@@ -4236,6 +4333,8 @@ function lol_rpanel_update()
 		g_lol_current_detail['fixedpic'] = ''
 		g_lol_current_detail['replys'] = []
 	}
+
+	lol_rpanel.removeAttribute('skeleton')
 
 	// 헤더
 	lol_rpanel_header_icon.src = lol_convert_uri_to_mirror(lol_get_icon_url(g_lol_current_detail['icon_img'], g_lol_current_detail['badge_use']))
@@ -4408,16 +4507,54 @@ function lol_rpanel_update()
 		lol_rpanel_body_share_button.style.display = 'none'
 	lol_rpanel_body_share_button.setAttribute('icon_img', lol_get_icon_url(g_lol_current_detail['icon_img'], g_lol_current_detail['badge_use']))
 	lol_rpanel_body_share_button.setAttribute('post_title', g_lol_current_detail['post_title'])
-	lol_rpanel_body_share_button.setAttribute('post_reply', g_lol_current_detail['replys'].length)
 	lol_rpanel_body_share_button.setAttribute('post_spec', format('{0} | 조회 {1} | 추천 {2}', g_lol_current_detail['nickname'], g_lol_current_detail['views'], g_lol_current_detail['likes']))
 	lol_rpanel_body_share_button.setAttribute('post_seq',  g_lol_current_detail['post_seq'])
 
 	// 댓글
+	lol_rpanel_update_replys()
+
+	// 댓글 작성칸
+	if(g_lol_android_id != g_lol_guest_id && !is_invalid)
+	{
+		lol_rpanel_reply_board_write_container.style.display = 'flex'
+	}
+	else
+	{
+		lol_rpanel_reply_board_write_container.style.display = 'none'
+	}
+
+	if(g_lol_rpanel_scroll_top_switch)
+	{
+		g_lol_rpanel_scroll_top_switch = false
+		lol_rpanel_body.scroll(0, 0)
+	}
+}
+
+/* 댓글 목록 업데이트. 댓글이 아직 안 왔으면(null) 자리표시를 보여 준다 */
+function lol_rpanel_update_replys()
+{
+	var replys = g_lol_current_detail['replys']
+	lol_rpanel_reply_board.toggleAttribute('skeleton', !replys)
+
 	// 모든 자식 노드 삭제
-	while ( lol_rpanel_reply_board_list.hasChildNodes() ) 
+	while ( lol_rpanel_reply_board_list.hasChildNodes() )
 		lol_rpanel_reply_board_list.removeChild( lol_rpanel_reply_board_list.firstChild )
 
-	for(var e of g_lol_current_detail['replys'])
+	if(!replys)
+		return
+
+	lol_rpanel_body_share_button.setAttribute('post_reply', replys.length)
+
+	if(replys.failed)
+	{
+		var div = document.createElement('div')
+		div.classList.add('lol_reply_list_item')
+		div.appendChild(document.createTextNode('댓글을 불러오지 못했습니다. 새로고침을 눌러 다시 시도해 주세요.'))
+		lol_rpanel_reply_board_list.appendChild(div)
+		return
+	}
+
+	for(var e of replys)
 	{
 		var div = document.createElement('div')
 		div.classList.add('lol_reply_list_item')
@@ -4491,28 +4628,14 @@ function lol_rpanel_update()
 
 		lol_rpanel_reply_board_list.appendChild(div)
 	}
-
-	// 댓글 작성칸
-	if(g_lol_android_id != g_lol_guest_id && !is_invalid)
-	{
-		lol_rpanel_reply_board_write_container.style.display = 'flex'
-	}
-	else
-	{
-		lol_rpanel_reply_board_write_container.style.display = 'none'
-	}
-
-	if(g_lol_rpanel_scroll_top_switch)
-	{
-		g_lol_rpanel_scroll_top_switch = false
-		lol_rpanel_body.scroll(0, 0)
-	}
 }
 
 /* 아이콘 변경 창 열기 */
 function lol_rpanel_show_icon_change_panel()
 {
 	lol_mobile_show_detail(true)
+
+	lol_cancel_article_loading()
 
 	// 아이콘
 	lol_rpanel_header_icon.src = ''

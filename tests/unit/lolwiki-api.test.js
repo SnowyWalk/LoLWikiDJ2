@@ -523,3 +523,54 @@ test('browser code owns ID/password/tokens and attaches them to community reques
 	assert.match(socketSource, /lol_store_api_tokens\(auth\)/)
 	assert.doesNotMatch(lolSource + socketSource + indexSource, /g_storage_lol_key|lol_login_instantly|계정 코드|lol_encode_account_code|lol_decode_account_code/)
 })
+
+test('concurrent post and comment requests share one token refresh when both get 401', async () => {
+	let refreshCalls = 0
+	const client = createLolWikiClient(async options => {
+		await Promise.resolve() // 두 요청이 함께 401을 받도록 한 박자 늦춘다
+		if(options.uri.endsWith('/auth/refresh')) {
+			refreshCalls++
+			if(options.body.refresh_token !== 'refresh-1')
+				throw unauthorized('refresh token already used')
+			return { auth: { access_token: 'fresh-access', refresh_token: 'refresh-2' } }
+		}
+		if(options.headers.Authorization !== 'Bearer fresh-access')
+			throw unauthorized()
+		if(options.uri.endsWith('/legacy-read-compat/post'))
+			return { post: samplePost }
+		if(options.uri.endsWith('/legacy-read-compat/comments'))
+			return { results: [{ comment_seq: 1, body: '댓글', author_id: 'other' }] }
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+	const source = { access_token: 'expired-access', refresh_token: 'refresh-1', device_id: 'browser-1', user_key: 'user-1' }
+	const { auth } = browserAuth(client, source)
+
+	const [post, replies] = await Promise.all([
+		client.getArticleDetail('user-1', '8526228', auth),
+		client.getArticleReplies('user-1', '8526228', auth)
+	])
+	assert.equal(post.post_seq, '8526228')
+	assert.equal(replies.length, 1)
+	assert.equal(refreshCalls, 1)
+	assert.equal(source.access_token, 'fresh-access')
+	assert.equal(source.refresh_token, 'refresh-2')
+})
+
+test('article author id comes from posts already fetched, since posts are never edited', async () => {
+	let postRequests = 0
+	const client = createLolWikiClient(async options => {
+		if(options.uri.endsWith('/legacy-read-compat/post')) {
+			postRequests++
+			return { post: samplePost }
+		}
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+
+	assert.equal(await client.getArticleAuthorId('999'), 'user-key') // 처음 보는 글은 요청한다
+	assert.equal(postRequests, 1)
+
+	await client.getArticleDetail('LoLWikiDJ_Guest', '8526228', null)
+	assert.equal(postRequests, 2)
+	assert.equal(await client.getArticleAuthorId('8526228'), 'user-key')
+	assert.equal(postRequests, 2) // 상세에서 받아 둔 작성자를 그대로 쓴다
+})
