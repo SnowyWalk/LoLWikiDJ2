@@ -36,8 +36,26 @@ function unique(values) {
 	return values.filter((value, index) => value && values.indexOf(value) === index)
 }
 
+// 롤백 API 시각은 글은 '2026-07-21T15:44:15'(한국 시각, 시간대 없음), 댓글은 '…T15:47:26+09:00'처럼 섞여 온다.
+// 브라우저에는 한국 시각 'YYYY-MM-DD HH:mm:ss' 하나로 통일해 보낸다 (상대 시간 표시는 브라우저가 한다)
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+const isoDateReg = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?\s*(Z|[+-]\d{2}:?\d{2})?$/
+
 function displayDate(value) {
-	return asString(value).replace('T', ' ')
+	const text = asString(value).trim()
+	const m = isoDateReg.exec(text)
+	if(!m)
+		return text
+
+	let ms = Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0))
+	if(m[7] && m[7] !== 'Z') {
+		const sign = m[7][0] === '-' ? -1 : 1
+		const digits = m[7].slice(1).replace(':', '')
+		ms -= sign * (Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2))) * 60 * 1000
+	}
+	else if(!m[7])
+		ms -= KST_OFFSET_MS // 시간대가 없으면 한국 시각
+	return new Date(ms + KST_OFFSET_MS).toISOString().slice(0, 19).replace('T', ' ')
 }
 
 function requestId() {

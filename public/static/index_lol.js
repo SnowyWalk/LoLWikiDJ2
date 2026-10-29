@@ -417,9 +417,9 @@ function lol_lpanel_update()
 		// 하단
 		var spec = document.createElement('div')
 		spec.toggleAttribute('spec', true)
-		if(!e['before'])
-			e['before'] = e['post_date'].substr(0, 10)
-		spec.innerHTML = format('{0} | {1} | 조회 {2} | 추천 {3}{4}', e['before'].replace('size=1', ''), e['nickname'], e['views'], e['likes'], e['alarm'] > 0 ? format(' | 신고 {0}', e['alarm']) : '')
+		spec.innerHTML = format('<span></span> | {0} | 조회 {1} | 추천 {2}{3}', e['nickname'], e['views'], e['likes'], e['alarm'] > 0 ? format(' | 신고 {0}', e['alarm']) : '')
+		var before = e['before'] || e['post_date'] || ''
+		lol_set_time(spec.firstChild, before, before.replace('size=1', ''))
 		center_div.appendChild(spec)
 		div.appendChild(center_div)
 
@@ -588,6 +588,87 @@ function lol_on_article_replies(data)
 		lol_rpanel_update_replys()
 	}
 }
+
+/* ---------- 시간 표시 ----------
+   24시간 이내는 "n초 전 / n분 전 / n시간 전"(마우스를 올리면 정확한 시각), 그 이후는 한국 시각.
+   서버는 'YYYY-MM-DD HH:mm:ss'(한국 시각)로 보내지만, 북마크 보관본 같은 예전 데이터에는
+   'T'나 '+09:00'이 붙어 있을 수 있어서 여기서도 같은 형식으로 맞춘다 */
+var lol_time_reg = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?\s*(Z|[+-]\d{2}:?\d{2})?$/
+const LOL_KST_OFFSET_MS = 9 * 60 * 60 * 1000
+
+/* 시각 문자열 → 밀리초. 시각이 아니면 null, 시간대가 없으면 한국 시각으로 본다 */
+function lol_parse_time(value)
+{
+	var m = lol_time_reg.exec(String(value || '').trim())
+	if(!m)
+		return null
+
+	var ms = Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0))
+	if(!m[7])
+		return ms - LOL_KST_OFFSET_MS
+	if(m[7] == 'Z')
+		return ms
+	var sign = m[7][0] == '-' ? -1 : 1
+	var digits = m[7].slice(1).replace(':', '')
+	return ms - sign * (Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2))) * 60 * 1000
+}
+
+/* 밀리초 → 한국 시각 'YYYY-MM-DD HH:mm:ss' */
+function lol_format_kst(ms)
+{
+	return new Date(ms + LOL_KST_OFFSET_MS).toISOString().slice(0, 19).replace('T', ' ')
+}
+
+function lol_time_render(el)
+{
+	var ms = Number(el.getAttribute('lol_time'))
+	var exact = lol_format_kst(ms)
+	var diff = Math.floor((Date.now() - ms) / 1000)
+	var text = exact
+
+	if(diff < 24 * 60 * 60)
+	{
+		if(diff < 1)
+			text = '방금 전'
+		else if(diff < 60)
+			text = diff + '초 전'
+		else if(diff < 60 * 60)
+			text = Math.floor(diff / 60) + '분 전'
+		else
+			text = Math.floor(diff / 3600) + '시간 전'
+		el.title = exact
+	}
+	else
+		el.removeAttribute('title')
+
+	if(el.textContent != text)
+		el.textContent = text
+}
+
+/* el에 시각 표시. 시각으로 읽을 수 없는 값은 fallback_html(없으면 값 그대로의 글자)로 둔다 */
+function lol_set_time(el, value, fallback_html)
+{
+	var ms = lol_parse_time(value)
+	if(ms === null)
+	{
+		el.removeAttribute('lol_time')
+		el.removeAttribute('title')
+		if(fallback_html === undefined)
+			el.textContent = value || ''
+		else
+			el.innerHTML = fallback_html
+		return
+	}
+
+	el.setAttribute('lol_time', ms)
+	lol_time_render(el)
+}
+
+// "n초 전"이 흘러가도록 롤백 창이 열려 있는 동안 주기적으로 다시 그린다
+setInterval(function() {
+	if(g_lol_panel_show)
+		document.querySelectorAll('[lol_time]').forEach(lol_time_render)
+}, 5000)
 
 /* 불러오던 글 버리기: 서버 응답 없이 상세를 채우는 경로(어워드·북마크 보관본·아이콘 변경)에서,
    늦게 온 응답이 그 화면을 덮지 않게 한다 */
@@ -4485,7 +4566,7 @@ function lol_rpanel_update()
 
 		e.remove()
 	})
-	lol_rpanel_body_date.firstChild.nodeValue = g_lol_current_detail['post_date']
+	lol_set_time(lol_rpanel_body_date, g_lol_current_detail['post_date'])
 
 	// 추천
 	if(!is_invalid)
@@ -4583,11 +4664,11 @@ function lol_rpanel_update_replys()
 
 		var before = document.createElement('div')
 		before.toggleAttribute('before', true)
-		before.innerHTML = e['reply_date']
+		lol_set_time(before, e['reply_date'], e['reply_date'] // 시각이 아니면(예전 HTML 표기) 그대로
 							.replace(' size=1', '')
 							.replace(/&lt;/g, '<')
 							.replace(/&gt;/g, '>')
-							.replace('</font>', '</b></font>')
+							.replace('</font>', '</b></font>'))
 		nick_container.appendChild(before)
 
 		if(e['my_post'] == 1)

@@ -574,3 +574,11 @@ test('article author id comes from posts already fetched, since posts are never 
 	assert.equal(await client.getArticleAuthorId('8526228'), 'user-key')
 	assert.equal(postRequests, 2) // 상세에서 받아 둔 작성자를 그대로 쓴다
 })
+
+test('dates are sent as plain Korea time whether or not the API attaches a time zone', () => {
+	assert.equal(normalizeComment({ created_at: '2026-07-21T15:47:26+09:00' }).reply_date, '2026-07-21 15:47:26')
+	assert.equal(normalizeComment({ created_at: '2026-07-21T06:47:26Z' }).reply_date, '2026-07-21 15:47:26')
+	assert.equal(normalizeListPost({ created_at: '2026-07-21T15:44:15' }).post_date, '2026-07-21 15:44:15')
+	assert.equal(normalizeListPost({ created_at: '2026-07-21T15:44:15.123456' }).post_date, '2026-07-21 15:44:15')
+	assert.equal(normalizeComment({ created_at: '' }).reply_date, '')
+})
