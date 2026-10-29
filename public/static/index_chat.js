@@ -1028,7 +1028,7 @@ function ondrop_chat_input_file(e)
 /* 이미지 저장소 버튼 클릭 이벤트 */
 
 function chat_scroll() {
-	var to = is_scroll_bottom() ? 'none' : 'inline-block' // [v2] inline 이면 위아래 여백이 높이에 안 들어간다
+	var to = is_scroll_bottom() ? 'none' : 'inline-flex' // [v2] 화살표와 글자를 가운데 정렬 (chat-modern.css)
 
 	if(g_nick == 'OBS')
 		to = 'none'

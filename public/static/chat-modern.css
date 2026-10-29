@@ -368,39 +368,48 @@
   filter: brightness(1.08);
 }
 
-:root[chat-modern] #chat_scroller {
-  /* 스크롤을 올려 채팅이 멈췄을 때 입력창 위에 뜨는 알약 (누르면 맨 아래로). 표시는 index_chat.js 가 display:inline-block 으로 */
-  top: -88px;
+:root[chat-modern] #chat_extra > #chat_scroller {
+  /* 스크롤을 올려 채팅이 멈췄을 때 입력창 위에 뜨는 칩 (누르면 맨 아래로). 표시는 index_chat.js 가 display:inline-flex 로 (화살표·글자를 가로세로 가운데에).
+     테마 강조색을 바탕에 쓰면 노란·분홍 테마에서 요란해져서, 채팅 글자색을 반투명하게 깐 반전 칩으로
+     (밝은 테마에선 어두운 칩, 어두운 테마에선 밝은 칩) */
+  top: -84px;
   width: fit-content; /* 입력창 줄 규칙(#chat_extra > div: 폭 100%, 높이 37px)이 같이 걸려서 덮는다 */
-  height: auto;
-  padding: 11px 20px 11px 16px;
+  height: 34px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--cm-bubble) 18%, transparent);
   border-radius: 999px;
-  background-color: color-mix(in srgb, var(--cm-accent) 92%, black);
-  color: var(--cm-accent-text);
+  background-color: color-mix(in srgb, var(--cm-text) 86%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--cm-bubble);
   font-family: var(--cm-font);
-  font-size: calc(13.5px * var(--font-scale));
-  font-weight: 700;
-  line-height: 18px;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--cm-accent) 35%, rgba(0, 0, 0, 0.25));
-  transition: background-color 0.12s, transform 0.12s;
+  font-size: calc(13px * var(--font-scale));
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: background-color 0.15s, transform 0.15s;
 }
 
-:root[chat-modern] #chat_scroller:hover {
-  background-color: var(--cm-accent);
+:root[chat-modern] #chat_extra > #chat_scroller:hover {
+  background-color: var(--cm-text);
   transform: translateY(-1px);
 }
 
-/* 아래 화살표 */
-:root[chat-modern] #chat_scroller::before {
+/* 아래 화살표 (Lucide chevron-down 을 마스크로 써서 글자색과 같게) */
+:root[chat-modern] #chat_extra > #chat_scroller::before {
   content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin: 0 10px 3px 2px;
-  border-right: 2.5px solid currentColor;
-  border-bottom: 2.5px solid currentColor;
-  transform: rotate(45deg);
-  vertical-align: middle;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-left: -2px; /* 화살표 쪽 여백이 눈으로 더 넓어 보여서 살짝 당긴다 */
+  background-color: currentColor;
+  -webkit-mask: url(icons/light/sort-down.svg) center / 16px 16px no-repeat;
+  mask: url(icons/light/sort-down.svg) center / 16px 16px no-repeat;
 }
 
 /* opacity 는 키프레임에 넣지 않는다: 보내는 중(pending, 0.6) → 확정(1) 전환이 transition 으로 자연스럽게 이어지도록 */
