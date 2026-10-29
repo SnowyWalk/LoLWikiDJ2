@@ -2832,12 +2832,13 @@ top: 0;
   width: 40%;
 }
 
-.lol_skeleton i[circle] {
+/* 아이콘 자리: 롤백 아이콘은 사각형 그대로 */
+.lol_skeleton i[icon] {
   flex: none;
   width: 60px;
   height: 60px;
   margin: 0px;
-  border-radius: 50%;
+  border-radius: 0px;
 }
 
 .lol_skeleton div {
@@ -2880,7 +2881,7 @@ top: 0;
   border-top: 1px solid var(--롤백_보더색);
 }
 
-#lol_rpanel_reply_skeleton i[circle] {
+#lol_rpanel_reply_skeleton i[icon] {
   width: 36px;
   height: 36px;
 }
@@ -3400,7 +3401,7 @@ top: 0;
     cursor: pointer;
   }
 
-  #lol_rpanel_header_icon, #lol_rpanel_header_skeleton i[circle] {
+  #lol_rpanel_header_icon, #lol_rpanel_header_skeleton i[icon] {
     width: 44px;
     height: 44px;
     margin-top: 0px;
