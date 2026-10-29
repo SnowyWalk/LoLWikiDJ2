@@ -47,6 +47,12 @@ const ICONS = {
   "star-full": ["star", "#f5b301", true],
   "image-add": ["image-plus", "muted"],
   "search-white": ["search", "#ffffff"],
+  "write-white": ["square-pen", "#ffffff"], // 롤백 글쓰기 둥근 버튼
+  // 롤백 글목록 오른쪽 글 종류 표시
+  "lol-youtube": ["circle-play", "#ef4444"],
+  "lol-image": ["image", "muted"],
+  "lol-doodlr": ["palette", "muted"],
+  "lol-text": ["align-left", "muted"],
 };
 
 for (const [theme, colors] of Object.entries(THEMES)) {

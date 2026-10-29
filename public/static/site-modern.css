@@ -53,6 +53,17 @@
   --icon-star-full: url(icons/light/star-full.svg);
   --icon-image-add: url(icons/light/image-add.svg);
   --icon-search-white: url(icons/light/search-white.svg);
+  --icon-write-white: url(icons/light/write-white.svg);
+  --icon-lol-youtube: url(icons/light/lol-youtube.svg);
+  --icon-lol-image: url(icons/light/lol-image.svg);
+  --icon-lol-doodlr: url(icons/light/lol-doodlr.svg);
+  --icon-lol-text: url(icons/light/lol-text.svg);
+
+  /* 롤백 글목록 */
+  --sm-row-hover: rgba(15, 23, 42, 0.045);
+  --sm-row-selected: rgba(37, 99, 235, 0.08);
+  --sm-reply: #e11d48;
+  --sm-reply-bg: rgba(225, 29, 72, 0.1);
 }
 
 :root[site-modern][theme=dark] {
@@ -104,6 +115,15 @@
   --icon-star: url(icons/dark/star.svg);
   --icon-star-full: url(icons/dark/star-full.svg);
   --icon-image-add: url(icons/dark/image-add.svg);
+  --icon-lol-youtube: url(icons/dark/lol-youtube.svg);
+  --icon-lol-image: url(icons/dark/lol-image.svg);
+  --icon-lol-doodlr: url(icons/dark/lol-doodlr.svg);
+  --icon-lol-text: url(icons/dark/lol-text.svg);
+
+  --sm-row-hover: rgba(255, 255, 255, 0.05);
+  --sm-row-selected: rgba(122, 162, 255, 0.12);
+  --sm-reply: #fb7185;
+  --sm-reply-bg: rgba(251, 113, 133, 0.14);
 }
 
 /* ======================= 우측 채팅 상단 탭 ======================= */
@@ -213,9 +233,14 @@
 }
 
 :root[site-modern] #video_info_volume_mute_once_btn {
-  background: var(--icon-mute-once) center / 20px 20px no-repeat !important;
+  background: var(--icon-mute-once) center / 22px 22px no-repeat !important;
   border-radius: 6px;
   opacity: 0.85;
+  /* 레거시 그림(46×25, 5px 아래로 내려 그림) 대신 스피커 버튼과 같은 25×25 칸, 같은 높이.
+     스피커 버튼 왼쪽에 슬라이더와의 간격(10px)만큼 띄워 붙인다: 박스 246 - 슬라이더 165 - 스피커 35 = 46, 46 - 10 - 25 = 11 */
+  width: 25px;
+  right: auto;
+  margin: 0 0 0 11px;
 }
 
 :root[site-modern] #video_info_volume_btn:hover,
@@ -444,6 +469,190 @@
   background-color: var(--sm-btn-hover);
 }
 
+/* ======================= 롤백 글목록 ======================= */
+
+:root[site-modern] #lol_lpanel {
+  border-right-color: var(--sm-border);
+  font-family: var(--sm-font);
+}
+
+/* 위: 내 아이콘·닉네임, 내 정보·새로고침 버튼 */
+:root[site-modern] #lol_lpanel_header {
+  margin-left: 0;
+  padding: 0 8px 0 12px;
+  gap: 4px;
+  border-bottom-color: var(--sm-border);
+  color: var(--sm-text);
+}
+
+:root[site-modern] #lol_lpanel_account_icon {
+  width: 36px;
+  height: 36px;
+  margin-right: 6px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+:root[site-modern] #lol_lpanel_account {
+  font-size: 14px;
+  color: var(--sm-muted);
+}
+
+:root[site-modern] #lol_lpanel_account > b {
+  color: var(--sm-text);
+}
+
+/* 새로고침 버튼은 JS 가 높이(0/38px)로 숨기고 보이므로 높이는 건드리지 않는다 */
+:root[site-modern] #lol_lpanel_userinfo,
+:root[site-modern] #lol_lpanel_refresh {
+  width: 38px;
+  margin-right: 0;
+  border-radius: 10px;
+  background-position: center;
+  background-size: 21px 21px;
+  transition: background-color 0.12s;
+}
+
+:root[site-modern] #lol_lpanel_userinfo { height: 38px; background-image: var(--icon-profile); }
+:root[site-modern] #lol_lpanel_refresh { background-image: var(--icon-refresh); }
+
+:root[site-modern] #lol_lpanel_userinfo:hover,
+:root[site-modern] #lol_lpanel_refresh:hover {
+  background-color: var(--sm-row-hover);
+}
+
+/* 글 한 줄 */
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item {
+  height: auto;
+  min-height: 64px;
+  padding: 9px 12px;
+  gap: 11px;
+  border-bottom: 1px solid var(--sm-border);
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item:hover {
+  background-color: var(--sm-row-hover);
+}
+
+/* 지금 열어 둔 글 */
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item[selected] {
+  background-color: var(--sm-row-selected);
+  box-shadow: inset 3px 0 0 var(--sm-accent);
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > img[icon] {
+  width: 44px;
+  height: 44px;
+  margin-left: 0;
+  flex-shrink: 0;
+  border-radius: 12px;
+  object-fit: cover;
+  background-color: var(--sm-row-hover);
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [article_info] {
+  justify-content: center;
+  gap: 3px;
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item [title_container] {
+  align-items: center;
+  min-width: 0;
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item [title] {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--sm-text);
+}
+
+/* 댓글 수: [3] → 작은 알약 */
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item [reply_cnt] {
+  flex-shrink: 0;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background-color: var(--sm-reply-bg);
+  color: var(--sm-reply);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item [reply_cnt]::before,
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item [reply_cnt]::after {
+  content: none;
+}
+
+/* 시간 · 닉네임 · 조회 · 추천 */
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item [spec] {
+  margin-left: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 17px;
+  color: var(--sm-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item [spec] > span + span::before {
+  content: '·';
+  margin: 0 5px;
+  opacity: 0.7;
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item [spec] > [nick] {
+  font-weight: 700;
+  color: var(--sm-text);
+  opacity: 0.75;
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item [spec] > [alarm] {
+  font-weight: 700;
+  color: #dc2626;
+}
+
+/* 오른쪽 글 종류 */
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type] {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  opacity: 0.9;
+  background-size: 18px 18px;
+}
+
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type][kind=youtube] { background-image: var(--icon-lol-youtube); }
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type][kind=doodlr] { background-image: var(--icon-lol-doodlr); }
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type][kind=image] { background-image: var(--icon-lol-image); }
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type][kind=text] { background-image: var(--icon-lol-text); }
+
+/* 아래 둥근 검색·글쓰기 버튼 (위치는 그대로) */
+:root[site-modern] #lol_lpanel_search_button,
+:root[site-modern] #lol_lpanel_write_button {
+  width: 54px;
+  height: 54px;
+  background-color: #2563eb;
+  background-size: 24px 24px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: background-color 0.15s, transform 0.15s;
+}
+
+:root[site-modern] #lol_lpanel_search_button { background-image: var(--icon-search-white); }
+:root[site-modern] #lol_lpanel_write_button { background-image: var(--icon-write-white); }
+
+:root[site-modern] #lol_lpanel_search_button:hover,
+:root[site-modern] #lol_lpanel_write_button:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
 /* ======================= 모바일 (index.css 끝의 모바일 @media 와 같은 조건) ======================= */
 
 @media (max-width: 768px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
@@ -478,6 +687,18 @@
   :root[site-modern] #mobile_tabbar #mobile_tab_djlist_badge {
     background-color: var(--sm-badge);
     color: var(--sm-badge-text);
+  }
+
+  /* 한 번만 음소거: 스피커 버튼과 같은 크기 */
+  :root[site-modern] #video_info_volume_mute_once_btn {
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    background-size: 20px 20px !important;
+  }
+
+  :root[site-modern] #video_info_volume_btn {
+    background-size: 20px 20px !important;
   }
 
   /* 정보바 줄 높이(30px)에 맞춘 대기열·스킵 버튼 */

@@ -658,8 +658,8 @@ socket.on('lol_user_info', function(user_info) {
 	}
 	g_lol_user_info = user_info
 
-	lol_lpanel_update()
-	lol_rpanel_update()
+	// 롤백 창을 열 때마다 오는 응답이라, 글목록·글상세까지 다시 그리면 화면이 깜빡인다 → 헤더만
+	lol_lpanel_update_header()
 })
 
 socket.on('lol_get_user_memos', function(user_memos) {

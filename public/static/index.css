@@ -1882,6 +1882,9 @@ temp[emoji] {
   font-weight: bold;
   margin-left: 3px;
 }
+
+.lol_article_list_item [reply_cnt]::before { content: '['; }
+.lol_article_list_item [reply_cnt]::after { content: ']'; }
   
 .lol_article_list_item [spec] {
   font-weight: bold;
@@ -1890,12 +1893,42 @@ temp[emoji] {
   font-size: small;
 }
 
+/* 글목록 하단 항목 사이 구분자 (채팅 링크의 spec 은 글자 그대로라 해당 없음) */
+.lol_article_list_item [spec] > span + span::before {
+  content: ' | ';
+}
+
 .lol_article_list_item [type] {
+  display: block;
   width: 30px;
   height: 30px;
   padding-left: 5px;
   margin-left: auto;
   flex-grow: 0;
+  flex-shrink: 0;
+  background: no-repeat content-box center / contain;
+}
+
+.lol_article_list_item [type][kind=youtube] { background-image: url('icon_youtube.png'); }
+.lol_article_list_item [type][kind=doodlr] { background-image: url('icon_doodlr.png'); }
+.lol_article_list_item [type][kind=image] { background-image: url('icon_img.png'); }
+.lol_article_list_item [type][kind=text] { background-image: url('icon_text.png'); }
+
+/* 상대 시간에 마우스를 올리면 뜨는 정확한 시각 (index_lol.js 가 위치를 잡는다) */
+#lol_time_tip {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background-color: rgba(17, 24, 39, 0.92);
+  color: #fff;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .lol_article_list_item:hover {

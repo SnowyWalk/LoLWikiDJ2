@@ -344,7 +344,13 @@ function lol_get_article_list(seq = 0, cnt = 30, body = '', nick = '', vote = fa
 /* 글 목록 업뎃 */
 function lol_lpanel_update()
 {
-	// 헤더 유저정보
+	lol_lpanel_update_header()
+	lol_lpanel_update_list()
+}
+
+/* 글목록 헤더(내 아이콘·닉네임)만 업뎃. 유저 정보만 바뀐 경우 목록까지 다시 그리면 깜빡인다 */
+function lol_lpanel_update_header()
+{
 	if(!g_lol_user_info)
 	{
 		// 유저 아이콘
@@ -373,23 +379,39 @@ function lol_lpanel_update()
 		// 계정메뉴 - 외부 서버 로그인 아이디 표시
 		lol_lpanel_userinfo_menu_label_account_code.firstChild.nodeValue = g_lol_api_account_id
 	}
+}
 
-	
+/* 글목록 다시 그리기 */
+function lol_lpanel_update_list()
+{
+	// 아이콘 <img>는 주소가 같으면 새로 만들지 않고 옮겨 쓴다.
+	// 새 <img>는 캐시된 이미지라도 디코딩되는 동안 비어 보여서, 목록을 다시 그릴 때마다 아이콘이 깜빡였다
+	var old_icons = {}
+	for(var old of lol_lpanel_board_list.querySelectorAll('img[icon]'))
+	{
+		var key = old.getAttribute('src')
+		;(old_icons[key] = old_icons[key] || []).push(old)
+	}
 
-	// 모든 자식 노드 삭제
-	while ( lol_lpanel_board_list.hasChildNodes() ) 
-		lol_lpanel_board_list.removeChild( lol_lpanel_board_list.firstChild )
-
+	var current_seq = g_lol_current_detail ? String(g_lol_current_detail['post_seq'] || '') : ''
+	var fragment = document.createDocumentFragment()
 	for(var e of g_lol_article_list)
 	{
 		var div = document.createElement('div')
 		div.classList.add('lol_article_list_item')
 		div.setAttribute('seq', e['post_seq'])
-		
+		if(current_seq && String(e['post_seq']) == current_seq)
+			div.toggleAttribute('selected', true)
+
 		// 아이콘
-		var img = document.createElement('img')
-		img.toggleAttribute('icon', true)
-		img.src = lol_convert_uri_to_mirror(lol_get_icon_url(e['icon_img'], e['badge_use']))
+		var icon_src = lol_convert_uri_to_mirror(lol_get_icon_url(e['icon_img'], e['badge_use']))
+		var img = old_icons[icon_src] && old_icons[icon_src].shift()
+		if(!img)
+		{
+			img = document.createElement('img')
+			img.toggleAttribute('icon', true)
+			img.src = icon_src
+		}
 		div.appendChild(img)
 
 		var center_div = document.createElement('div')
@@ -409,39 +431,48 @@ function lol_lpanel_update()
 		{
 			var reply_cnt = document.createElement('div')
 			reply_cnt.toggleAttribute('reply_cnt', true)
-			reply_cnt.innerHTML = format('[{0}]', e['reply_cnt'])
+			reply_cnt.textContent = e['reply_cnt'] // 대괄호는 CSS가 붙인다
 			title_container.appendChild(reply_cnt)
 		}
 		center_div.appendChild(title_container)
 
-		// 하단
+		// 하단: 항목마다 span으로 나누고 구분자(|)는 CSS가 붙인다
 		var spec = document.createElement('div')
 		spec.toggleAttribute('spec', true)
-		spec.innerHTML = format('<span></span> | {0} | 조회 {1} | 추천 {2}{3}', e['nickname'], e['views'], e['likes'], e['alarm'] > 0 ? format(' | 신고 {0}', e['alarm']) : '')
+		spec.innerHTML = format('<span></span><span nick>{0}</span><span>조회 {1}</span><span>추천 {2}</span>{3}', e['nickname'], e['views'], e['likes'], e['alarm'] > 0 ? format('<span alarm>신고 {0}</span>', e['alarm']) : '')
 		var before = e['before'] || e['post_date'] || ''
 		lol_set_time(spec.firstChild, before, before.replace('size=1', ''))
 		center_div.appendChild(spec)
 		div.appendChild(center_div)
 
-		// 텍스트 / 짤 / 유튭 / 두들러
-		var img2 = document.createElement('img')
-		img2.toggleAttribute('type', true)
+		// 텍스트 / 짤 / 유튭 / 두들러 (그림은 CSS가 kind에 따라 넣는다)
+		var type = document.createElement('span')
+		type.toggleAttribute('type', true)
 		if(e['youtube_url'].length)
-			img2.src = 'static/icon_youtube.png'
+			type.setAttribute('kind', 'youtube')
 		else if(e['doodlr'] > 0)
-			img2.src = 'static/icon_doodlr.png'
+			type.setAttribute('kind', 'doodlr')
 		else if(e['pic_new'].length || e['pic_multi'].length)
-			img2.src = 'static/icon_img.png'
-		else 
-			img2.src = 'static/icon_text.png'
-		div.appendChild(img2)
+			type.setAttribute('kind', 'image')
+		else
+			type.setAttribute('kind', 'text')
+		div.appendChild(type)
 
 		div.onclick = lol_onclick_article
 		if(g_lol_is_bookmark || g_lol_is_award)
 			div.oncontextmenu = lol_onrclick_article
 
-		lol_lpanel_board_list.appendChild(div)
+		fragment.appendChild(div)
 	}
+	// 지우고 다시 넣는 사이에 빈 목록이 그려지지 않게 한 번에 바꾼다
+	lol_lpanel_board_list.replaceChildren(fragment)
+}
+
+/* 지금 열린 글을 목록에서 표시 */
+function lol_lpanel_mark_selected(seq)
+{
+	for(var item of lol_lpanel_board_list.children)
+		item.toggleAttribute('selected', seq != null && item.getAttribute('seq') == String(seq))
 }
 
 /* 글목록 새로고침 버튼 */
@@ -516,6 +547,8 @@ function lol_request_article_detail(seq)
 {
 	if(g_lol_detail_loading)
 		clearTimeout(g_lol_detail_loading.timer)
+
+	lol_lpanel_mark_selected(seq)
 
 	var loading = g_lol_detail_loading = { seq: seq, post: null, replys: null, timer: 0 }
 	// 응답이 끝내 안 오면(연결 끊김 등) 자리표시에 갇히지 않게 실패로 처리
@@ -636,10 +669,10 @@ function lol_time_render(el)
 			text = Math.floor(diff / 60) + '분 전'
 		else
 			text = Math.floor(diff / 3600) + '시간 전'
-		el.title = exact
+		el.setAttribute('lol_exact', exact)
 	}
 	else
-		el.removeAttribute('title')
+		el.removeAttribute('lol_exact')
 
 	if(el.textContent != text)
 		el.textContent = text
@@ -652,7 +685,7 @@ function lol_set_time(el, value, fallback_html)
 	if(ms === null)
 	{
 		el.removeAttribute('lol_time')
-		el.removeAttribute('title')
+		el.removeAttribute('lol_exact')
 		if(fallback_html === undefined)
 			el.textContent = value || ''
 		else
@@ -668,7 +701,57 @@ function lol_set_time(el, value, fallback_html)
 setInterval(function() {
 	if(g_lol_panel_show)
 		document.querySelectorAll('[lol_time]').forEach(lol_time_render)
+	if(g_lol_time_tip_target && !g_lol_time_tip_target.isConnected)
+		lol_time_tip_hide()
 }, 5000)
+
+/* 상대 시간에 마우스를 올리면 정확한 시각을 바로 띄운다.
+   title 툴팁은 늦게 뜨고 글자가 바뀌면(5초마다) 사라져서, 화면에 고정된 말풍선 하나를 직접 옮겨 쓴다.
+   (title 속성을 쓰면 글목록 제목용 CSS '[title]'까지 걸려 시간 앞에 여백이 생기기도 했다) */
+var g_lol_time_tip = null
+var g_lol_time_tip_target = null
+
+function lol_time_tip_hide()
+{
+	g_lol_time_tip_target = null
+	if(g_lol_time_tip)
+		g_lol_time_tip.style.display = 'none'
+}
+
+document.addEventListener('mouseover', function(event) {
+	var el = event.target.closest ? event.target.closest('[lol_exact]') : null
+	if(el == g_lol_time_tip_target)
+		return
+	if(!el)
+	{
+		lol_time_tip_hide()
+		return
+	}
+
+	if(!g_lol_time_tip)
+	{
+		g_lol_time_tip = document.createElement('div')
+		g_lol_time_tip.id = 'lol_time_tip'
+		document.body.appendChild(g_lol_time_tip)
+	}
+	g_lol_time_tip_target = el
+	g_lol_time_tip.textContent = el.getAttribute('lol_exact')
+	g_lol_time_tip.style.display = 'block'
+
+	// 시간 글자 바로 위 가운데. 위가 모자라면 아래, 화면 밖으로는 안 나가게
+	var rect = el.getBoundingClientRect()
+	var width = g_lol_time_tip.offsetWidth
+	var height = g_lol_time_tip.offsetHeight
+	var left = Math.min(Math.max(4, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - 4)
+	var top = rect.top - height - 6
+	if(top < 4)
+		top = rect.bottom + 6
+	g_lol_time_tip.style.left = left + 'px'
+	g_lol_time_tip.style.top = top + 'px'
+})
+
+// 스크롤하면 글자와 말풍선이 어긋나므로 숨긴다
+document.addEventListener('scroll', lol_time_tip_hide, true)
 
 /* 불러오던 글 버리기: 서버 응답 없이 상세를 채우는 경로(어워드·북마크 보관본·아이콘 변경)에서,
    늦게 온 응답이 그 화면을 덮지 않게 한다 */
@@ -4757,7 +4840,7 @@ function lol_rpanel_show_icon_change_panel()
 	lol_icon_change_buttons.style.display = 'flex'
 
 	lol_rpanel_body_body.innerHTML = "아래의 등록을 누르면 아이콘이 변경됩니다.<br/>취소버튼을 누르면 이미지를 다시 설정할 수 있습니다."
-	lol_rpanel_body_date.firstChild.nodeValue = "1996-03-15 01:33:00"
+	lol_set_time(lol_rpanel_body_date, "1996-03-15 01:33:00")
 
 	lol_rpanel_body_like.style.display = 'none'
 	lol_rpanel_body_like_count.firstChild.nodeValue = '0'

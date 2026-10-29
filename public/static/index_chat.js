@@ -241,7 +241,7 @@ function add_message(data)
 		{
 			var reply_cnt = document.createElement('div')
 			reply_cnt.toggleAttribute('reply_cnt', true)
-			reply_cnt.innerHTML = format('[{0}]', post_reply)
+			reply_cnt.textContent = post_reply // 대괄호는 CSS가 붙인다
 			title_container.appendChild(reply_cnt)
 		}
 		center_div.appendChild(title_container)
