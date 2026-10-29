@@ -10,8 +10,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BUILDER=dj2-builder
-BUILD_MEMORY=900m        # 빌드가 쓸 수 있는 메모리
-BUILD_MEMORY_SWAP=1600m  # 메모리 + 스왑 합계 상한
+# 900m/1600m 에서는 캐시 없는 npm ci 가 메모리 부족(exit 137)으로 죽었다 → 스왑 4GB 로 늘리고 상한도 올림 (2026-10-29)
+BUILD_MEMORY=1200m       # 빌드가 쓸 수 있는 메모리
+BUILD_MEMORY_SWAP=2600m  # 메모리 + 스왑 합계 상한
 
 git pull --ff-only
 mkdir -p secrets backups
@@ -23,13 +24,20 @@ if [ "${1:-}" = "--pull" ]; then
   docker pull "$APP_IMAGE" || { echo "이미지 $APP_IMAGE 를 받지 못했습니다 (GitHub Actions 빌드·GHCR 로그인 확인)"; exit 1; }
   docker tag "$APP_IMAGE" dj2:local
 else
+  # 상한은 빌더를 만들 때만 정해지므로, 값이 바뀌었으면 빌드 캐시는 남긴 채 빌더를 다시 만든다
+  WANT_BYTES=$(( ${BUILD_MEMORY%m} * 1024 * 1024 ))
+  HAVE_BYTES=$(docker inspect -f '{{.HostConfig.Memory}}' "buildx_buildkit_${BUILDER}0" 2>/dev/null || echo none)
+  if [ "$HAVE_BYTES" != "none" ] && [ "$HAVE_BYTES" != "$WANT_BYTES" ]; then
+    docker buildx rm --keep-state "$BUILDER" >/dev/null
+  fi
   if ! docker buildx inspect "$BUILDER" >/dev/null 2>&1; then
     docker buildx create --name "$BUILDER" --driver docker-container \
       --driver-opt "memory=$BUILD_MEMORY" --driver-opt "memory-swap=$BUILD_MEMORY_SWAP" >/dev/null
   fi
+  # 빌드가 실패해도 빌더 컨테이너를 멈춰 메모리를 돌려준다 (빌드 캐시는 남아 다음 빌드가 빨라짐)
+  trap 'docker buildx stop "$BUILDER" >/dev/null 2>&1 || true' EXIT
   nice -n 15 docker buildx build --builder "$BUILDER" --load \
     --build-arg "APP_VERSION=$(git rev-parse HEAD)" -t dj2:local .
-  # 빌드가 끝나면 빌더 컨테이너를 멈춰 메모리를 돌려준다 (빌드 캐시는 남아 다음 빌드가 빨라짐)
   docker buildx stop "$BUILDER" >/dev/null 2>&1 || true
 fi
 
