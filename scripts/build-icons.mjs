@@ -52,7 +52,6 @@ const ICONS = {
   "lol-youtube": ["circle-play", "#ef4444"],
   "lol-image": ["image", "muted"],
   "lol-doodlr": ["palette", "muted"],
-  "lol-text": ["align-left", "muted"],
 };
 
 for (const [theme, colors] of Object.entries(THEMES)) {

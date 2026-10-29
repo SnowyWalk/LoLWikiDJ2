@@ -57,7 +57,6 @@
   --icon-lol-youtube: url(icons/light/lol-youtube.svg);
   --icon-lol-image: url(icons/light/lol-image.svg);
   --icon-lol-doodlr: url(icons/light/lol-doodlr.svg);
-  --icon-lol-text: url(icons/light/lol-text.svg);
 
   /* 롤백 글목록 */
   --sm-row-hover: rgba(15, 23, 42, 0.045);
@@ -118,7 +117,6 @@
   --icon-lol-youtube: url(icons/dark/lol-youtube.svg);
   --icon-lol-image: url(icons/dark/lol-image.svg);
   --icon-lol-doodlr: url(icons/dark/lol-doodlr.svg);
-  --icon-lol-text: url(icons/dark/lol-text.svg);
 
   --sm-row-hover: rgba(255, 255, 255, 0.05);
   --sm-row-selected: rgba(122, 162, 255, 0.12);
@@ -631,7 +629,8 @@
 :root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type][kind=youtube] { background-image: var(--icon-lol-youtube); }
 :root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type][kind=doodlr] { background-image: var(--icon-lol-doodlr); }
 :root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type][kind=image] { background-image: var(--icon-lol-image); }
-:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type][kind=text] { background-image: var(--icon-lol-text); }
+/* 글만 있는 글은 표시하지 않는다 (자리는 남겨 제목 폭을 다른 줄과 맞춘다) */
+:root[site-modern] #lol_lpanel_board_list > .lol_article_list_item > [type][kind=text] { background-image: none; }
 
 /* 아래 둥근 검색·글쓰기 버튼 (위치는 그대로) */
 :root[site-modern] #lol_lpanel_search_button,
