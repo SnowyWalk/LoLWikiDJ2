@@ -277,10 +277,12 @@
     <!-- 하단 영상 정보 -->
     <div id="video_info">
       <div id="video_info_dj">-<font color=gray><b><a id="video_link" href='#' onclick="show_video_link()"></a></b></font></div>
+      <!-- 오른쪽부터 [슬라이더][스피커][한 번만 음소거][라이브 채팅 켜기] 순서로 오른쪽에 붙는다 (float: right) -->
       <div id="video_info_volume_box">
-        <div id="video_info_volume_mute_once_btn"></div>
         <input type="range" min=0 max=100 value=0.5 step=1 class="no-drag" id="video_info_volume_slider">
         <div id="video_info_volume_btn"></div>
+        <div id="video_info_volume_mute_once_btn"></div>
+        <div id="video_info_livechat_btn"></div>
       </div>
       <div id="video_info_name">재생 중인 영상이 없습니다.</div>
       <div id="my_progress_bar"><div id="my_progress_bar_after"></div></div>
@@ -359,19 +361,20 @@
 
   <!-- 유튜브 생방송 채팅 패널 -->
   <div id="youtube_live_chat_box">
+    <!-- 위 막대: 끌어서 옮기기, 더블클릭하면 처음 자리로 -->
     <div id="youtube_live_chat_box_header" class="no-drag">
-      <div id="youtube_live_chat_header_show_toggle"></div>
-      <div id="youtube_live_chat_header_slider_frame" class="no-drag">
-        <input type="range" min=0.15 max=1 value=1 step=0.01 id="youtube_live_chat_header_slider" class="no-drag">
-      </div>
+      <span id="youtube_live_chat_header_grip"></span>
+      <span id="youtube_live_chat_header_title"><i></i>라이브 채팅</span>
+      <span id="youtube_live_chat_header_opacity_icon"></span>
+      <input type="range" min=0.15 max=1 value=1 step=0.01 id="youtube_live_chat_header_slider" class="no-drag" title="투명도">
+      <div id="youtube_live_chat_header_close" title="닫기"></div>
     </div>
     <iframe id="youtube_live_chat_iframe"></iframe>
     <div id="youtube_live_chat_header_resize_box"></div>
   </div>
 
-  <!-- 라이브챗 전용 패널 -->
+  <!-- 라이브챗을 끄는 동안 화면 전체에서 마우스를 받는 패널 (iframe 이 이벤트를 가져가지 않게) -->
   <div id="youtube_live_chat_global_move_panel"></div>
-  <div id="youtube_live_chat_global_resize_panel"></div>
 
   <!-- 춤추는 캐릭터 패널 -->
   <!-- <div id="dancing_character"></div> -->

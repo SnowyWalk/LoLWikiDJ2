@@ -53,6 +53,7 @@
   --icon-star-full: url(icons/light/star-full.svg);
   --icon-image-add: url(icons/light/image-add.svg);
   --icon-search-white: url(icons/light/search-white.svg);
+  --icon-livechat: url(icons/light/livechat.svg);
   --icon-write-white: url(icons/light/write-white.svg);
   --icon-lol-youtube: url(icons/light/lol-youtube.svg);
   --icon-lol-image: url(icons/light/lol-image.svg);
@@ -114,6 +115,7 @@
   --icon-star: url(icons/dark/star.svg);
   --icon-star-full: url(icons/dark/star-full.svg);
   --icon-image-add: url(icons/dark/image-add.svg);
+  --icon-livechat: url(icons/dark/livechat.svg);
   --icon-lol-youtube: url(icons/dark/lol-youtube.svg);
   --icon-lol-image: url(icons/dark/lol-image.svg);
   --icon-lol-doodlr: url(icons/dark/lol-doodlr.svg);
@@ -234,15 +236,21 @@
   background: var(--icon-mute-once) center / 22px 22px no-repeat !important;
   border-radius: 6px;
   opacity: 0.85;
-  /* 레거시 그림(46×25, 5px 아래로 내려 그림) 대신 스피커 버튼과 같은 25×25 칸, 같은 높이.
-     스피커 버튼 왼쪽에 슬라이더와의 간격(10px)만큼 띄워 붙인다: 박스 246 - 슬라이더 165 - 스피커 35 = 46, 46 - 10 - 25 = 11 */
+  /* 레거시 그림(46×25, 5px 아래로 내려 그림) 대신 스피커 버튼과 같은 25×25 칸, 같은 높이·간격 */
   width: 25px;
-  right: auto;
-  margin: 0 0 0 11px;
+  margin: 0 10px 0 0;
+}
+
+/* 라이브 채팅 켜기 (창을 닫았을 때만) */
+:root[site-modern] #video_info_livechat_btn {
+  background: var(--icon-livechat) center / 21px 21px no-repeat;
+  opacity: 0.85;
+  transition: background-color 0.12s;
 }
 
 :root[site-modern] #video_info_volume_btn:hover,
-:root[site-modern] #video_info_volume_mute_once_btn:hover {
+:root[site-modern] #video_info_volume_mute_once_btn:hover,
+:root[site-modern] #video_info_livechat_btn:hover {
   background-color: var(--sm-btn-hover) !important;
   opacity: 1;
 }
@@ -685,6 +693,10 @@
   :root[site-modern] #mobile_tabbar #mobile_tab_djlist_badge {
     background-color: var(--sm-badge);
     color: var(--sm-badge-text);
+  }
+
+  :root[site-modern] #video_info_livechat_btn {
+    background-size: 19px 19px;
   }
 
   /* 한 번만 음소거: 스피커 버튼과 같은 크기 */

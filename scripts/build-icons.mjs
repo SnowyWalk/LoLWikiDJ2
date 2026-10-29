@@ -52,6 +52,11 @@ const ICONS = {
   "lol-youtube": ["circle-play", "#ef4444"],
   "lol-image": ["image", "muted"],
   "lol-doodlr": ["palette", "muted"],
+  // 라이브 채팅: 음량 옆 켜기 버튼, 영상 위에 뜨는 창 머리(어두운 막대라 흰색)
+  livechat: ["messages-square", "base"],
+  "livechat-grip": ["grip-vertical", "#ffffff"],
+  "livechat-opacity": ["droplet", "#ffffff"],
+  "livechat-close": ["x", "#ffffff"],
 };
 
 for (const [theme, colors] of Object.entries(THEMES)) {
