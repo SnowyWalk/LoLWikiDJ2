@@ -297,7 +297,7 @@ function livechat_set_video_id(video_id)
 	youtube_live_chat_iframe.style.opacity = livechat_opacity
 	youtube_live_chat_box_header.style.opacity = livechat_is_mouse_on_header ? 1 : clamp(livechat_opacity * livechat_const_header_opacity_max, livechat_const_header_opacity_min, livechat_const_header_opacity_max)
 	
-	youtube_live_chat_iframe.setAttribute('src', this_src)
+	iframe_set_src(youtube_live_chat_iframe, this_src)
 }
 
 /* 라이브챗 아예 숨김 */

@@ -137,6 +137,23 @@ function clamp(val, min, max)
 	return val
 }
 
+/* iframe 주소 바꾸기. src를 직접 바꾸면 브라우저 기록이 한 칸씩 쌓여
+   뒤로가기가 페이지 대신 iframe 안의 이전 주소로 가 버리므로, 같은 속성의 새 iframe으로 갈아 끼운다.
+   src가 비면 빈 iframe(about:blank)이 된다. id가 같아서 전역 이름(예: lol_rpanel_body_youtube_player)은 새 iframe을 가리킨다 */
+function iframe_set_src(iframe, src)
+{
+	if((iframe.getAttribute('src') || '') == src)
+		return iframe
+
+	var new_iframe = iframe.cloneNode(false)
+	if(src)
+		new_iframe.setAttribute('src', src)
+	else
+		new_iframe.removeAttribute('src')
+	iframe.replaceWith(new_iframe)
+	return new_iframe
+}
+
 function random_hash()
 {
 	return Math.random().toString(36).substr(2,11) + Math.random().toString(36).substr(2,11)

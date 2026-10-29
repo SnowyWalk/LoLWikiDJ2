@@ -4272,12 +4272,12 @@ function lol_rpanel_update()
 		if(g_lol_current_detail['youtube_url'].length > 0)
 		{
 			lol_rpanel_body_youtube_container.style.display = 'block'
-			lol_rpanel_body_youtube_player.src = format('https://www.youtube.com/embed/{0}', youtube_url_parse(g_lol_current_detail['youtube_url']))
+			iframe_set_src(lol_rpanel_body_youtube_player, format('https://www.youtube.com/embed/{0}', youtube_url_parse(g_lol_current_detail['youtube_url'])))
 		}
 		else
 		{
 			lol_rpanel_body_youtube_container.style.display = 'none'
-			lol_rpanel_body_youtube_player.src = ''
+			iframe_set_src(lol_rpanel_body_youtube_player, '')
 		}
 	}
 
@@ -4530,7 +4530,7 @@ function lol_rpanel_show_icon_change_panel()
 
 	// 글 내용
 	lol_rpanel_body_youtube_container.style.display = 'none'
-	lol_rpanel_body_youtube_player.src = ''
+	iframe_set_src(lol_rpanel_body_youtube_player, '')
 
 	lol_rpanel_body_img1_img.src = ''
 	lol_rpanel_body_img2_img.src = ''
@@ -4904,11 +4904,10 @@ function lol_write_panel_toggle(isShow)
 /* 모바일: 글목록과 글상세(글쓰기 포함) 중 하나만 보여준다. 데스크톱은 둘 다 보이므로 CSS에서 무시된다 */
 function lol_mobile_show_detail(isDetail)
 {
-	if(lol_panel.hasAttribute('mobile_detail') == isDetail)
-		return
 	lol_panel.toggleAttribute('mobile_detail', isDetail)
 
-	// 폰의 뒤로가기 버튼으로 글목록에 돌아올 수 있게 히스토리 한 칸 쌓기 (이미 쌓여 있으면 그대로)
+	// 폰의 뒤로가기 버튼으로 글목록에 돌아올 수 있게 히스토리 한 칸 쌓기 (이미 쌓여 있으면 그대로).
+	// 상세가 이미 떠 있어도 기록 칸이 없으면 쌓는다
 	if(isDetail && g_mobile_media.matches && !(history.state && history.state.lol_detail))
 		history.pushState({ lol_detail: true }, '')
 }
@@ -4916,10 +4915,12 @@ function lol_mobile_show_detail(isDetail)
 /* 모바일 글상세 ← 버튼 */
 function lol_onclick_rpanel_back()
 {
+	// 화면은 바로 글목록으로 돌린다. 기록 이동만 믿으면 그 이동이 화면에 안 닿을 때 버튼이 먹통이 된다
+	lol_mobile_show_detail(false)
+
+	// 상세를 열 때 쌓은 기록 칸은 지워서, 다음 폰 뒤로가기가 헛돌지 않게 한다 (뒤따르는 popstate는 이미 글목록이라 그냥 지나간다)
 	if(history.state && history.state.lol_detail)
-		history.back() // popstate에서 글목록으로 돌아간다
-	else
-		lol_mobile_show_detail(false)
+		history.back()
 }
 
 window.addEventListener('popstate', _ => lol_mobile_show_detail(false))
