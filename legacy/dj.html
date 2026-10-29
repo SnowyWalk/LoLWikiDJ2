@@ -148,8 +148,9 @@
     <!-- 카테고리 : 옵션
          (id·name·value 는 index.js / index_UI.js 가 그대로 쓴다. 스위치는 checkbox, 묶음 버튼은 radio + label) -->
     <div id="option">
-      <section class="option_section">
-        <h3>화면</h3>
+      <!-- 묶음마다 접고 펼 수 있다 (<details>). 처음엔 화면·알림만 펼침, 상태는 index.js 가 기억 -->
+      <details class="option_section" option_section="display" open>
+        <summary>화면</summary>
         <div class="option_item option_block">
           <div class="option_label">테마<small>오리지날 두 가지 + 인기 테마 12종 (shadcn·tweakcn·Catppuccin 등)</small></div>
           <div class="option_themes">
@@ -245,10 +246,10 @@
           <span class="option_label">데이터 절약 모드<small>채팅 이미지와 영상 썸네일을 불러오지 않습니다</small></span>
           <input type="checkbox" id="option_checkbox_dezeolmo" name="option_checkbox_dezeolmo"/>
         </label>
-      </section>
+      </details>
 
-      <section class="option_section">
-        <h3>알림 · 소리</h3>
+      <details class="option_section" option_section="sound" open>
+        <summary>알림 · 소리</summary>
         <label class="option_item option_switch no-drag" for="option_checkbox_mention">
           <span class="option_label">'@닉네임' 알림 받기</span>
           <input type="checkbox" id="option_checkbox_mention" name="option_checkbox_mention" checked/>
@@ -271,10 +272,10 @@
           <span class="option_label">TTS 단축키 사용<small>Shift+Enter 로 TTS 채팅 보내기</small></span>
           <input type="checkbox" id="option_checkbox_tts_key_bind" name="option_checkbox_tts_key_bind" checked/>
         </label>
-      </section>
+      </details>
 
-      <section class="option_section">
-        <h3>TTS 음성</h3>
+      <details class="option_section" option_section="voice">
+        <summary>TTS 음성</summary>
         <div class="option_voices">
           <div class="option_voice">
             <input type="radio" id="tts_1" name="tts_voice_name" value="ko-KR-Standard-A"/>
@@ -317,7 +318,7 @@
             <span class="option_sample" id="option_tts_8_sample" title="미리 듣기"></span>
           </div>
         </div>
-      </section>
+      </details>
 
       <div class="option_row" style="display: none">
         <fieldset style="width: 296px;" class="nanum">
@@ -330,8 +331,8 @@
         </fieldset>
       </div>
 
-      <section class="option_section">
-        <h3>기타</h3>
+      <details class="option_section" option_section="etc">
+        <summary>기타</summary>
         <label class="option_item option_switch no-drag" for="option_checkbox_confirm_leave">
           <span class="option_label">페이지를 닫을 때 확인<small>실수로 탭을 닫거나 새로고침하지 않도록 한 번 묻습니다</small></span>
           <input type="checkbox" id="option_checkbox_confirm_leave" name="option_checkbox_confirm_leave"/>
@@ -340,7 +341,7 @@
           <button id="option_button_chat_clear" class="nanum no-drag">채팅 로그 지우기</button>
           <button id="option_button_logout" class="nanum no-drag">로그아웃</button>
         </div>
-      </section>
+      </details>
     </div>
 
     <!-- 채팅 엑스트라 (챗 스크롤러) -->

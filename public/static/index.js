@@ -215,6 +215,20 @@ function on_page_ready() {
 	option_checkbox_dezeolmo.onchange = _ => localStorage.setItem('option_checkbox_dezeolmo', option_checkbox_dezeolmo.checked)
 	option_checkbox_confirm_leave.onchange = _ => localStorage.setItem('option_checkbox_confirm_leave', option_checkbox_confirm_leave.checked)
 
+	/* [v2] 옵션 묶음 접기·펴기 상태 기억 ({ display: true, voice: false, ... }). 처음 값은 dj.html 의 open */
+	var option_sections = {}
+	try { option_sections = JSON.parse(localStorage.getItem('option_sections') || '{}') || {} } catch(e) {}
+	for(var e of document.querySelectorAll('#option > details[option_section]'))
+	{
+		var key = e.getAttribute('option_section')
+		if(typeof option_sections[key] == 'boolean')
+			e.open = option_sections[key]
+		e.addEventListener('toggle', function() {
+			option_sections[this.getAttribute('option_section')] = this.open
+			localStorage.setItem('option_sections', JSON.stringify(option_sections))
+		})
+	}
+
 	/* [v2] 옵션 - 페이지를 닫을 때 확인: 브라우저의 "사이트에서 나가시겠습니까?" 창을 띄운다.
 	   (브라우저 규칙상 페이지를 한 번이라도 클릭·입력한 뒤에만 뜨고, 문구는 브라우저가 정한다) */
 	window.addEventListener('beforeunload', function(event) {

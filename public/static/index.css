@@ -1019,12 +1019,47 @@ div.recent_list_video {
   background-color: var(--sm-btn, transparent);
 }
 
-.option_section > h3 {
-  margin: 10px 0px 2px;
+.option_section > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0px -12px;
+  padding: 10px 12px;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
   color: var(--sm-muted, gray);
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.option_section > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 오른쪽 꺾쇠: 펼치면 위로 */
+.option_section > summary::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-right: 3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s;
+}
+
+.option_section[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.option_section > summary:hover {
+  color: var(--sm-text, var(--글자색));
+}
+
+.option_section[open] > summary {
+  padding-bottom: 2px;
 }
 
 .option_item {
@@ -1038,7 +1073,7 @@ div.recent_list_video {
   border-top: 1px solid var(--sm-border, var(--보더색));
 }
 
-.option_section > h3 + .option_item {
+.option_section > summary + .option_item {
   border-top: 0px;
 }
 
