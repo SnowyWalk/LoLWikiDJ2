@@ -30,6 +30,14 @@ import { fileSizeLabel, getDateForFilename, getTime, secondsToString } from "./u
 
 export const IMAGE_DIR = path.resolve(env.DATA_DIR, "images");
 
+/** 채팅 이미지로 받는 형식 → 저장 확장자 (static-files.ts 가 확장자로 Content-Type 을 정한다) */
+const IMAGE_BLOB_EXT: Record<string, string> = {
+  "image/webp": "webp",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+};
+
 export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomState, ip: string) {
   const ctl = controllerFor(io, room);
   const all = io.to(room.id);
@@ -189,14 +197,26 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
     all.emit("ad", { message, hRate: Math.random() });
   });
 
-  on("image_blob", async (blob: string) => {
-    const match = /^data:image\/(.*?);base64,/.exec(blob.slice(0, 40));
-    if (!match) return;
-    const ext = match[1].replace(/[^a-z0-9]/gi, "").slice(0, 8) || "png";
-    const data = blob.slice(match[0].length);
+  // [v2] 브라우저가 { type, data: 바이너리 } 로 보낸다 (WebP 로 줄인 뒤, base64 없이).
+  // 새로고침 전의 예전 화면은 base64 data URL 문자열을 보내므로 그것도 받는다.
+  on("image_blob", async (blob: unknown) => {
+    let ext: string;
+    let data: Buffer;
+    if (typeof blob === "string") {
+      const match = /^data:image\/(.*?);base64,/.exec(blob.slice(0, 40));
+      if (!match) return;
+      ext = match[1].replace(/[^a-z0-9]/gi, "").slice(0, 8) || "png";
+      data = Buffer.from(blob.slice(match[0].length), "base64");
+    } else {
+      const { type, data: raw } = (blob ?? {}) as { type?: unknown; data?: unknown };
+      const known = typeof type === "string" ? IMAGE_BLOB_EXT[type] : undefined;
+      if (!known || !Buffer.isBuffer(raw) || raw.length === 0) return;
+      ext = known;
+      data = raw;
+    }
     const filename = `${getDateForFilename()}_${Math.round(Math.random() * 10_000_000)}.${ext}`;
     await mkdir(IMAGE_DIR, { recursive: true });
-    await writeFile(path.join(IMAGE_DIR, filename), data, "base64");
+    await writeFile(path.join(IMAGE_DIR, filename), data);
     ctl.log({ nick: name(), file: filename, size: data.length }, "image_blob");
     all.emit("chat_update", { ...userMessage(`${fileSizeLabel(data.length)} /img static/images/${filename}`), is_blob: true });
   });

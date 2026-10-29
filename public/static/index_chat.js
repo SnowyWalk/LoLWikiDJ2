@@ -785,6 +785,62 @@ function chat_keydown() {
 	}
 }
 
+/* [v2] 채팅 이미지 올리기 (붙여넣기·끌어다 놓기 공통)
+   클립보드 이미지는 압축이 약한 PNG 원본이라 스크린샷·사진이면 몇 MB씩 된다. 그래서
+   - 긴 변이 CHAT_IMAGE_MAX_SIDE 를 넘으면 줄이고, WebP 로 다시 인코딩해 원본보다 작을 때만 그걸 쓴다
+   - base64 글자(용량 +33%) 대신 바이너리로 보낸다
+   움짤(GIF)은 움직임이 사라지므로 그대로 보낸다 */
+const CHAT_IMAGE_MAX_SIDE = 2560
+const CHAT_IMAGE_QUALITY = 0.92
+const CHAT_IMAGE_SEND_TYPES = ['image/webp', 'image/png', 'image/jpeg', 'image/gif'] // 서버가 받는 형식
+
+async function chat_compress_image(file)
+{
+	if(file.type == 'image/gif')
+		return file
+
+	try
+	{
+		var bitmap = await createImageBitmap(file)
+		var scale = Math.min(1, CHAT_IMAGE_MAX_SIDE / Math.max(bitmap.width, bitmap.height))
+		var canvas = document.createElement('canvas')
+		canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+		canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+		canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+		bitmap.close()
+
+		// WebP 인코딩을 못 하는 브라우저는 PNG 를 돌려준다 → 그때도 원본보다 작거나 줄였으면 쓴다
+		var blob = await new Promise(function(resolve) { canvas.toBlob(resolve, 'image/webp', CHAT_IMAGE_QUALITY) })
+		if(blob && (blob.size < file.size || scale < 1 || CHAT_IMAGE_SEND_TYPES.indexOf(file.type) < 0))
+		{
+			console.log(format('채팅 이미지 {0} → {1} ({2}, {3}×{4})', fileSizeLabel(file.size), fileSizeLabel(blob.size), blob.type, canvas.width, canvas.height))
+			return blob
+		}
+	}
+	catch(e)
+	{
+		console.warn('채팅 이미지 압축 실패, 원본을 보냅니다', e)
+	}
+	return file
+}
+
+async function chat_send_image(file)
+{
+	var blob = await chat_compress_image(file)
+	if(CHAT_IMAGE_SEND_TYPES.indexOf(blob.type) < 0)
+	{
+		alert('보낼 수 없는 이미지 형식입니다.')
+		return
+	}
+	socket.emit('image_blob', { type: blob.type, data: await blob.arrayBuffer() })
+	scrollDown()
+}
+
+function fileSizeLabel(bytes)
+{
+	return bytes < 1024 * 1024 ? (Math.round(bytes / 1024 * 10) / 10) + ' KB' : (Math.round(bytes / 1024 / 1024 * 100) / 100) + ' MB'
+}
+
 /* 채팅창 이미지 붙여넣기 이벤트 */
 function chat_onpaste() {
 	var message = chat_input.value
@@ -793,16 +849,17 @@ function chat_onpaste() {
 	var blob = pasteObj.files[0]
 	if(!blob)
 		return
-	if(__is_icon)
-		chat_input.value = ''
+	if(!__is_icon)
+	{
+		chat_send_image(blob)
+		return
+	}
+
+	// 아이콘 등록(/icon)은 서버가 받은 PNG 를 그대로 아이콘 파일(.png)로 저장하므로 예전처럼 원본을 보낸다
+	chat_input.value = ''
 	var reader = new FileReader()
 	reader.onload = function(ev) { 
-		var ret = ev.target.result
-		if(__is_icon)
-			socket.emit('icon_register', ret)
-		else
-			socket.emit('image_blob', ret)
-			// socket.emit('chat_message', { type: 'message', message: format('/img {0}', ret) })
+		socket.emit('icon_register', ev.target.result)
 		scrollDown()
 	}
 	reader.readAsDataURL(blob)
@@ -831,15 +888,7 @@ function ondrop_chat_input_file(e)
 		return;
 	}
 		
-	var file = e.dataTransfer.files[0]
-	reader = new FileReader()
-	reader.onload = function (event) {
-	//   console.log('target', event.target)
-		var data = event.target.result // data:image/gif;base64,R0lGO ...
-		socket.emit('image_blob', data)
-	}
-	// console.log('file', file);
-	reader.readAsDataURL(file);
+	chat_send_image(e.dataTransfer.files[0])
 }
 
 /* 이미지 저장소 버튼 클릭 이벤트 */
