@@ -1268,6 +1268,16 @@ function ui_tooltip_set_pos(x, y)
 	ui_tooltip.style.top = y + 'px'
 }
 
+/* [v2] 글자 크기 프리셋: <html font_scale="..."> → index.css 의 --font-scale (채팅·롤백 글자 크기에 곱한다) */
+function set_font_scale(scale)
+{
+	if(['small', 'normal', 'large', 'xlarge'].indexOf(scale) < 0)
+		scale = 'normal'
+	localStorage.setItem(g_storage_font_scale_key, scale)
+	document.querySelector(format('[name=font_scale][value={0}]', scale)).checked = true
+	document.documentElement.setAttribute('font_scale', scale)
+}
+
 // (--\S+):\s+(.*);\s*/\*\s*(.+?)\s*\*/
 // root_style.setProperty('$1', '$2')
 // root_style.setProperty('$1', '$3')

@@ -152,6 +152,17 @@
   color: var(--글자색);
 }
 
+/* 글자 크기 프리셋 (옵션 → 글자 크기, index_UI.js set_font_scale). 채팅·롤백 글자 크기에 곱한다 */
+:root { --font-scale: 1; }
+:root[font_scale=small] { --font-scale: 0.9; }
+:root[font_scale=large] { --font-scale: 1.12; }
+:root[font_scale=xlarge] { --font-scale: 1.25; }
+
+/* 롤백 글 본문·댓글 (따로 정한 크기가 없어 기본 16px 을 물려받는다) */
+#lol_rpanel_body_body, #lol_rpanel_reply_board_list {
+  font-size: calc(16px * var(--font-scale));
+}
+
 /* 레이아웃 치수 (예전 index_UI.js resize()의 상수들) */
 :root {
   --mainchat-width: 350px; /* 우측 채팅 폭 */
@@ -962,37 +973,259 @@ div.recent_list_video {
   width: 93.4% !important;
 }
 
-/* 옵션 카테고리 */
+/* 옵션 카테고리: 묶음(카드)마다 [제목] + 줄(이름 ··· 스위치/묶음 버튼)
+   색은 site-modern.css 의 --sm-* 를 쓰고, 없으면 예전 테마 색으로 */
 #option {
+  --option-on: #ffffff; /* 묶음 버튼에서 고른 칸·버튼 배경 */
   width: 100%;
   text-align: left;
   overflow-y: auto;
   display: none;
+  box-sizing: border-box;
+  padding: 12px 12px 20px;
+  font-family: var(--sm-font, "Nanum Gothic", sans-serif);
+  color: var(--sm-text, var(--글자색));
 }
 
-.option_row {
+:root[theme=dark] #option {
+  --option-on: rgba(255, 255, 255, 0.12);
+}
+
+.option_section {
+  margin-bottom: 12px;
+  padding: 2px 12px;
+  border: 1px solid var(--sm-border, var(--보더색));
+  border-radius: 12px;
+  background-color: var(--sm-btn, transparent);
+}
+
+.option_section > h3 {
+  margin: 10px 0px 2px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--sm-muted, gray);
+}
+
+.option_item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  min-height: 44px;
+  padding: 8px 0px;
+  border-top: 1px solid var(--sm-border, var(--보더색));
+}
+
+.option_section > h3 + .option_item {
+  border-top: 0px;
+}
+
+.option_label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.option_label > small {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--sm-muted, gray);
+}
+
+/* 켜고 끄기: checkbox 를 스위치 모양으로 */
+.option_switch {
+  flex-wrap: nowrap;
+  cursor: pointer;
+}
+
+.option_switch > input[type=checkbox] {
+  appearance: none;
+  flex: none;
   position: relative;
-  margin-left: 11px;
-  margin-top: 25px;
+  width: 38px;
+  height: 22px;
+  margin: 0px;
+  border-radius: 999px;
+  background-color: var(--sm-track, rgba(0, 0, 0, 0.2));
+  cursor: pointer;
+  transition: background-color 0.15s;
 }
 
-/* 로그아웃 버튼 */
+.option_switch > input[type=checkbox]::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+
+.option_switch > input[type=checkbox]:checked {
+  background-color: var(--sm-accent, #2563eb);
+}
+
+.option_switch > input[type=checkbox]:checked::before {
+  transform: translateX(16px);
+}
+
+.option_switch > input[type=checkbox]:focus-visible,
+.option_segment > input:focus-visible + label,
+.option_voice > input:focus-visible + label {
+  outline: 2px solid var(--sm-accent, #2563eb);
+  outline-offset: 2px;
+}
+
+/* 하나 고르기: radio 를 붙어 있는 버튼 묶음 모양으로. 칸이 모자라면 다음 줄로 내려가 폭을 채운다 */
+.option_segment {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  gap: 2px;
+  max-width: 100%;
+  padding: 3px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background-color: var(--sm-track, rgba(0, 0, 0, 0.1));
+}
+
+.option_segment > input,
+.option_voice > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.option_segment > label {
+  flex: 1 1 0;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--sm-muted, gray);
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.option_segment > input:checked + label {
+  background-color: var(--option-on);
+  color: var(--sm-text, var(--글자색));
+  box-shadow: var(--sm-shadow, none);
+}
+
+/* 볼륨: 위 스위치를 끄면 흐리게 */
+.option_volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0px 0px 10px;
+  font-size: 12.5px;
+  color: var(--sm-muted, gray);
+}
+
+.option_volume > input[type=range] {
+  flex: 1 1 0;
+  min-width: 0px;
+  accent-color: var(--sm-accent, #2563eb);
+  cursor: pointer;
+}
+
+.option_switch:has(> input:not(:checked)) + .option_volume {
+  opacity: 0.45;
+}
+
+/* 미리 듣기 */
+.option_sample {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--icon-volume, url('tts.png')) center / 18px 18px no-repeat;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.option_sample:hover {
+  background-color: var(--sm-btn-hover, rgba(0, 0, 0, 0.08));
+}
+
+/* TTS 음성: 두 줄 격자, 고른 음성은 강조색 테두리 */
+.option_voices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 6px 0px 12px;
+}
+
+.option_voice {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.option_voice > label {
+  flex: 1 1 0;
+  min-width: 0px;
+  padding: 8px 32px 8px 10px;
+  border: 1px solid var(--sm-border, var(--보더색));
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+
+.option_voice > input:checked + label {
+  border-color: var(--sm-accent, #2563eb);
+  background-color: color-mix(in srgb, var(--sm-accent, #2563eb) 12%, transparent);
+  color: var(--sm-accent, #2563eb);
+}
+
+.option_voice > .option_sample {
+  position: absolute;
+  right: 3px;
+}
+
+/* 채팅 로그 지우기 · 로그아웃 */
+.option_buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 0px 12px;
+}
+
+.option_buttons > button {
+  height: 40px;
+  border: 1px solid var(--sm-border, var(--보더색));
+  border-radius: 10px;
+  background-color: var(--option-on);
+  color: var(--sm-text, var(--글자색));
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.12s;
+}
+
+.option_buttons > button:hover {
+  filter: brightness(0.96);
+}
+
 #option_button_logout {
-  width: 328px;
-  height: 40px;
-  font-size: 18px;
-  font-weight: bold;
-  color: red;
-  letter-spacing: 1px;
+  color: #dc2626;
 }
 
-#option_button_chat_clear {
-  width: 328px;
-  height: 40px;
-  font-size: 18px;
-  font-weight: bold;
-  /* color: red; */
-  letter-spacing: 1px;
+:root[theme=dark] #option_button_logout {
+  color: #f87171;
 }
 
 /* 채팅 영역 */
@@ -3221,14 +3454,6 @@ top: 0;
     padding-top: 20px;
   }
 
-  #option fieldset {
-    width: auto !important; /* dj.html 인라인 296px */
-    margin-right: 11px;
-  }
-
-  #option_button_logout, #option_button_chat_clear {
-    width: calc(100% - 11px);
-  }
 
   /* ---------- 하단 탭바 ---------- */
   #mobile_tabbar {

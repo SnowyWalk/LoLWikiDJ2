@@ -143,21 +143,104 @@
       <ul id="recent_list"></ul>
     </div>
 
-    <!-- 카테고리 : 옵션 -->
+    <!-- 카테고리 : 옵션
+         (id·name·value 는 index.js / index_UI.js 가 그대로 쓴다. 스위치는 checkbox, 묶음 버튼은 radio + label) -->
     <div id="option">
-      <div class="option_row"><button id="option_button_logout" class="nanum no-drag">로그아웃</button></div>
+      <section class="option_section">
+        <h3>화면</h3>
+        <div class="option_item">
+          <div class="option_label">테마</div>
+          <div class="option_segment">
+            <input type="radio" id="theme_default" name="theme" value="default" checked/><label for="theme_default" class="no-drag">밝게</label>
+            <input type="radio" id="theme_dark" name="theme" value="dark"/><label for="theme_dark" class="no-drag">어둡게</label>
+          </div>
+        </div>
+        <div class="option_item">
+          <div class="option_label">글자 크기<small>채팅과 롤백 글자에 적용됩니다</small></div>
+          <div class="option_segment">
+            <input type="radio" id="font_scale_small" name="font_scale" value="small"/><label for="font_scale_small" class="no-drag">작게</label>
+            <input type="radio" id="font_scale_normal" name="font_scale" value="normal" checked/><label for="font_scale_normal" class="no-drag">보통</label>
+            <input type="radio" id="font_scale_large" name="font_scale" value="large"/><label for="font_scale_large" class="no-drag">크게</label>
+            <input type="radio" id="font_scale_xlarge" name="font_scale" value="xlarge"/><label for="font_scale_xlarge" class="no-drag">아주 크게</label>
+          </div>
+        </div>
+        <label class="option_item option_switch no-drag" for="option_checkbox_dezeolmo">
+          <span class="option_label">데이터 절약 모드<small>채팅 이미지와 영상 썸네일을 불러오지 않습니다</small></span>
+          <input type="checkbox" id="option_checkbox_dezeolmo" name="option_checkbox_dezeolmo"/>
+        </label>
+      </section>
 
-      <div class="option_row"><input type="checkbox" id="option_checkbox_mention" name="option_checkbox_mention" checked/> <label for="option_checkbox_mention" class="no-drag">'@닉네임' 알림 받기</label></div>
-      <label style="margin-left: 38px; top: 5px; position: relative;" class="no-drag">볼륨</label> 
-      <input type="range" min=0 max=1 value=1 step=0.01 class="no-drag" id="option_slider_mention_volume" style="top: 8px; position: relative;">
-      <img src="static/tts.png" id="option_mention_sample" style="cursor: pointer; position: relative; top: 9px; left: 3px;">
+      <section class="option_section">
+        <h3>알림 · 소리</h3>
+        <label class="option_item option_switch no-drag" for="option_checkbox_mention">
+          <span class="option_label">'@닉네임' 알림 받기</span>
+          <input type="checkbox" id="option_checkbox_mention" name="option_checkbox_mention" checked/>
+        </label>
+        <div class="option_volume">
+          <span>볼륨</span>
+          <input type="range" min=0 max=1 value=1 step=0.01 class="no-drag" id="option_slider_mention_volume">
+          <span class="option_sample" id="option_mention_sample" title="미리 듣기"></span>
+        </div>
+        <label class="option_item option_switch no-drag" for="option_checkbox_tts">
+          <span class="option_label">TTS 음성 채팅 자동 재생</span>
+          <input type="checkbox" id="option_checkbox_tts" name="option_checkbox_tts" checked/>
+        </label>
+        <div class="option_volume">
+          <span>볼륨</span>
+          <input type="range" min=0 max=1 value=1 step=0.01 class="no-drag" id="option_slider_tts_volume">
+          <span class="option_sample" id="option_tts_sample" title="미리 듣기"></span>
+        </div>
+        <label class="option_item option_switch no-drag" for="option_checkbox_tts_key_bind">
+          <span class="option_label">TTS 단축키 사용<small>Shift+Enter 로 TTS 채팅 보내기</small></span>
+          <input type="checkbox" id="option_checkbox_tts_key_bind" name="option_checkbox_tts_key_bind" checked/>
+        </label>
+      </section>
 
-      <div class="option_row"><input type="checkbox" id="option_checkbox_tts" name="option_checkbox_tts" checked/> <label for="option_checkbox_tts" class="no-drag">TTS 음성 채팅 자동 재생하기</label></div>
-      <label style="margin-left: 38px; top: 5px; position: relative;" class="no-drag">볼륨</label> 
-      <input type="range" min=0 max=1 value=1 step=0.01 class="no-drag" id="option_slider_tts_volume" style="top: 8px; position: relative;">
-      <img src="static/tts.png" id="option_tts_sample" style="cursor: pointer; position: relative; top: 9px; left: 3px;">
-
-      <div class="option_row"><input type="checkbox" id="option_checkbox_tts_key_bind" name="option_checkbox_tts_key_bind" checked/> <label for="option_checkbox_tts_key_bind" class="no-drag">TTS 단축키 사용 (Shift+Enter)</label></div>
+      <section class="option_section">
+        <h3>TTS 음성</h3>
+        <div class="option_voices">
+          <div class="option_voice">
+            <input type="radio" id="tts_1" name="tts_voice_name" value="ko-KR-Standard-A"/>
+            <label for="tts_1" class="no-drag">표준 여성 A</label>
+            <span class="option_sample" id="option_tts_1_sample" title="미리 듣기"></span>
+          </div>
+          <div class="option_voice">
+            <input type="radio" id="tts_2" name="tts_voice_name" value="ko-KR-Standard-B"/>
+            <label for="tts_2" class="no-drag">표준 여성 B</label>
+            <span class="option_sample" id="option_tts_2_sample" title="미리 듣기"></span>
+          </div>
+          <div class="option_voice">
+            <input type="radio" id="tts_3" name="tts_voice_name" value="ko-KR-Standard-C"/>
+            <label for="tts_3" class="no-drag">표준 남성 A</label>
+            <span class="option_sample" id="option_tts_3_sample" title="미리 듣기"></span>
+          </div>
+          <div class="option_voice">
+            <input type="radio" id="tts_4" name="tts_voice_name" value="ko-KR-Standard-D"/>
+            <label for="tts_4" class="no-drag">표준 남성 B</label>
+            <span class="option_sample" id="option_tts_4_sample" title="미리 듣기"></span>
+          </div>
+          <div class="option_voice">
+            <input type="radio" id="tts_5" name="tts_voice_name" value="ko-KR-Wavenet-A" checked/>
+            <label for="tts_5" class="no-drag">AI 여성 A</label>
+            <span class="option_sample" id="option_tts_5_sample" title="미리 듣기"></span>
+          </div>
+          <div class="option_voice">
+            <input type="radio" id="tts_6" name="tts_voice_name" value="ko-KR-Wavenet-B"/>
+            <label for="tts_6" class="no-drag">AI 여성 B</label>
+            <span class="option_sample" id="option_tts_6_sample" title="미리 듣기"></span>
+          </div>
+          <div class="option_voice">
+            <input type="radio" id="tts_7" name="tts_voice_name" value="ko-KR-Wavenet-C"/>
+            <label for="tts_7" class="no-drag">AI 남성 A</label>
+            <span class="option_sample" id="option_tts_7_sample" title="미리 듣기"></span>
+          </div>
+          <div class="option_voice">
+            <input type="radio" id="tts_8" name="tts_voice_name" value="ko-KR-Wavenet-D"/>
+            <label for="tts_8" class="no-drag">AI 남성 B</label>
+            <span class="option_sample" id="option_tts_8_sample" title="미리 듣기"></span>
+          </div>
+        </div>
+      </section>
 
       <div class="option_row" style="display: none">
         <fieldset style="width: 296px;" class="nanum">
@@ -170,86 +253,13 @@
         </fieldset>
       </div>
 
-      <div class="option_row">
-        <fieldset style="width: 296px;" class="nanum">
-          <legend style="text-align: center; font-weight: bold;">테마 설정</legend>
-          <div style="margin-bottom: 15px;"><input type="radio" id="theme_default" name="theme" value="default" checked style="margin-bottom: 5px;"/><label for="theme_default">밝은 테마</label></div>
-          <div style="margin-bottom: 5px;"> <input type="radio" id="theme_dark" name="theme" value="dark"/><label for="theme_dark">다크</label></div>
-        </fieldset>
-      </div>
-
-      <div class="option_row">
-        <fieldset style="width: 296px;" class="nanum">
-          <legend style="text-align: center; font-weight: bold;">TTS 음성 설정</legend>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_1" name="tts_voice_name" value="ko-KR-Standard-A"/>
-            <label for="tts_1">표준 여성 A</label>
-            <img src="static/tts.png" id="option_tts_1_sample" style="cursor: pointer; position: relative; top: 3px; left: 3px;">
-          </div>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_2" name="tts_voice_name" value="ko-KR-Standard-B"/>
-            <label for="tts_2">표준 여성 B</label>
-            <img src="static/tts.png" id="option_tts_2_sample" style="cursor: pointer; position: relative; top: 3px; left: 3px;">
-          </div>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_3" name="tts_voice_name" value="ko-KR-Standard-C"/>
-            <label for="tts_3">표준 남성 A</label>
-            <img src="static/tts.png" id="option_tts_3_sample" style="cursor: pointer; position: relative; top: 3px; left: 3px;">
-          </div>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_4" name="tts_voice_name" value="ko-KR-Standard-D"/>
-            <label for="tts_4">표준 남성 B</label>
-            <img src="static/tts.png" id="option_tts_4_sample" style="cursor: pointer; position: relative; top: 3px; left: 3px;">
-          </div>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_5" name="tts_voice_name" value="ko-KR-Wavenet-A" checked/>
-            <label for="tts_5">AI 여성 A</label>
-            <img src="static/tts.png" id="option_tts_5_sample" style="cursor: pointer; position: relative; top: 3px; left: 3px;">
-          </div>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_6" name="tts_voice_name" value="ko-KR-Wavenet-B"/>
-            <label for="tts_6">AI 여성 B</label>
-            <img src="static/tts.png" id="option_tts_6_sample" style="cursor: pointer; position: relative; top: 3px; left: 3px;">
-          </div>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_7" name="tts_voice_name" value="ko-KR-Wavenet-C"/>
-            <label for="tts_7">AI 남성 A</label>
-            <img src="static/tts.png" id="option_tts_7_sample" style="cursor: pointer; position: relative; top: 3px; left: 3px;">
-          </div>
-          <div style="margin-bottom: 5px;">
-            <input type="radio" id="tts_8" name="tts_voice_name" value="ko-KR-Wavenet-D"/>
-            <label for="tts_8">AI 남성 B</label>
-            <img src="static/tts.png" id="option_tts_8_sample" style="cursor: pointer; position: relative; top: 3px; left: 3px;">
-          </div>
-          <!-- 
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_lessy" name="tts_voice_name" value="lessy"/>
-            <label for="tts_lessy">렛시</label>
-          </div>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_maoruya" name="tts_voice_name" value="maoruya"/>
-            <label for="tts_maoruya">마왕루야</label>
-          </div>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_changu" name="tts_voice_name" value="changu"/>
-            <label for="tts_changu">찬구</label>
-          </div>
-          <div style="margin-bottom: 8px;">
-            <input type="radio" id="tts_beube" name="tts_voice_name" value="beube"/>
-            <label for="tts_beube">브베</label>
-          </div>
-          <div style="margin-bottom: 5px;">
-            <input type="radio" id="tts_somnyang" name="tts_voice_name" value="somnyang"/>
-            <label for="tts_somnyang">솜냥냔냐</label>
-          </div>
-          -->
-        </fieldset>
-      </div>
-
-      <div class="option_row"><button id="option_button_chat_clear" class="nanum no-drag">채팅 로그 지우기</button></div>
-
-      <div class="option_row"><input type="checkbox" id="option_checkbox_dezeolmo" name="option_checkbox_dezeolmo"/> <label for="option_checkbox_dezeolmo" class="no-drag">데이터 절약 모드</label></div>
-
+      <section class="option_section">
+        <h3>기타</h3>
+        <div class="option_buttons">
+          <button id="option_button_chat_clear" class="nanum no-drag">채팅 로그 지우기</button>
+          <button id="option_button_logout" class="nanum no-drag">로그아웃</button>
+        </div>
+      </section>
     </div>
 
     <!-- 채팅 엑스트라 (챗 스크롤러) -->

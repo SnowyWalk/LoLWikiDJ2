@@ -60,7 +60,7 @@
   width: auto;
   margin: 8px 10px 0;
   padding: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
   line-height: 1.45;
 }
 
@@ -104,7 +104,7 @@
   grid-row: 1;
   margin: 0;
   padding-left: 0 !important;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   font-weight: 700;
   color: var(--cm-name);
   white-space: nowrap;
@@ -120,10 +120,16 @@
 :root[chat-modern] #chat .chat_balloon > .chat_time {
   grid-column: 3;
   grid-row: 1;
-  margin: 0;
-  font-size: 11px;
+  /* 이름과 글자 기준선을 맞추면 작은 시간 글자가 아래로 처져 보여서 이름 줄의 세로 가운데에 둔다.
+     이름과의 간격은 칸 사이 간격(8px)에서 조금 당긴다 */
+  align-self: center;
+  margin: 0 0 0 -2px;
+  font-size: calc(11px * var(--font-scale));
+  line-height: 1;
   color: var(--cm-muted);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  vertical-align: baseline;
 }
 
 :root[chat-modern] #chat .chat_balloon > .chat_tts_icon {
@@ -245,7 +251,7 @@
   color: var(--cm-system-text);
   border-radius: 12px;
   font-family: var(--cm-font);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--font-scale));
   line-height: 1.5;
   text-align: center;
 }
@@ -259,7 +265,7 @@
   background: transparent !important;
   color: var(--cm-muted);
   font-family: var(--cm-font);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   text-align: center;
 }
 
@@ -287,7 +293,7 @@
   color: var(--cm-text);
   box-shadow: var(--cm-shadow);
   text-align: left;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
 }
 
 :root[chat-modern] #chat > .play_info > img {
@@ -298,7 +304,7 @@
 
 :root[chat-modern] #chat > .play_info > .play_info_dj {
   color: var(--cm-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 :root[chat-modern] #chat > .play_info > .play_info_title {
@@ -326,7 +332,7 @@
   background: var(--cm-input-bg);
   color: var(--cm-text);
   font-family: var(--cm-font);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--font-scale));
   outline: none !important;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -411,6 +417,6 @@
 /* 모바일: 글자 16px 미만 입력창은 iOS 가 포커스할 때 화면을 확대해버린다 (index.css 끝의 모바일 @media 와 같은 조건) */
 @media (max-width: 768px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
   :root[chat-modern] #chat_input {
-    font-size: 16px;
+    font-size: max(16px, calc(13.5px * var(--font-scale)));
   }
 }

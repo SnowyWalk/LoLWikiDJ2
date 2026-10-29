@@ -34,7 +34,7 @@ function add_message(data)
 			pending.removeAttribute('pending')
 			var pending_time = pending.querySelector('.chat_time')
 			if(pending_time && data.time)
-				pending_time.textContent = '  ' + data.time
+				pending_time.textContent = data.time
 			return pending
 		}
 	}
@@ -59,7 +59,8 @@ function add_message(data)
 		case 'message':
 			message.classList.add('chat_balloon')
 
-			nick = data.name + '  '
+			// 예전 디자인은 이름·시간 사이를 공백 글자로 띄웠다. 새 디자인은 CSS 간격만 쓴다
+			nick = g_chat_modern ? data.name : data.name + '  '
 
 			if(emoji_mode)
 				text = data.message
@@ -113,7 +114,7 @@ function add_message(data)
 			// 시간 넣기
 			var timeFont = document.createElement('font')
 			timeFont.classList.add('chat_time')
-			timeFont.appendChild(document.createTextNode('  ' + data.time))
+			timeFont.appendChild(document.createTextNode(g_chat_modern ? data.time : '  ' + data.time))
 			message.appendChild(timeFont)
 			
 			if(data.name == g_nick)

@@ -2,6 +2,7 @@ var socket = io({ query: { channel: window.__DJ_CHANNEL__ } }) // [v2] 채널은
 
 /* 테마 기억 */
 const g_storage_theme_key = 'LoLWikiDJ_Theme'
+const g_storage_font_scale_key = 'option_font_scale' // [v2] 글자 크기 프리셋
 
 /* 채팅/인증용 데이터 */
 const g_storage_nick_key = 'LoLWikiDJ'
@@ -174,6 +175,7 @@ function on_page_ready() {
 
 	// 옵션들 불러오기
 	set_theme(localStorage.getItem(g_storage_theme_key))
+	set_font_scale(localStorage.getItem(g_storage_font_scale_key))
 	if ('option_checkbox_mention' in localStorage)
 		option_checkbox_mention.checked = eval(localStorage.getItem('option_checkbox_mention'))
 	if ('option_slider_mention_volume' in localStorage)
@@ -282,6 +284,10 @@ function on_page_ready() {
 	/* 옵션 - 테마설정 */
 	theme_default.onchange = _ => set_theme(document.querySelector('[name=theme]:checked').value)
 	theme_dark.onchange = _ => set_theme(document.querySelector('[name=theme]:checked').value)
+
+	/* 옵션 - 글자 크기 */
+	for(var e of document.querySelectorAll('[name=font_scale]'))
+		e.onchange = _ => set_font_scale(document.querySelector('[name=font_scale]:checked').value)
 
 	/* 롤백 관련 */
 	lol_lpanel_board.onscroll = lol_lpanel_board_onscroll
