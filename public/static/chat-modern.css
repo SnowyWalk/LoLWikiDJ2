@@ -121,11 +121,11 @@
   grid-column: 3;
   grid-row: 1;
   /* 이름과 글자 기준선을 맞추면 작은 시간 글자가 아래로 처져 보여서 이름 줄의 세로 가운데에 두고,
-     숫자는 글자 상자 아래쪽에 그려지므로 1px 더 올린다. 이름과의 간격은 칸 사이 간격(8px)에서 4px 당긴다 */
+     숫자는 글자 상자 아래쪽에 그려지므로 1px 더 올린다. 이름과의 간격은 칸 사이 간격(8px)에서 3px 당겨 5px */
   align-self: center;
   position: relative;
   top: -1px;
-  margin: 0 0 0 -4px;
+  margin: 0 0 0 -3px;
   font-size: calc(11px * var(--font-scale));
   line-height: 1;
   color: var(--cm-muted);
