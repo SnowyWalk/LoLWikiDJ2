@@ -1,4 +1,4 @@
-var current_theme = 'default' // [default, dark]
+var current_theme = 'default' // g_themes 의 이름 (오리지날: default, dark)
 
 /* UI 초기 셋업 (최초에 한번만 실행)
    화면 배치는 index.css의 레이아웃 변수(--mainchat-width, --bottom-height 등)가 맡는다. */
@@ -1269,6 +1269,44 @@ function ui_tooltip_set_pos(x, y)
 	ui_tooltip.style.top = y + 'px'
 }
 
+/* [v2] 테마 이름 → 바탕(default: 밝음, dark: 어두움). 오리지날이 아닌 테마는 바탕 위에 themes.css 의 palette 색을 덮는다 */
+var g_themes = {
+	default: 'default', dark: 'dark',
+	latte: 'default', solarized: 'default', claude: 'default', vintage: 'default', ocean: 'default',
+	mocha: 'dark', nord: 'dark', dracula: 'dark', tokyonight: 'dark', rosepine: 'dark', gruvbox: 'dark', cyberpunk: 'dark',
+}
+
+/* 지금 바탕이 어두운지 (테마 이름이 아니라 바탕으로 판단해야 추가 테마에서도 맞다) */
+function is_dark_theme()
+{
+	return document.documentElement.getAttribute('theme') == 'dark'
+}
+
+/* [v2] 글꼴: <html font_family="..."> → index.css 의 --app-font. Pretendard 는 고를 때(또는 설정을 열 때) 불러온다 */
+const PRETENDARD_CSS = 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css'
+
+function load_pretendard()
+{
+	if(document.getElementById('pretendard_css'))
+		return
+	var link = document.createElement('link')
+	link.id = 'pretendard_css'
+	link.rel = 'stylesheet'
+	link.href = PRETENDARD_CSS
+	document.head.appendChild(link)
+}
+
+function set_font_family(name)
+{
+	if(['nanum', 'pretendard', 'applesd', 'system'].indexOf(name) < 0)
+		name = 'nanum'
+	if(name == 'pretendard')
+		load_pretendard()
+	localStorage.setItem(g_storage_font_family_key, name)
+	document.querySelector(format('[name=font_family][value={0}]', name)).checked = true
+	document.documentElement.setAttribute('font_family', name)
+}
+
 /* [v2] 글자 크기 프리셋: <html font_scale="..."> → index.css 의 --font-scale (채팅·롤백 글자 크기에 곱한다) */
 function set_font_scale(scale)
 {
@@ -1284,12 +1322,18 @@ function set_font_scale(scale)
 // root_style.setProperty('$1', '$3')
 function set_theme(theme_name)
 {
-	current_theme = theme_name || 'default'
+	current_theme = Object.prototype.hasOwnProperty.call(g_themes, theme_name) ? theme_name : 'default'
+	var base = g_themes[current_theme]
 
 	localStorage.setItem(g_storage_theme_key, current_theme)
 	document.querySelector(format('[name=theme][value={0}]', current_theme)).checked = true
 
-	document.querySelector(':root').setAttribute('theme', current_theme)
+	var root = document.querySelector(':root')
+	root.setAttribute('theme', base)
+	if(current_theme == base)
+		root.removeAttribute('palette')
+	else
+		root.setAttribute('palette', current_theme)
 
 	// var root_style = document.querySelector(':root').style
 	// if(current_theme == 'default')
@@ -1428,7 +1472,7 @@ function set_theme(theme_name)
 	// }
 
 
-	if(current_theme == 'default')
+	if(base == 'default')
 	{
 		chat_input.style.borderLeft = ''
 		chat_input.style.borderRight = ''
@@ -1441,7 +1485,7 @@ function set_theme(theme_name)
 		lol_rpanel_reply_board_send.style.backgroundColor = ''
 		lol_rpanel_reply_board_send.style.border = ''
 	}
-	else if(current_theme == 'dark')
+	else
 	{
 		chat_input.style.borderLeft = 'var(--채팅_입력창_보더_왼쪽)'
 		chat_input.style.borderRight = 'var(--채팅_입력창_보더_오른쪽)'

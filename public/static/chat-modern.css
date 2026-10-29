@@ -7,7 +7,7 @@
  */
 
 :root[chat-modern] {
-  --cm-font: "Nanum Gothic", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --cm-font: var(--app-font); /* 옵션 → 글꼴 (index.css) */
   --cm-bubble: #ffffff;
   --cm-bubble-me: #fff6d8;
   --cm-text: #1f2329;

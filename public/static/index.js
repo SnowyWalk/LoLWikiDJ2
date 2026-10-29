@@ -3,6 +3,7 @@ var socket = io({ query: { channel: window.__DJ_CHANNEL__ } }) // [v2] 채널은
 /* 테마 기억 */
 const g_storage_theme_key = 'LoLWikiDJ_Theme'
 const g_storage_font_scale_key = 'option_font_scale' // [v2] 글자 크기 프리셋
+const g_storage_font_family_key = 'option_font_family' // [v2] 글꼴
 var g_skip_leave_confirm = false // [v2] 로그아웃·서버 새로고침처럼 우리가 일부러 새로고침할 때는 닫기 확인을 묻지 않는다
 
 /* 채팅/인증용 데이터 */
@@ -177,6 +178,7 @@ function on_page_ready() {
 	// 옵션들 불러오기
 	set_theme(localStorage.getItem(g_storage_theme_key))
 	set_font_scale(localStorage.getItem(g_storage_font_scale_key))
+	set_font_family(localStorage.getItem(g_storage_font_family_key))
 	if ('option_checkbox_mention' in localStorage)
 		option_checkbox_mention.checked = eval(localStorage.getItem('option_checkbox_mention'))
 	if ('option_slider_mention_volume' in localStorage)
@@ -294,8 +296,13 @@ function on_page_ready() {
 	playlist_control_panel_playlist_info_select.addEventListener('contextmenu', onrclick_playlist_control_panel_playlist_info_select, false)
 
 	/* 옵션 - 테마설정 */
-	theme_default.onchange = _ => set_theme(document.querySelector('[name=theme]:checked').value)
-	theme_dark.onchange = _ => set_theme(document.querySelector('[name=theme]:checked').value)
+	for(var e of document.querySelectorAll('[name=theme]'))
+		e.onchange = _ => set_theme(document.querySelector('[name=theme]:checked').value)
+
+	/* 옵션 - 글꼴 (Pretendard 미리보기가 제 글꼴로 보이도록 설정을 처음 열 때 불러 둔다) */
+	for(var e of document.querySelectorAll('[name=font_family]'))
+		e.onchange = _ => set_font_family(document.querySelector('[name=font_family]:checked').value)
+	option.addEventListener('pointerenter', load_pretendard, { once: true })
 
 	/* 옵션 - 글자 크기 */
 	for(var e of document.querySelectorAll('[name=font_scale]'))

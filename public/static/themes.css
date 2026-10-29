@@ -1,0 +1,233 @@
+/*
+ * 추가 테마 (2026-10-30)
+ *
+ * 테마는 두 겹이다.
+ *   <html theme="default|dark">  밝은/어두운 바탕. 기존 규칙·아이콘(icons/light, icons/dark)이 여기에 걸려 있다
+ *   <html palette="...">         그 위에 덮는 색. 오리지날 라이트·다크는 palette 가 없다
+ * index_UI.js 의 g_themes 가 테마 이름 → 바탕을 정하고, set_theme 이 두 속성을 넣는다.
+ *
+ * 테마마다 아래 토큰만 정하면, 맨 아래 연결 규칙이 사이트 전체 색 변수(index.css 의 --배경색 등,
+ * site-modern.css 의 --sm-*, chat-modern.css 의 --cm-*)에 넣는다.
+ *   --p-bg        패널 바탕 (채팅·롤백·하단 바)
+ *   --p-card      그 위의 카드 (말풍선·입력창·설정 묶음)
+ *   --p-muted     한 단계 낮은 바탕 (탭 막대·재생목록 왼쪽)
+ *   --p-border    구분선
+ *   --p-fg        글자
+ *   --p-muted-fg  흐린 글자
+ *   --p-primary   강조색 (링크·선택·스위치·이름)   --p-primary-fg  강조색 위 글자
+ *   --p-accent    두 번째 강조색 (내 이름)
+ *
+ * 토큰은 [palette=...] 아무 요소에나 걸리게 해 두었다 → 설정의 테마 미리보기 칸도 같은 값을 쓴다.
+ * 이 파일은 site-modern.css·chat-modern.css 뒤에 불러와서 같은 우선순위의 다크 테마 규칙을 덮는다.
+ */
+
+/* ---------- 설정 미리보기용 (오리지날 두 가지는 <html> 에는 palette 가 붙지 않는다) ---------- */
+[palette=original-light] {
+  --p-bg: #add8e6; --p-card: #ffffff; --p-muted: #87cefa; --p-border: #6aaecb;
+  --p-fg: #000000; --p-muted-fg: #4b6b7a; --p-primary: #2563eb; --p-primary-fg: #ffffff; --p-accent: #dc143c;
+}
+
+[palette=original-dark] {
+  --p-bg: #181818; --p-card: #23262d; --p-muted: #1b1e24; --p-border: #2c2f36;
+  --p-fg: #e2e8f0; --p-muted-fg: #94a3b8; --p-primary: #7aa2ff; --p-primary-fg: #111827; --p-accent: #f08aa6;
+}
+
+/* ---------- 밝은 테마 ---------- */
+
+/* Catppuccin Latte — catppuccin.com */
+[palette=latte] {
+  --p-bg: #e6e9ef; --p-card: #eff1f5; --p-muted: #dce0e8; --p-border: #ccd0da;
+  --p-fg: #4c4f69; --p-muted-fg: #6c6f85; --p-primary: #8839ef; --p-primary-fg: #eff1f5; --p-accent: #d20f39;
+}
+
+/* Solarized Light — Ethan Schoonover */
+[palette=solarized] {
+  --p-bg: #eee8d5; --p-card: #fdf6e3; --p-muted: #e4ddc8; --p-border: #d9d2bc;
+  --p-fg: #586e75; --p-muted-fg: #839496; --p-primary: #268bd2; --p-primary-fg: #fdf6e3; --p-accent: #d33682;
+}
+
+/* Claude — tweakcn */
+[palette=claude] {
+  --p-bg: #f5f4ee; --p-card: #ffffff; --p-muted: #ede9de; --p-border: #dad9d4;
+  --p-fg: #3d3929; --p-muted-fg: #83827d; --p-primary: #c96442; --p-primary-fg: #ffffff; --p-accent: #9a5b2f;
+}
+
+/* Vintage Paper — tweakcn */
+[palette=vintage] {
+  --p-bg: #f5f1e6; --p-card: #fffcf5; --p-muted: #ece5d8; --p-border: #dbd0ba;
+  --p-fg: #4a3f35; --p-muted-fg: #7d6b56; --p-primary: #a67c52; --p-primary-fg: #ffffff; --p-accent: #8b5e3c;
+}
+
+/* Ocean Breeze — tweakcn */
+[palette=ocean] {
+  --p-bg: #eaf5fb; --p-card: #ffffff; --p-muted: #d8ecf7; --p-border: #c6deeb;
+  --p-fg: #1e3a4c; --p-muted-fg: #5f7d8f; --p-primary: #0284c7; --p-primary-fg: #ffffff; --p-accent: #0d9488;
+}
+
+/* ---------- 어두운 테마 ---------- */
+
+/* Catppuccin Mocha — catppuccin.com */
+[palette=mocha] {
+  --p-bg: #1e1e2e; --p-card: #313244; --p-muted: #181825; --p-border: #45475a;
+  --p-fg: #cdd6f4; --p-muted-fg: #a6adc8; --p-primary: #cba6f7; --p-primary-fg: #1e1e2e; --p-accent: #f5c2e7;
+}
+
+/* Nord — nordtheme.com */
+[palette=nord] {
+  --p-bg: #2e3440; --p-card: #3b4252; --p-muted: #272c36; --p-border: #4c566a;
+  --p-fg: #eceff4; --p-muted-fg: #a3abb9; --p-primary: #88c0d0; --p-primary-fg: #2e3440; --p-accent: #b48ead;
+}
+
+/* Dracula — draculatheme.com */
+[palette=dracula] {
+  --p-bg: #282a36; --p-card: #363948; --p-muted: #21222c; --p-border: #44475a;
+  --p-fg: #f8f8f2; --p-muted-fg: #9ea3c2; --p-primary: #bd93f9; --p-primary-fg: #282a36; --p-accent: #ff79c6;
+}
+
+/* Tokyo Night — enkia/tokyo-night */
+[palette=tokyonight] {
+  --p-bg: #1a1b26; --p-card: #24283b; --p-muted: #16161e; --p-border: #3b4261;
+  --p-fg: #c0caf5; --p-muted-fg: #8b93bd; --p-primary: #7aa2f7; --p-primary-fg: #1a1b26; --p-accent: #bb9af7;
+}
+
+/* Rosé Pine — rosepinetheme.com */
+[palette=rosepine] {
+  --p-bg: #191724; --p-card: #26233a; --p-muted: #1f1d2e; --p-border: #403d52;
+  --p-fg: #e0def4; --p-muted-fg: #908caa; --p-primary: #ebbcba; --p-primary-fg: #191724; --p-accent: #9ccfd8;
+}
+
+/* Gruvbox Dark — morhetz/gruvbox */
+[palette=gruvbox] {
+  --p-bg: #282828; --p-card: #3c3836; --p-muted: #1d2021; --p-border: #504945;
+  --p-fg: #ebdbb2; --p-muted-fg: #a89984; --p-primary: #fabd2f; --p-primary-fg: #282828; --p-accent: #8ec07c;
+}
+
+/* Cyberpunk — tweakcn */
+[palette=cyberpunk] {
+  --p-bg: #0c0c1d; --p-card: #17173a; --p-muted: #08081a; --p-border: #2e2e5e;
+  --p-fg: #eceff4; --p-muted-fg: #9a9ac0; --p-primary: #ff2bd6; --p-primary-fg: #ffffff; --p-accent: #00f0c8;
+}
+
+/* ---------- 토큰 → 사이트 색 변수 ---------- */
+:root[palette][theme] {
+  /* index.css (예전 테마 변수) */
+  --배경색: var(--p-bg);
+  --글자색: var(--p-fg);
+  --보더색: var(--p-border);
+  --호버이펙트: color-mix(in srgb, var(--p-fg) 10%, transparent);
+  --호버이펙트_역: color-mix(in srgb, var(--p-fg) 10%, transparent);
+  --스크롤바색: color-mix(in srgb, var(--p-fg) 35%, transparent);
+  --스크롤바색_호버: color-mix(in srgb, var(--p-fg) 55%, transparent);
+
+  --채팅_시스템: var(--p-muted);
+  --채팅_접속: color-mix(in srgb, #22c55e 30%, var(--p-bg));
+  --채팅_떠남: color-mix(in srgb, #ef4444 30%, var(--p-bg));
+  --채팅_나: var(--p-accent);
+  --채팅_배경_나: color-mix(in srgb, var(--p-primary) 14%, var(--p-card));
+  --채팅_남: var(--p-primary);
+  --채팅_배경_남: var(--p-card);
+  --채팅_헬프_배경색: var(--p-card);
+  --채팅_입력창_배경색: var(--p-card);
+  --채팅_입력창_글자색: var(--p-fg);
+  --채팅_입력창_보더색: var(--p-border);
+  --채팅_입력창_보더색_포커스: var(--p-primary);
+
+  --채팅_카테고리_배경색: var(--p-muted);
+  --채팅_카테고리_필터: none;
+  --채팅_카테고리_선택: var(--p-bg);
+  --채팅_카테고리_호버: color-mix(in srgb, var(--p-fg) 8%, var(--p-muted));
+  --채팅_카테고리_챗알림_배경색: var(--p-accent);
+  --채팅_카테고리_챗알림_글자색: var(--p-bg);
+
+  --현재_재생목록_박스_배경색: var(--p-muted);
+  --영상주소복사_글자색: var(--p-primary);
+
+  --플레이리스트_배경색: var(--p-bg);
+  --플레이리스트_좌측_배경색_짝수: var(--p-muted);
+  --플레이리스트_좌측_배경색_홀수: var(--p-muted);
+  --플레이리스트_좌측_배경색_선택: color-mix(in srgb, var(--p-primary) 22%, var(--p-muted));
+  --플레이리스트_헤더_배경색: var(--p-muted);
+  --플레이리스트_헤더_버튼_선택됨: color-mix(in srgb, var(--p-primary) 22%, var(--p-muted));
+  --플레이리스트_영상_배경색: var(--p-bg);
+  --플레이리스트_영상_배경색_짝수: var(--p-bg);
+  --플레이리스트_영상_배경색_홀수: var(--p-bg);
+
+  --롤백_배경색: var(--p-bg);
+  --롤백_보더색: var(--p-border);
+  --롤백_호버색: var(--p-muted);
+  --롤백_글쓰기_내_버튼_호버색: var(--p-bg);
+  --롤백_유저메모_글자색: var(--p-muted-fg);
+
+  /* site-modern.css */
+  --sm-border: color-mix(in srgb, var(--p-border) 80%, transparent);
+  --sm-text: var(--p-fg);
+  --sm-muted: var(--p-muted-fg);
+  --sm-accent: var(--p-primary);
+  --sm-btn: color-mix(in srgb, var(--p-card) 65%, transparent);
+  --sm-btn-hover: color-mix(in srgb, var(--p-fg) 10%, transparent);
+  --sm-btn-border: var(--p-border);
+  --sm-track: color-mix(in srgb, var(--p-fg) 14%, transparent);
+  --sm-badge: var(--p-fg);
+  --sm-badge-text: var(--p-bg);
+  --sm-row-hover: color-mix(in srgb, var(--p-fg) 6%, transparent);
+  --sm-row-selected: color-mix(in srgb, var(--p-primary) 14%, transparent);
+  --sm-reply: var(--p-accent);
+  --sm-reply-bg: color-mix(in srgb, var(--p-accent) 15%, transparent);
+
+  /* chat-modern.css */
+  --cm-bubble: var(--p-card);
+  --cm-bubble-me: color-mix(in srgb, var(--p-primary) 14%, var(--p-card));
+  --cm-text: var(--p-fg);
+  --cm-muted: var(--p-muted-fg);
+  --cm-name: var(--p-primary);
+  --cm-name-me: var(--p-accent);
+  --cm-system-bg: color-mix(in srgb, var(--p-card) 60%, transparent);
+  --cm-system-text: var(--p-muted-fg);
+  --cm-input-bg: var(--p-card);
+  --cm-input-border: var(--p-border);
+  --cm-input-focus: var(--p-primary);
+  --cm-accent: var(--p-primary);
+  --cm-accent-text: var(--p-primary-fg);
+  --cm-scrollbar: color-mix(in srgb, var(--p-fg) 25%, transparent);
+
+  color: var(--p-fg);
+}
+
+/* 설정: 고른 칸·버튼 배경 (index.css 의 #option 이 테마별로 정한 값을 덮는다) */
+:root[palette][theme] #option {
+  --option-on: var(--p-card);
+}
+
+/* 우측 탭 막대: index.css 가 하늘색을 직접 칠한다 */
+:root[palette][theme] #mainchat_header {
+  background: var(--p-muted);
+}
+
+/* 롤백 둥근 검색·글쓰기 버튼: 강조색 바탕 + 강조색 위 글자색 아이콘
+   (흰 아이콘 그림 대신 같은 모양을 마스크로 써서 테마마다 아이콘 색을 바꾼다) */
+:root[palette][theme] #lol_lpanel_search_button,
+:root[palette][theme] #lol_lpanel_write_button {
+  background-color: var(--p-primary);
+  background-image: none;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--p-primary) 40%, transparent);
+}
+
+:root[palette][theme] #lol_lpanel_search_button:hover,
+:root[palette][theme] #lol_lpanel_write_button:hover {
+  background-color: color-mix(in srgb, var(--p-primary) 85%, var(--p-fg));
+}
+
+:root[palette][theme] #lol_lpanel_search_button::before,
+:root[palette][theme] #lol_lpanel_write_button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--p-primary-fg);
+  -webkit-mask: var(--icon-search-white) center / 24px 24px no-repeat;
+  mask: var(--icon-search-white) center / 24px 24px no-repeat;
+}
+
+:root[palette][theme] #lol_lpanel_write_button::before {
+  -webkit-mask-image: var(--icon-write-white);
+  mask-image: var(--icon-write-white);
+}

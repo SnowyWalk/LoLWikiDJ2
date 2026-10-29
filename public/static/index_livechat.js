@@ -171,7 +171,7 @@ function livechat_get_src(video_id)
 {
 	if(g_current_is_twitch)
 	{
-		if(theme_dark.checked)
+		if(is_dark_theme())
 			return `https://www.twitch.tv/embed/${video_id}/chat?parent=${location.hostname}&darkpopout`
 		return `https://www.twitch.tv/embed/${video_id}/chat?parent=${location.hostname}`
 	}

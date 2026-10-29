@@ -7,7 +7,7 @@
  */
 
 :root[site-modern] {
-  --sm-font: "Nanum Gothic", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --sm-font: var(--app-font); /* 옵션 → 글꼴 (index.css) */
   --sm-border: rgba(15, 23, 42, 0.12);
   --sm-text: #1f2937;
   --sm-muted: #5b6575;

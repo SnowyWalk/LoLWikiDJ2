@@ -153,6 +153,25 @@
 }
 
 /* 글자 크기 프리셋 (옵션 → 글자 크기, index_UI.js set_font_scale). 채팅·롤백 글자 크기에 곱한다 */
+/* 글꼴 (옵션 → 글꼴, index_UI.js set_font_family). 나눔고딕이 기본 */
+:root, [font_family=nanum] {
+  --app-font: "Nanum Gothic", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+/* 아래 셋은 <html> 뿐 아니라 설정의 글꼴 미리보기 칸([font_family=...])에도 걸린다 */
+[font_family=pretendard] {
+  --app-font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+[font_family=applesd] {
+  --app-font: "Apple SD Gothic Neo", AppleSDGothicNeo, "Malgun Gothic", sans-serif;
+}
+[font_family=system] {
+  --app-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+}
+/* 나눔고딕이 아니면 따로 글꼴을 정하지 않은 곳(브라우저 기본 글꼴)까지 바꾼다 */
+:root[font_family]:not([font_family=nanum]) body {
+  font-family: var(--app-font);
+}
+
 :root { --font-scale: 1; }
 :root[font_scale=small] { --font-scale: 0.9; }
 :root[font_scale=large] { --font-scale: 1.12; }
@@ -202,7 +221,7 @@ input, textarea {
   vertical-align: top;
 }
 .nanum {
-  font-family: "Nanum Gothic";
+  font-family: var(--app-font);
 }
 .bold {
   font-weight: bold;
@@ -411,7 +430,7 @@ input, textarea {
 }
 
 #video_info_dj { 
-  font-family: "Nanum Gothic";
+  font-family: var(--app-font);
   padding-left: 11px;
   padding-top: 6px;
 }
@@ -482,7 +501,7 @@ input, textarea {
 }
 
 #video_info_name {
-  font-family: "Nanum Gothic";
+  font-family: var(--app-font);
   padding-left: 11px;
   padding-top: 5px;
   white-space: nowrap;
@@ -500,7 +519,7 @@ input, textarea {
 /* 영상 링크 확인 */
 #video_link {
   padding-left: 10px;
-  font-family: "Nanum Gothic";
+  font-family: var(--app-font);
   cursor: pointer;
   color: var(--영상주소복사_글자색);
 }
@@ -536,7 +555,7 @@ input, textarea {
   top: calc(100% - 20px);
   font-size: 14px;
   font-weight: bold;
-  font-family: "Nanum Gothic";
+  font-family: var(--app-font);
 }
 
 /* =================== 우하단 ========================= */
@@ -677,7 +696,7 @@ input, textarea {
   left:0px; 
   background-color: black;
   color: white;
-  font-family: "Nanum Gothic";
+  font-family: var(--app-font);
   font-weight: bold;
   font-size: xxx-large;
   text-align: center;
@@ -980,10 +999,11 @@ div.recent_list_video {
   width: 100%;
   text-align: left;
   overflow-y: auto;
+  overflow-x: hidden;
   display: none;
   box-sizing: border-box;
   padding: 12px 12px 20px;
-  font-family: var(--sm-font, "Nanum Gothic", sans-serif);
+  font-family: var(--sm-font, var(--app-font));
   color: var(--sm-text, var(--글자색));
 }
 
@@ -1161,7 +1181,7 @@ div.recent_list_video {
 /* TTS 음성: 두 줄 격자, 고른 음성은 강조색 테두리 */
 .option_voices {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   padding: 6px 0px 12px;
 }
@@ -1194,6 +1214,106 @@ div.recent_list_video {
 .option_voice > .option_sample {
   position: absolute;
   right: 3px;
+}
+
+/* 테마·글꼴처럼 이름 아래에 고르는 칸이 넓게 오는 줄 */
+.option_block {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* 테마: 두 줄 격자, 칸마다 그 테마 색으로 그린 작은 미리보기 (색은 themes.css 의 [palette=...] 토큰) */
+.option_themes, .option_fonts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* 긴 이름이 칸을 넓히지 않게 */
+  gap: 6px;
+}
+
+.option_theme, .option_font {
+  position: relative;
+  display: flex;
+}
+
+.option_theme > input, .option_font > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.option_theme > label, .option_font > label {
+  flex: 1 1 0;
+  min-width: 0px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--sm-border, var(--보더색));
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: keep-all; /* 긴 이름은 단어 단위로 두 줄까지 */
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+
+.option_theme > input:checked + label, .option_font > input:checked + label {
+  border-color: var(--sm-accent, #2563eb);
+  background-color: color-mix(in srgb, var(--sm-accent, #2563eb) 12%, transparent);
+  box-shadow: inset 0 0 0 1px var(--sm-accent, #2563eb);
+}
+
+.option_theme > input:focus-visible + label, .option_font > input:focus-visible + label {
+  outline: 2px solid var(--sm-accent, #2563eb);
+  outline-offset: 2px;
+}
+
+/* 미리보기: 바탕 위에 카드 한 줄 + 강조색 점 */
+.option_theme_preview {
+  flex: none;
+  position: relative;
+  width: 30px;
+  height: 22px;
+  border-radius: 5px;
+  background-color: var(--p-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p-fg) 18%, transparent);
+  overflow: hidden;
+}
+
+.option_theme_preview > i:first-child {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 4px;
+  height: 7px;
+  border-radius: 2px;
+  background-color: var(--p-card);
+}
+
+.option_theme_preview > i:last-child {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--p-primary);
+  box-shadow: 9px 0 0 var(--p-accent);
+}
+
+/* 글꼴: 이름과 견본 글자를 그 글꼴로 */
+.option_font > label {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  font-family: var(--app-font);
+  font-size: 13px;
+}
+
+.option_font > label > small {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--sm-muted, gray);
 }
 
 /* 채팅 로그 지우기 · 로그아웃 */
@@ -1266,7 +1386,7 @@ div.recent_list_video {
   background-color: var(--cm-input-bg, var(--배경색));
   color: var(--cm-text, var(--글자색));
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.18);
-  font-family: var(--sm-font, "Nanum Gothic", sans-serif);
+  font-family: var(--sm-font, var(--app-font));
   font-size: calc(13.5px * var(--font-scale));
 }
 
@@ -1942,7 +2062,7 @@ temp[emoji] {
   box-sizing: border-box;
   background-color: rgba(17, 20, 26, 0.85);
   color: #e5e7eb;
-  font-family: "Nanum Gothic", sans-serif;
+  font-family: var(--app-font);
   font-size: 12.5px;
   font-weight: 700;
   cursor: move;
@@ -2987,7 +3107,7 @@ temp[emoji] {
   margin: 15px;
   margin-top: 0px;
   resize: vertical;
-  font-family: 'Nanum Gothic';
+  font-family: var(--app-font);
 }
 
 /* 글쓰기 - 영상 주소 */

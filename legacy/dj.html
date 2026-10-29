@@ -15,6 +15,8 @@
   <link rel="stylesheet" href="/static/chat-modern.css?ver=$_version">
   <!-- [v2] 사이트 전체 새 디자인 (html 의 site-modern 속성을 지우면 예전 디자인) -->
   <link rel="stylesheet" href="/static/site-modern.css?ver=$_version">
+  <!-- [v2] 추가 테마 (오리지날 라이트·다크 위에 색만 덮는다. site-modern·chat-modern 뒤에 와야 한다) -->
+  <link rel="stylesheet" href="/static/themes.css?ver=$_version">
   <!-- [v2] 소켓 클라이언트는 socket.io 서버가 직접 제공, 채널은 경로(/1004)로 정해져 서버가 넣어 준다 -->
   <script src="/socket.io/socket.io.js"></script>
   <script>window.__DJ_CHANNEL__ = "$_channel";</script>
@@ -148,11 +150,86 @@
     <div id="option">
       <section class="option_section">
         <h3>화면</h3>
-        <div class="option_item">
-          <div class="option_label">테마</div>
-          <div class="option_segment">
-            <input type="radio" id="theme_default" name="theme" value="default" checked/><label for="theme_default" class="no-drag">밝게</label>
-            <input type="radio" id="theme_dark" name="theme" value="dark"/><label for="theme_dark" class="no-drag">어둡게</label>
+        <div class="option_item option_block">
+          <div class="option_label">테마<small>오리지날 두 가지 + 인기 테마 12종 (shadcn·tweakcn·Catppuccin 등)</small></div>
+          <div class="option_themes">
+            <div class="option_theme" palette="original-light">
+              <input type="radio" id="theme_default" name="theme" value="default" checked/>
+              <label for="theme_default" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>오리지날 라이트</label>
+            </div>
+            <div class="option_theme" palette="original-dark">
+              <input type="radio" id="theme_dark" name="theme" value="dark"/>
+              <label for="theme_dark" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>오리지날 다크</label>
+            </div>
+            <div class="option_theme" palette="latte">
+              <input type="radio" id="theme_latte" name="theme" value="latte"/>
+              <label for="theme_latte" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Catppuccin Latte</label>
+            </div>
+            <div class="option_theme" palette="solarized">
+              <input type="radio" id="theme_solarized" name="theme" value="solarized"/>
+              <label for="theme_solarized" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Solarized Light</label>
+            </div>
+            <div class="option_theme" palette="claude">
+              <input type="radio" id="theme_claude" name="theme" value="claude"/>
+              <label for="theme_claude" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Claude</label>
+            </div>
+            <div class="option_theme" palette="vintage">
+              <input type="radio" id="theme_vintage" name="theme" value="vintage"/>
+              <label for="theme_vintage" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Vintage Paper</label>
+            </div>
+            <div class="option_theme" palette="ocean">
+              <input type="radio" id="theme_ocean" name="theme" value="ocean"/>
+              <label for="theme_ocean" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Ocean Breeze</label>
+            </div>
+            <div class="option_theme" palette="mocha">
+              <input type="radio" id="theme_mocha" name="theme" value="mocha"/>
+              <label for="theme_mocha" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Catppuccin Mocha</label>
+            </div>
+            <div class="option_theme" palette="nord">
+              <input type="radio" id="theme_nord" name="theme" value="nord"/>
+              <label for="theme_nord" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Nord</label>
+            </div>
+            <div class="option_theme" palette="dracula">
+              <input type="radio" id="theme_dracula" name="theme" value="dracula"/>
+              <label for="theme_dracula" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Dracula</label>
+            </div>
+            <div class="option_theme" palette="tokyonight">
+              <input type="radio" id="theme_tokyonight" name="theme" value="tokyonight"/>
+              <label for="theme_tokyonight" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Tokyo Night</label>
+            </div>
+            <div class="option_theme" palette="rosepine">
+              <input type="radio" id="theme_rosepine" name="theme" value="rosepine"/>
+              <label for="theme_rosepine" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Rosé Pine</label>
+            </div>
+            <div class="option_theme" palette="gruvbox">
+              <input type="radio" id="theme_gruvbox" name="theme" value="gruvbox"/>
+              <label for="theme_gruvbox" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Gruvbox</label>
+            </div>
+            <div class="option_theme" palette="cyberpunk">
+              <input type="radio" id="theme_cyberpunk" name="theme" value="cyberpunk"/>
+              <label for="theme_cyberpunk" class="no-drag"><span class="option_theme_preview"><i></i><i></i></span>Cyberpunk</label>
+            </div>
+          </div>
+        </div>
+        <div class="option_item option_block">
+          <div class="option_label">글꼴<small>Apple SD 산돌고딕 Neo 는 Mac·iPhone 에만 있어서, 다른 기기에서는 맑은 고딕으로 보입니다</small></div>
+          <div class="option_fonts">
+            <div class="option_font" font_family="nanum">
+              <input type="radio" id="font_family_nanum" name="font_family" value="nanum" checked/>
+              <label for="font_family_nanum" class="no-drag">나눔고딕<small>가나다 ABC 123</small></label>
+            </div>
+            <div class="option_font" font_family="pretendard">
+              <input type="radio" id="font_family_pretendard" name="font_family" value="pretendard"/>
+              <label for="font_family_pretendard" class="no-drag">Pretendard<small>가나다 ABC 123</small></label>
+            </div>
+            <div class="option_font" font_family="applesd">
+              <input type="radio" id="font_family_applesd" name="font_family" value="applesd"/>
+              <label for="font_family_applesd" class="no-drag">Apple SD 산돌고딕 Neo<small>가나다 ABC 123</small></label>
+            </div>
+            <div class="option_font" font_family="system">
+              <input type="radio" id="font_family_system" name="font_family" value="system"/>
+              <label for="font_family_system" class="no-drag">시스템 글꼴<small>가나다 ABC 123</small></label>
+            </div>
           </div>
         </div>
         <div class="option_item">
