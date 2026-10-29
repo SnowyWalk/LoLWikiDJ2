@@ -13,10 +13,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-FROM node:22-alpine AS prod-deps
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+# 운영용 node_modules: npm ci 를 한 번 더 돌리지 않고 deps 결과에서 개발용 패키지만 뺀다.
+# (예전엔 npm ci 두 개가 동시에 돌아 메모리 상한 안에서 exit 137 로 죽었다)
+FROM deps AS prod-deps
+RUN npm prune --omit=dev
 
 FROM node:22-alpine AS runner
 WORKDIR /app
