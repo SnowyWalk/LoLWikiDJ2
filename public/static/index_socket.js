@@ -157,6 +157,7 @@ socket.on('ban', function(reason) {
 
 /* 강제 새로고침 명령 */
 socket.on('refresh', function() {
+	g_skip_leave_confirm = true
 	location.reload()
 })
 

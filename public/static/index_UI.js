@@ -851,6 +851,7 @@ function onclick_chat_category_option_logout()
 {
 	if(localStorage.getItem(g_storage_nick_key) == g_nick)
 		localStorage.removeItem(g_storage_nick_key)
+	g_skip_leave_confirm = true
 	location.reload()
 }
 

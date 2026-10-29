@@ -773,6 +773,10 @@ function send(force_tts = false) {
 
 /* 채팅창 엔터 단축키 */
 function chat_keydown() {
+	// 호출 목록이 떠 있으면 위·아래·Enter·Tab·Esc 는 목록이 먼저 쓴다
+	if(chat_mention_keydown(window.event))
+		return
+
 	if (window.event.keyCode == 13)
 	{
 		send(window.event.shiftKey && option_checkbox_tts_key_bind.checked)
@@ -785,6 +789,135 @@ function chat_keydown() {
 		}, 10);
 	}
 }
+
+/* [v2] '@' 호출 목록
+   입력창에서 커서 앞 단어가 '@...' 이면 접속자 중 그 글자로 시작하거나 포함하는 닉네임을 띄운다.
+   클릭하거나 위·아래 + Enter/Tab 으로 고르면 '@닉네임 ' (공백까지) 으로 바꿔 넣는다. Esc 로 닫기 */
+const CHAT_MENTION_MAX = 8
+var g_chat_mention = null // { start: '@' 위치, items: [닉네임], index: 고른 줄 }
+
+function chat_mention_box()
+{
+	var box = document.getElementById('chat_mention')
+	if(!box)
+	{
+		box = document.createElement('ul')
+		box.id = 'chat_mention'
+		// 누르는 순간 입력창 포커스를 빼앗지 않게 (blur 로 목록이 먼저 닫히지 않도록)
+		box.addEventListener('mousedown', function(event) { event.preventDefault() })
+		chat_input.parentElement.appendChild(box)
+	}
+	return box
+}
+
+function chat_mention_close()
+{
+	g_chat_mention = null
+	var box = document.getElementById('chat_mention')
+	if(box)
+		box.style.display = 'none'
+}
+
+function chat_mention_update()
+{
+	var caret = chat_input.selectionStart
+	var m = caret == chat_input.selectionEnd ? /(^|\s)@(\S*)$/.exec(chat_input.value.substring(0, caret)) : null
+	if(!m || g_nick == 'OBS')
+	{
+		chat_mention_close()
+		return
+	}
+
+	var query = m[2].toLowerCase()
+	var nicks = (g_users || []).map(function(u) { return u.nick }).filter(function(nick) { return nick && nick != g_nick })
+	var starts = nicks.filter(function(nick) { return nick.toLowerCase().startsWith(query) })
+	var contains = nicks.filter(function(nick) { return !nick.toLowerCase().startsWith(query) && nick.toLowerCase().indexOf(query) >= 0 })
+	var collator = new Intl.Collator('ko')
+	var items = starts.sort(collator.compare).concat(contains.sort(collator.compare)).slice(0, CHAT_MENTION_MAX)
+	if('everyone'.startsWith(query))
+		items.push('everyone') // 모두 호출 (index_chat.js 의 호출 알림이 'everyone' 을 받는다)
+	if(!items.length)
+	{
+		chat_mention_close()
+		return
+	}
+
+	var prev = g_chat_mention && g_chat_mention.items[g_chat_mention.index]
+	var index = Math.max(0, items.indexOf(prev))
+	g_chat_mention = { start: caret - m[2].length - 1, items: items, index: index }
+
+	var box = chat_mention_box()
+	box.replaceChildren()
+	items.forEach(function(nick, i) {
+		var li = document.createElement('li')
+		li.toggleAttribute('selected', i == index)
+		var user = (g_users || []).find(function(u) { return u.nick == nick })
+		var icon = document.createElement(user ? 'img' : 'span')
+		icon.setAttribute('icon', '')
+		if(user)
+			icon.src = format('icon/{0}.png?ver={1}', user.icon_id, user.icon_ver)
+		li.appendChild(icon)
+		var label = document.createElement('span')
+		label.textContent = user ? nick : '@everyone (모두 호출)'
+		li.appendChild(label)
+		li.addEventListener('click', function() { chat_mention_pick(i) })
+		box.appendChild(li)
+	})
+	box.style.display = 'block'
+}
+
+function chat_mention_select(index)
+{
+	var box = document.getElementById('chat_mention')
+	g_chat_mention.index = (index + g_chat_mention.items.length) % g_chat_mention.items.length
+	Array.prototype.forEach.call(box.children, function(li, i) { li.toggleAttribute('selected', i == g_chat_mention.index) })
+	box.children[g_chat_mention.index].scrollIntoView({ block: 'nearest' })
+}
+
+function chat_mention_pick(index)
+{
+	var mention = g_chat_mention
+	if(!mention)
+		return
+	var value = chat_input.value
+	var caret = chat_input.selectionStart
+	var insert = '@' + mention.items[index] + ' '
+	chat_input.value = value.substring(0, mention.start) + insert + value.substring(caret).replace(/^ /, '')
+	var pos = mention.start + insert.length
+	chat_input.setSelectionRange(pos, pos)
+	chat_input.focus()
+	chat_mention_close()
+}
+
+/* 처리했으면 true (chat_keydown 이 그 키를 더 쓰지 않는다) */
+function chat_mention_keydown(event)
+{
+	if(!g_chat_mention)
+		return false
+	switch(event.key)
+	{
+		case 'ArrowDown': chat_mention_select(g_chat_mention.index + 1); break
+		case 'ArrowUp': chat_mention_select(g_chat_mention.index - 1); break
+		case 'Enter':
+		case 'Tab':
+			if(event.isComposing) // 한글 조합 중 Enter 는 조합 확정
+				return true
+			chat_mention_pick(g_chat_mention.index)
+			break
+		case 'Escape': chat_mention_close(); break
+		default: return false
+	}
+	event.preventDefault()
+	return true
+}
+
+chat_input.addEventListener('input', chat_mention_update)
+chat_input.addEventListener('click', chat_mention_update)
+chat_input.addEventListener('keyup', function(event) { // 좌우로 커서만 옮겨도 다시 판단
+	if(['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(event.key) >= 0)
+		chat_mention_update()
+})
+chat_input.addEventListener('blur', chat_mention_close)
 
 /* [v2] 채팅 이미지 올리기 (붙여넣기·끌어다 놓기 공통)
    클립보드 이미지는 압축이 약한 PNG 원본이라 스크린샷·사진이면 몇 MB씩 된다. 그래서

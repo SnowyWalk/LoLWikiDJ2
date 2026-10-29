@@ -738,8 +738,13 @@ document.addEventListener('mouseover', function(event) {
 	g_lol_time_tip.textContent = el.getAttribute('lol_exact')
 	g_lol_time_tip.style.display = 'block'
 
-	// 시간 글자 바로 위 가운데. 위가 모자라면 아래, 화면 밖으로는 안 나가게
-	var rect = el.getBoundingClientRect()
+	// 시간 글자 바로 위 가운데. 위가 모자라면 아래, 화면 밖으로는 안 나가게.
+	// 글 상세의 시간처럼 요소가 줄 전체 폭이면 요소 가운데가 글자와 멀어지므로, 글자가 차지한 영역을 기준으로 한다
+	var range = document.createRange()
+	range.selectNodeContents(el)
+	var rect = range.getBoundingClientRect()
+	if(!rect.width)
+		rect = el.getBoundingClientRect()
 	var width = g_lol_time_tip.offsetWidth
 	var height = g_lol_time_tip.offsetHeight
 	var left = Math.min(Math.max(4, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - 4)

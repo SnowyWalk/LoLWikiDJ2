@@ -3,6 +3,7 @@ var socket = io({ query: { channel: window.__DJ_CHANNEL__ } }) // [v2] 채널은
 /* 테마 기억 */
 const g_storage_theme_key = 'LoLWikiDJ_Theme'
 const g_storage_font_scale_key = 'option_font_scale' // [v2] 글자 크기 프리셋
+var g_skip_leave_confirm = false // [v2] 로그아웃·서버 새로고침처럼 우리가 일부러 새로고침할 때는 닫기 확인을 묻지 않는다
 
 /* 채팅/인증용 데이터 */
 const g_storage_nick_key = 'LoLWikiDJ'
@@ -192,6 +193,7 @@ function on_page_ready() {
 	}
 	if ('option_checkbox_dezeolmo' in localStorage)
 		option_checkbox_dezeolmo.checked = eval(localStorage.getItem('option_checkbox_dezeolmo'))
+	option_checkbox_confirm_leave.checked = localStorage.getItem('option_checkbox_confirm_leave') == 'true' // 기본값 꺼짐
 
 
 	// 옵션에 이벤트 추가
@@ -209,6 +211,16 @@ function on_page_ready() {
 	tts_7.onchange = _ => localStorage.setItem('option_tts_type', document.querySelector('[name=tts_voice_name]:checked').value)
 	tts_8.onchange = _ => localStorage.setItem('option_tts_type', document.querySelector('[name=tts_voice_name]:checked').value)
 	option_checkbox_dezeolmo.onchange = _ => localStorage.setItem('option_checkbox_dezeolmo', option_checkbox_dezeolmo.checked)
+	option_checkbox_confirm_leave.onchange = _ => localStorage.setItem('option_checkbox_confirm_leave', option_checkbox_confirm_leave.checked)
+
+	/* [v2] 옵션 - 페이지를 닫을 때 확인: 브라우저의 "사이트에서 나가시겠습니까?" 창을 띄운다.
+	   (브라우저 규칙상 페이지를 한 번이라도 클릭·입력한 뒤에만 뜨고, 문구는 브라우저가 정한다) */
+	window.addEventListener('beforeunload', function(event) {
+		if(!option_checkbox_confirm_leave.checked || g_skip_leave_confirm)
+			return
+		event.preventDefault()
+		event.returnValue = '' // 예전 크롬은 이 값이 있어야 창을 띄운다
+	})
 
 	if (Hls.isSupported()) {
 		g_hls.on(Hls.Events.MANIFEST_PARSED, function () {
