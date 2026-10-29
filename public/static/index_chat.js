@@ -196,7 +196,7 @@ function add_message(data)
 			// [v2] 새 디자인은 이름 줄과 본문이 분리된 레이아웃이라 본문 앞 줄바꿈이 필요 없다
 			if(g_chat_modern && data.type == 'message')
 				text = text.replace(/^\n/, '')
-			temporary_element.appendChild(document.createTextNode(text))
+			chat_append_linked_text(temporary_element, text)
 			temporary_element.toggleAttribute('emoji', emoji_mode)
 			message.appendChild(temporary_element)
 		}
@@ -286,6 +286,43 @@ function add_message(data)
 }
 
 /* 채팅창에 시스템 메시지 추가 함수 */
+/* 글자 속 주소(http://, https://, www.)는 새 탭으로 열리는 링크로, 나머지는 글자 그대로 넣는다.
+   innerHTML 을 쓰지 않으므로 채팅에 태그를 써도 그대로 글자로 보인다 */
+var chat_link_reg = /\b(?:https?:\/\/|www\.)[^\s<>"']+/gi
+
+function chat_append_linked_text(el, text)
+{
+	var last = 0
+	var m
+	chat_link_reg.lastIndex = 0
+	while((m = chat_link_reg.exec(text)))
+	{
+		var url = m[0]
+		// 문장 끝 구두점, 짝 없는 닫는 괄호는 주소에서 뺀다 ("https://a.com/x)." → "https://a.com/x")
+		var trimmed = url.replace(/[.,!?;:]+$/, '')
+		while(/[)\]}]$/.test(trimmed) && (trimmed.match(/[(\[{]/g) || []).length < (trimmed.match(/[)\]}]/g) || []).length)
+			trimmed = trimmed.slice(0, -1).replace(/[.,!?;:]+$/, '')
+		if(!trimmed || /^www\.$/i.test(trimmed))
+			continue
+
+		if(m.index > last)
+			el.appendChild(document.createTextNode(text.substring(last, m.index)))
+
+		var a = document.createElement('a')
+		a.href = /^www\./i.test(trimmed) ? 'https://' + trimmed : trimmed
+		a.target = '_blank'
+		a.rel = 'noopener noreferrer'
+		a.toggleAttribute('chat_link', true)
+		a.textContent = trimmed
+		el.appendChild(a)
+
+		last = m.index + trimmed.length
+		chat_link_reg.lastIndex = last
+	}
+	if(last < text.length)
+		el.appendChild(document.createTextNode(text.substring(last)))
+}
+
 function add_system_message(message, bg = '')
 {
 	if(g_nick == 'OBS')

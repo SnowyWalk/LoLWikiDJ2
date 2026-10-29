@@ -151,6 +151,18 @@
   overflow-wrap: anywhere;
 }
 
+/* 채팅 속 주소 링크 */
+:root[chat-modern] #chat a[chat_link] {
+  color: var(--cm-name);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 2px;
+}
+
+:root[chat-modern] #chat a[chat_link]:hover {
+  text-decoration-color: currentColor;
+}
+
 :root[chat-modern] #chat .chat_balloon > .chat_img {
   width: 100%;
   margin-top: 6px;

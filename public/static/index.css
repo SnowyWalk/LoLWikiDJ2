@@ -1176,6 +1176,13 @@ temp[emoji] {
   width: 100%;
 }
 
+/* 채팅 속 주소 링크 (index_chat.js chat_append_linked_text) */
+#chat a[chat_link] {
+  color: var(--영상주소복사_글자색);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
 .chat_profile {
   height: 45px;
   width: 45px;
