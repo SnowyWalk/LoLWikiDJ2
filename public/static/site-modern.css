@@ -503,8 +503,10 @@
   background-image: linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.18));
 }
 
+/* 고른 재생목록: 롤백 글목록의 '지금 연 글'과 같이 테마 강조색 막대 + 옅은 강조색 바탕 (예전엔 초록 고정) */
 :root[site-modern] .playlist_button[selected] {
-  box-shadow: inset 4px 0 0 #3f9b0b, inset 0 -1px 0 var(--sm-border);
+  background-color: color-mix(in srgb, var(--sm-accent) 16%, var(--플레이리스트_좌측_배경색_짝수)) !important;
+  box-shadow: inset 4px 0 0 var(--sm-accent), inset 0 -1px 0 var(--sm-border);
   font-weight: 700;
 }
 
@@ -539,7 +541,7 @@
 }
 
 :root[site-modern] #playlist_control_panel_playlist_info_select[selected] {
-  color: #3f9b0b;
+  color: var(--sm-accent);
 }
 
 :root[site-modern] #playlist_control_panel_playlist_info_shuffle,
