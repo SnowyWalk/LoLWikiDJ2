@@ -126,6 +126,144 @@
   --sm-reply-bg: rgba(251, 113, 133, 0.14);
 }
 
+/* ======================= 로그인 화면 ======================= */
+/* 캐릭터 배경은 그대로 두고, 가운데에 반투명 카드. index.js·index_socket.js 가 요소마다 display:block 을
+   넣으므로 위치는 절대좌표 대신 #login_form 의 격자로 잡는다 (자식의 display 가 block 이어도 격자 칸에 들어간다) */
+
+:root[site-modern] #login_form {
+  left: 50%;
+  top: 50%;
+  width: min(340px, calc(100vw - 32px));
+  height: auto;
+  transform: translate(-50%, -54%);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 28px 24px 22px;
+  box-sizing: border-box;
+  font-family: var(--sm-font);
+  color: var(--cm-text);
+}
+
+/* 카드 바탕 (뒤 배경이 살짝 비친다) */
+:root[site-modern] #login_bg {
+  inset: 0px;
+  width: auto;
+  height: auto;
+  border: 1px solid color-mix(in srgb, var(--cm-text) 10%, transparent);
+  border-radius: 22px;
+  background-color: color-mix(in srgb, var(--cm-bubble) 84%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28), 0 2px 8px rgba(15, 23, 42, 0.12);
+  opacity: 1;
+  z-index: 0;
+}
+
+:root[site-modern] #login_port,
+:root[site-modern] #login_id,
+:root[site-modern] #login_button,
+:root[site-modern] #login_remember_nick_holder {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: auto;
+  z-index: 1;
+}
+
+/* 위: 사이트 이름 + 채널 */
+:root[site-modern] #login_port {
+  margin-bottom: 6px;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+:root[site-modern] #login_port::before {
+  content: 'LoLWiki.DJ';
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--cm-muted);
+}
+
+:root[site-modern] #login_id {
+  height: 48px;
+  padding: 0px 16px;
+  border: 1px solid var(--cm-input-border);
+  border-radius: 14px;
+  background-color: var(--cm-input-bg);
+  color: var(--cm-text);
+  font-family: var(--sm-font);
+  font-size: 17px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+:root[site-modern] #login_id::placeholder {
+  color: var(--cm-muted);
+  font-weight: 400;
+}
+
+:root[site-modern] #login_id:focus {
+  border-color: var(--cm-input-focus);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cm-input-focus) 22%, transparent);
+}
+
+/* 비밀번호는 아직 없는 기능이라 새 디자인에서는 숨긴다 (JS 가 인라인으로 켜므로 !important) */
+:root[site-modern] #login_pw {
+  display: none !important;
+}
+
+:root[site-modern] #login_button {
+  height: 48px;
+  border: 0px;
+  border-radius: 14px;
+  background-color: var(--cm-accent);
+  color: var(--cm-accent-text);
+  font-family: var(--sm-font);
+  font-size: 16px;
+  line-height: 48px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--cm-accent) 35%, transparent);
+  transition: filter 0.15s, transform 0.15s;
+}
+
+:root[site-modern] #login_button:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+:root[site-modern] #login_button:active {
+  transform: none;
+}
+
+/* JS 가 display:block 을 넣으므로 flex 대신 가운데 정렬 글줄로 */
+:root[site-modern] #login_remember_nick_holder {
+  text-align: center;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--cm-muted);
+}
+
+:root[site-modern] #login_remember_nick_holder > input {
+  width: 15px;
+  height: 15px;
+  margin: 0px 6px 2px 0px;
+  vertical-align: middle;
+  accent-color: var(--cm-accent);
+  cursor: pointer;
+}
+
+:root[site-modern] #login_remember_nick_holder > label {
+  cursor: pointer;
+}
+
 /* ======================= 우측 채팅 상단 탭 ======================= */
 
 :root[site-modern] #mainchat_header {
