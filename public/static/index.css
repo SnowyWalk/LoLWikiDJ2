@@ -161,8 +161,10 @@
 [font_family=pretendard] {
   --app-font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 }
+/* Apple SD 산돌고딕 Neo 는 Apple 기기 전용 라이선스라 웹폰트로 올릴 수 없다.
+   Apple 기기 밖에서는 같은 인상으로 만들어진 Pretendard 로 (index_UI.js 가 함께 불러온다) */
 [font_family=applesd] {
-  --app-font: "Apple SD Gothic Neo", AppleSDGothicNeo, "Malgun Gothic", sans-serif;
+  --app-font: "Apple SD Gothic Neo", AppleSDGothicNeo, "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif;
 }
 [font_family=system] {
   --app-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
@@ -176,6 +178,10 @@
 :root[font_scale=small] { --font-scale: 0.9; }
 :root[font_scale=large] { --font-scale: 1.12; }
 :root[font_scale=xlarge] { --font-scale: 1.25; }
+
+/* 롤백 제목 굵기 (옵션 → 롤백 제목 굵게, 글목록·글 상세 제목) */
+:root { --lol-title-weight: 600; } /* 글목록 제목의 기존 굵기 */
+:root[lol_title_bold=off] { --lol-title-weight: 400; }
 
 /* 롤백 글 본문·댓글 (따로 정한 크기가 없어 기본 16px 을 물려받는다) */
 #lol_rpanel_body_body, #lol_rpanel_reply_board_list {
@@ -2628,6 +2634,7 @@ temp[emoji] {
 
 #lol_rpanel_header_title {
   font-size: large;
+  font-weight: var(--lol-title-weight);
   padding-bottom: 3px;
   margin-bottom: 3px;
   border-bottom: 1px solid var(--롤백_보더색);

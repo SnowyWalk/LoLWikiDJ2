@@ -196,6 +196,8 @@ function on_page_ready() {
 	if ('option_checkbox_dezeolmo' in localStorage)
 		option_checkbox_dezeolmo.checked = eval(localStorage.getItem('option_checkbox_dezeolmo'))
 	option_checkbox_confirm_leave.checked = localStorage.getItem('option_checkbox_confirm_leave') == 'true' // 기본값 꺼짐
+	option_checkbox_lol_title_bold.checked = localStorage.getItem('option_checkbox_lol_title_bold') != 'false' // 기본값 켜짐
+	document.documentElement.setAttribute('lol_title_bold', option_checkbox_lol_title_bold.checked ? 'on' : 'off')
 
 
 	// 옵션에 이벤트 추가
@@ -214,6 +216,10 @@ function on_page_ready() {
 	tts_8.onchange = _ => localStorage.setItem('option_tts_type', document.querySelector('[name=tts_voice_name]:checked').value)
 	option_checkbox_dezeolmo.onchange = _ => localStorage.setItem('option_checkbox_dezeolmo', option_checkbox_dezeolmo.checked)
 	option_checkbox_confirm_leave.onchange = _ => localStorage.setItem('option_checkbox_confirm_leave', option_checkbox_confirm_leave.checked)
+	option_checkbox_lol_title_bold.onchange = _ => {
+		localStorage.setItem('option_checkbox_lol_title_bold', option_checkbox_lol_title_bold.checked)
+		document.documentElement.setAttribute('lol_title_bold', option_checkbox_lol_title_bold.checked ? 'on' : 'off')
+	}
 
 	/* [v2] 옵션 묶음 접기·펴기 상태 기억 ({ display: true, voice: false, ... }). 처음 값은 dj.html 의 open */
 	var option_sections = {}

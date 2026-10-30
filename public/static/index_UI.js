@@ -1300,7 +1300,7 @@ function set_font_family(name)
 {
 	if(['nanum', 'pretendard', 'applesd', 'system'].indexOf(name) < 0)
 		name = 'nanum'
-	if(name == 'pretendard')
+	if(name == 'pretendard' || name == 'applesd') // Apple SD 산돌고딕 Neo 가 없는 기기는 Pretendard 로 보인다
 		load_pretendard()
 	localStorage.setItem(g_storage_font_family_key, name)
 	document.querySelector(format('[name=font_family][value={0}]', name)).checked = true
