@@ -187,6 +187,7 @@ socket.on('login', function(isSuccess) {
 		localStorage.setItem(g_storage_nick_key, g_nick)
 	else if(localStorage.getItem(g_storage_nick_key) == g_nick)
 		localStorage.removeItem(g_storage_nick_key)
+	remember_recent_nick(g_nick) // [v2] 로그인 화면의 최근 닉네임 목록
 
 	// 로그인 창 숨기기
 	init_block.style.opacity = 1
@@ -684,9 +685,19 @@ socket.on('lol_query_article_writer_android_id', function(writer_android_id) {
 	lol_rpanel_header_memo_edit.style.display = 'block'
 })
 
-socket.on('lol_change_nickname', function(is_success) {
-	if(!is_success)
-		alert('닉네임 변경에 실패했습니다.')
+socket.on('lol_change_nickname', function(result) {
+	// [v2] 서버가 { ok, nickname, message, status_code } 로 알려준다 (24시간 재변경 제한 같은 거부 사유 포함)
+	if(result && result.ok)
+	{
+		alert(format('닉네임이 "{0}" (으)로 변경되었습니다.\n24시간 동안은 다시 변경할 수 없습니다.', result.nickname))
+		lol_onclick_aritcle_list_refresh() // 목록의 내 글에 새 닉네임이 보이게
+	}
+	else
+	{
+		var why = result && result.message || '알 수 없는 오류'
+		var limited = /24|하루|시간|limit|cooldown|too\s*many/i.test(why) || (result && result.status_code == 429)
+		alert('닉네임 변경에 실패했습니다.\n\n사유: ' + why + (limited ? '\n\n닉네임은 변경 후 24시간이 지나야 다시 바꿀 수 있습니다.' : ''))
+	}
 
 	if(g_lol_android_id != g_lol_guest_id)
 		socket.emit('lol_user_info', lol_add_api_auth({ user_id: g_lol_android_id }))
@@ -723,6 +734,7 @@ socket.on('lol_api_logout', function() {
 	lol_forget_api_credentials()
 	g_lol_android_id = g_lol_guest_id
 	g_lol_user_info = null
+	lol_notif_reset() // [v2]
 	lol_lpanel_userinfo_menu.style.display = 'none'
 	lol_lpanel_update()
 	lol_rpanel_update()
@@ -741,31 +753,77 @@ function lol_replace_current_replys(data)
 
 socket.on('lol_write_reply', function(data) {
 	lol_rpanel_reply_board_input.value = ''
+	lol_reply_target_clear() // [v2] 답글을 보냈으면 대상 해제 (입력창이 제자리로)
 	if(lol_replace_current_replys(data))
 		lol_rpanel_body.scroll(0, 99999999)
 })
 
-socket.on('lol_like', function(isSuccess) {
-	if(!isSuccess)
+socket.on('lol_like', function(result) {
+	// [v2] { ok, vote: 'up'|'down'|'neutral', likes, post_seq } — 서버가 투표 뒤 글을 다시 읽은 실제 값.
+	// 그사이 다른 글로 넘어갔으면 무시한다. 글 전체를 다시 그리지 않고 추천 표시만 갱신한다
+	if(!result || !result.ok || !g_lol_current_detail || g_lol_current_detail['post_seq'] != result.post_seq)
 		return
 
-	g_lol_current_detail['likes'] = eval(g_lol_current_detail['likes']) + 1
-	lol_rpanel_update()
+	if(result.likes != null)
+		g_lol_current_detail['likes'] = String(result.likes)
+	g_lol_current_detail['my_vote'] = result.vote || 'neutral'
+	lol_rpanel_update_vote(false)
+	lol_rpanel_body_share_button.setAttribute('post_spec', format('{0} | 조회 {1} | 추천 {2}', g_lol_current_detail['nickname'], g_lol_current_detail['views'], g_lol_current_detail['likes']))
 })
 
 socket.on('lol_delete_reply', lol_replace_current_replys)
 
-socket.on('lol_write', function() {
+socket.on('lol_write', function(result) {
 	lol_write_subject.value = ''
 	lol_write_body.value = ''
 	lol_write_youtube.value = ''
+	lol_write_images_clear() // [v2]
 
 	lol_write_panel_toggle(false)
 	lol_onclick_aritcle_list_refresh()
+
+	// [v2] 사진 일부가 붙지 않았으면 서버가 알려준 사유를 보여 준다 (조용히 줄어들면 원인을 알 수 없다)
+	if(result && result.total > result.attached)
+		setTimeout(function() {
+			alert('글은 등록됐지만 사진 ' + result.total + '장 중 ' + result.attached + '장만 첨부되었습니다.' + (result.image_error ? '\n사유: ' + result.image_error : ''))
+		}, 50)
+})
+
+/* [v2] 차단: 작성자를 차단했으면 상세를 비우고 목록을 첫 페이지부터 다시 (서버가 차단목록을 다시 읽어 바로 반영) */
+socket.on('lol_block_user', function(result) {
+	if(!result || !result.ok)
+		return
+	alert((result.nickname || '사용자') + ' 님을 차단했습니다.\n(내 정보 → 차단목록 에서 해제할 수 있습니다)')
+	g_lol_current_detail = {}
+	lol_rpanel_update()
+	lol_onclick_aritcle_list_refresh()
+	lol_onclick_rpanel_back()
+})
+
+/* [v2] 차단목록 (조회·해제 응답 공통). 해제했으면 그 사용자 글이 다시 보이게 목록 새로고침 */
+socket.on('lol_block_list', function(data) {
+	lol_block_list_render(data)
+	if(data && data.ok && data.unblocked !== undefined)
+		lol_onclick_aritcle_list_refresh()
+})
+
+/* [v2] 고정짤 등록·삭제 완료 (프로필은 서버가 lol_user_info 로 따로 보낸다) */
+socket.on('lol_fixed_image', function(result) {
+	if(!result || !result.ok)
+		return
+	var modal = document.getElementById('lol_fixed_image_modal')
+	if(modal)
+		modal.remove()
+	alert(result.cleared ? '고정짤을 삭제했습니다.' : '고정짤을 등록했습니다. 앞으로 내 글에 자동으로 붙습니다.')
 })
 
 socket.on('lol_delete', function() {
 	alert('삭제 되었습니다.')
+	// [v2] 삭제한 글이 화면에 남지 않게: 상세를 비우고 목록을 다시 불러온다. 모바일은 글목록으로 돌아간다
+	g_lol_current_detail = {}
+	lol_rpanel_update()
+	lol_onclick_aritcle_list_refresh()
+	lol_onclick_rpanel_back()
 })
 
 socket.on('lol_get_article_list_others', function(android_id) {
@@ -782,10 +840,12 @@ socket.on('lol_get_article_list_others', function(android_id) {
 })
 
 /* 새 쪽지 감지됨 */
-socket.on('lol_get_new_memo', function() {
-	var toast = make_toast(lol_lpanel, '쪽지가 도착 했습니다.', 2, 'flex-end')
-	toast.text.style.marginBottom = '5vh'
-})
+/* [v2] 알림센터: 배지(안 읽은 알림·쪽지 수, 늘면 토스트)·알림 목록·쪽지 대화 목록·대화 메시지 */
+// (함수는 뒤에 로드되는 index_lol.js 에 있으므로 참조를 바로 넘기지 않고 감싼다)
+socket.on('lol_notif_badge', data => lol_notif_on_badge(data))
+socket.on('lol_notif_list', data => lol_notif_render_list(data))
+socket.on('lol_memo_threads', data => lol_notif_render_threads(data))
+socket.on('lol_memo_thread', data => lol_notif_render_thread(data))
 
 /* [v2] flv.js 지연 로드 */
 var g_flvjs_loading = null

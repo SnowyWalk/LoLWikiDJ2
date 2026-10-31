@@ -3,7 +3,8 @@
    - 위 막대를 끌어 옮기고, 오른쪽 아래 모서리를 끌어 크기를 바꾼다. 막대를 더블클릭하면 처음 자리로
    - 투명도 슬라이더, 닫기 버튼. 닫으면 음량 옆에 [라이브 채팅 켜기] 버튼이 생긴다
    - 위치·크기·투명도·닫힘 상태는 브라우저에 저장해서 영상이 바뀌거나 새로고침해도 유지한다
-   - 닫혀 있거나 생방송이 아닐 때는 채팅 iframe 을 비워 둔다 (보이지 않는 채팅이 계속 돌지 않게) */
+   - 닫혀 있거나 생방송이 아닐 때는 채팅 iframe 을 비워 둔다 (보이지 않는 채팅이 계속 돌지 않게)
+   - 옵션 '생방송 라이브 채팅 창'을 끄면 창도 켜기 버튼도 없이 아예 불러오지 않는다 (롤디칩의 '라이브챗 차단') */
 
 const LIVECHAT_STORAGE_KEY = 'livechat_window'
 const LIVECHAT_DEFAULT_WIDTH = 350
@@ -19,6 +20,7 @@ var g_livechat = {
 	height: LIVECHAT_DEFAULT_HEIGHT,
 	opacity: 1,
 	closed: false,
+	enabled: false, // 옵션 '생방송 라이브 채팅 창' (localStorage option_checkbox_livechat, 기본 꺼짐). 꺼져 있으면 아예 불러오지 않는다
 	video_id: '', // 지금 생방송 채팅 대상. 비어 있으면 생방송이 아님
 	drag: null, // { mode: 'move' | 'resize', x, y, left, top, width, height }
 	frame: 0, // 끄는 동안 requestAnimationFrame 번호
@@ -28,6 +30,7 @@ function livechat_load()
 {
 	try
 	{
+		g_livechat.enabled = localStorage.getItem('option_checkbox_livechat') == 'true' // 기본 꺼짐
 		var saved = JSON.parse(localStorage.getItem(LIVECHAT_STORAGE_KEY) || 'null')
 		if(!saved)
 			return
@@ -82,10 +85,10 @@ function livechat_apply()
 	style.setProperty('--livechat-opacity', g_livechat.opacity)
 }
 
-/* 보일지 말지: 창은 생방송 중이고 닫지 않았을 때, 켜기 버튼은 생방송 중인데 닫았을 때 */
+/* 보일지 말지: 창은 생방송 중이고 닫지 않았을 때, 켜기 버튼은 생방송 중인데 닫았을 때. 옵션이 꺼져 있으면 둘 다 없음 */
 function livechat_update_visibility()
 {
-	var available = Boolean(g_livechat.video_id) && g_nick != 'OBS'
+	var available = Boolean(g_livechat.video_id) && g_nick != 'OBS' && g_livechat.enabled
 	var show = available && !g_livechat.closed
 
 	youtube_live_chat_box.style.display = show ? 'flex' : 'none'
@@ -163,6 +166,13 @@ function livechat_open()
 {
 	g_livechat.closed = false
 	livechat_save()
+	livechat_update_visibility()
+}
+
+/* 옵션 '생방송 라이브 채팅 창' (index.js). 끄면 iframe 을 비우고 창·켜기 버튼을 숨긴다, 켜면 지금 생방송이면 바로 다시 보인다 */
+function livechat_set_enabled(on)
+{
+	g_livechat.enabled = Boolean(on)
 	livechat_update_visibility()
 }
 

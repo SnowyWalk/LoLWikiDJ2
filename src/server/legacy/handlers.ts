@@ -4,6 +4,16 @@
 // 보안상 옮기지 않은 레거시 이벤트:
 //   debug(서버에서 임의 코드 실행), query / test_begin / test_commit(인증 없이 임의 SQL 실행)
 import { randomBytes } from "node:crypto";
+
+// 답장 대상 요약. 모르는 필드는 버리고 길이를 제한한다 (브라우저가 보내는 값이라 그대로 믿지 않는다)
+function pickReplyTo(value: unknown): { id: string; name: string; time: string; text: string } | null {
+  if (!value || typeof value !== "object") return null;
+  const r = value as Record<string, unknown>;
+  const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
+  const id = str(r.id, 32);
+  if (!id) return null;
+  return { id, name: str(r.name, 64), time: str(r.time, 16), text: str(r.text, 120) };
+}
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Server, Socket } from "socket.io";
@@ -143,6 +153,12 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
     all.emit("chat_update", { type: "connect", name: "SERVER", message: `'${name()}' 님이 접속하였습니다.` });
     ctl.updateUsers();
     ctl.updateDjs();
+    // 들어온 사람에게만 지금 참가자 목록 (레거시와 같은 문구)
+    socket.emit("chat_update", {
+      type: "system_message",
+      time: getTime(),
+      message: `참가자 목록 (${room.users.size})\n${[...room.users.keys()].join(", ")}`,
+    });
   });
 
   function disconnectProcess(target: Socket) {
@@ -185,9 +201,22 @@ export function registerLegacyHandlers(io: Server, socket: Socket, room: RoomSta
 
   // ===================== 채팅 =====================
 
+  // [v2] 답장: 모든 메시지에 짧은 id 를 붙여 답장 대상이 되게 하고, 브라우저가 보낸 원본 요약(reply_to)은
+  // 정해진 모양 { id, name, time, text } 으로만 전달한다
   on("chat_message", (data: Record<string, unknown>) => {
     const u = me()!;
-    all.emit("chat_update", { ...data, name: name(), time: getTime(), icon_id: u.iconId, icon_ver: u.iconVer });
+    const payload: Record<string, unknown> = {
+      ...data,
+      id: randomBytes(6).toString("base64url"),
+      name: name(),
+      time: getTime(),
+      icon_id: u.iconId,
+      icon_ver: u.iconVer,
+    };
+    const replyTo = pickReplyTo(data.reply_to);
+    if (replyTo) payload.reply_to = replyTo;
+    else delete payload.reply_to;
+    all.emit("chat_update", payload);
   });
 
   on("ping", () => socket.emit("ping"));

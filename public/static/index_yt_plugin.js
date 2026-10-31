@@ -20,9 +20,12 @@ function onYouTubeIframeAPIReady() {
 	});
 }
 
-function onPlayerReady(event) 
+function onPlayerReady(event)
 {
 	resize()
+
+	// [v2] 지난번 볼륨·음소거 복원 (index_UI.js)
+	restore_video_volume()
 
 	// 로그인 요청
 	g_player_ready = true
