@@ -104,6 +104,8 @@
       <input type="text" id="login_id" placeholder="닉네임" maxlength=32 autocomplete="nickname" onkeydown="login_keydown()">
       <input type="text" id="login_pw" placeholder="PW (미구현)" onkeydown="login_keydown()" disabled>
       <div id="login_button" class="nanum bold" onclick="login()">입장하기</div>
+      <!-- 최근 입장한 닉네임 (index_login.js render_login_recent). 누르면 그 닉네임으로 바로 입장, ✕ 로 지움 -->
+      <div id="login_recent" class="nanum no-drag"></div>
       <div id="login_remember_nick_holder" class="nanum">
         <input type="checkbox" id="login_remember_nick"/>
         <label for="login_remember_nick">자동 로그인</label>
@@ -246,9 +248,17 @@
           <span class="option_label">롤백 제목 굵게</span>
           <input type="checkbox" id="option_checkbox_lol_title_bold" name="option_checkbox_lol_title_bold" checked/>
         </label>
+        <label class="option_item option_switch no-drag" for="option_checkbox_lol_compact">
+          <span class="option_label">롤백 컴팩트 모드<small>글목록과 글 내용을 한 칸으로 합치고, 영상을 그 옆에 둡니다 (PC 화면)</small></span>
+          <input type="checkbox" id="option_checkbox_lol_compact" name="option_checkbox_lol_compact"/>
+        </label>
         <label class="option_item option_switch no-drag" for="option_checkbox_dezeolmo">
           <span class="option_label">데이터 절약 모드<small>채팅 이미지와 영상 썸네일을 불러오지 않습니다</small></span>
           <input type="checkbox" id="option_checkbox_dezeolmo" name="option_checkbox_dezeolmo"/>
+        </label>
+        <label class="option_item option_switch no-drag" for="option_checkbox_livechat">
+          <span class="option_label">생방송 라이브 채팅 창<small>켜면 생방송 때 유튜브·트위치 채팅 창을 불러옵니다 (끄면 브라우저 부담이 줄어듭니다)</small></span>
+          <input type="checkbox" id="option_checkbox_livechat" name="option_checkbox_livechat"/>
         </label>
       </details>
 
@@ -490,6 +500,8 @@
       <div id="lol_lpanel_header">
         <img id="lol_lpanel_account_icon">
         <div id="lol_lpanel_account">로그인 해주세요.</div>
+        <!-- 알림센터 🔔 (로그인했을 때만, index_lol.js lol_notif_*) -->
+        <div id="lol_lpanel_notif" class="no-drag" title="알림센터"><span id="lol_lpanel_notif_badge"></span></div>
         <div id="lol_lpanel_userinfo"></div>
         <div id="lol_lpanel_refresh"></div>
       </div>
@@ -516,7 +528,10 @@
           <div id="lol_lpanel_userinfo_menu_inner_background">
             <div id="lol_lpanel_userinfo_menu_button_nickname_change" menu-button>닉네임 변경</div>
             <div id="lol_lpanel_userinfo_menu_button_icon_change" menu-button>아이콘 제작</div>
-            <div id="lol_lpanel_userinfo_menu_button_blocklist_reset" menu-button>차단목록 초기화</div>
+            <div id="lol_lpanel_userinfo_menu_button_fixed_image_set" menu-button>고정짤 등록</div>
+            <div id="lol_lpanel_userinfo_menu_button_fixed_image_clear" menu-button>고정짤 삭제</div>
+            <!-- 차단목록 보기·해제 (id 는 예전 '차단목록 초기화' 그대로) -->
+            <div id="lol_lpanel_userinfo_menu_button_blocklist_reset" menu-button>차단목록</div>
             <div id="lol_lpanel_userinfo_menu_button_logout" menu-button red-button>롤디자게 로그아웃</div>
             <div id="lol_lpanel_userinfo_menu_label_account_code">----------------</div>
           </div>
@@ -572,6 +587,8 @@
         <div id="lol_rpanel_body_like" class="no-drag">
           <div id="lol_rpanel_body_like_count">0</div>
         </div>
+        <!-- 비추천: 추천 0이면 불가, 같은 버튼을 다시 누르면 취소 (롤백 앱과 같은 규칙, index_lol.js lol_rpanel_update_vote) -->
+        <div id="lol_rpanel_body_dislike" class="no-drag" title="비추천 (다시 누르면 취소)">▼ 비추천</div>
         <div id="lol_icon_change_buttons">
           <div id="lol_rpanel_body_icon_change_cancel">취소</div>
           <div id="lol_rpanel_body_icon_change_confirm">등록</div>
@@ -611,9 +628,12 @@
         <input type="text" id="lol_write_subject" placeholder="제목 입력">
         <textarea id="lol_write_body" placeholder="음란물 게재시 이용에 제재를 가할 수 있으며 법적 조치를 취할 수 있습니다."></textarea>
         <div image-holder>
-          <input type="text" id="lol_write_image_placeholder" placeholder="여기에 붙여넣기(Ctrl+V) 또는 파일 드롭" maxlength=0>
-          <img id="lol_write_image">
-          <div id="lol_write_image_guide">이미지 첨부 중... 기다려주셈</div>
+          <!-- 사진 최대 10장: 타일(끌어서 순서 변경) + 붙여넣기·드롭 칸 / [+] (index_lol.js lol_write_images_render) -->
+          <div id="lol_write_images_box"></div>
+          <div id="lol_write_images_bar">
+            <div id="lol_write_images_guide"></div>
+            <button type="button" id="lol_write_images_clear_button" class="no-drag" title="첨부한 사진을 모두 뺍니다">전체 비우기</button>
+          </div>
           <canvas id="lol_write_canvas"></canvas>
         </div>
         <input type="text" id="lol_write_youtube" placeholder="영상 주소 입력">
@@ -622,6 +642,15 @@
         <div id="lol_write_cancel">취소</div>
         <div id="lol_write_confirm">등록</div>
       </div>
+    </div>
+
+    <!-- 알림센터 패널: 헤더 🔔 아래에 뜬다. 알림 탭 / 채팅(쪽지) 탭, 대화창은 index_lol.js 가 그린다 -->
+    <div id="lol_notif_panel" class="no-drag">
+      <div tabs>
+        <div tab="notif" selected>알림</div>
+        <div tab="memo">채팅</div>
+      </div>
+      <div id="lol_notif_content"></div>
     </div>
 
   </div>

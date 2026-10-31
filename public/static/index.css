@@ -366,6 +366,51 @@ input, textarea {
   z-index: 101;
 }
 
+/* [v2] 최근 닉네임 칩 (index_login.js render_login_recent). 예전 디자인은 로그인 상자 바로 아래, 새 디자인은 카드 안 (site-modern.css) */
+#login_recent {
+  display: none;
+  position: absolute;
+  left: 0px;
+  top: 236px;
+  width: 328px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  z-index: 101;
+}
+
+#login_recent > [chip] {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 5px 8px 5px 11px;
+  border: 1px solid gray;
+  border-radius: 999px;
+  background-color: whitesmoke;
+  color: #222;
+  font-size: 13px;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#login_recent > [chip]:hover {
+  background-color: #fff;
+}
+
+#login_recent > [chip] > [remove] {
+  font-style: normal;
+  font-size: 11px;
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+#login_recent > [chip] > [remove]:hover {
+  opacity: 1;
+  color: #e03131;
+}
+
 /* =================== 좌 하단 ========================= */
 
 /* 하단 바 (영상 영역 아래, 채팅 왼쪽) */
@@ -1471,6 +1516,80 @@ div.recent_list_video {
   text-overflow: ellipsis;
 }
 
+/* 답장 중 띠: 입력창 바로 위 (index_chat.js chat_render_reply_bar). 호출 목록(#chat_mention)이 뜨면 그 아래 */
+#chat_reply_bar {
+  display: none;
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 2px);
+  z-index: 4;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--sm-border, var(--보더색));
+  border-radius: 10px;
+  background-color: var(--cm-input-bg, var(--배경색));
+  color: var(--cm-text, var(--글자색));
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.18);
+  font-family: var(--sm-font, var(--app-font));
+  font-size: calc(12.5px * var(--font-scale));
+  line-height: 1.35;
+}
+
+#chat_reply_bar > [top] {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+  font-weight: 700;
+}
+
+#chat_reply_bar > [top] > button {
+  border: 0;
+  padding: 0 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+#chat_reply_bar > [top] > button:hover {
+  opacity: 1;
+}
+
+#chat_reply_bar > [preview] {
+  max-height: 3.6em;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--cm-muted, inherit);
+}
+
+#chat_reply_bar > [preview] > [meta] {
+  display: block;
+  font-weight: 700;
+  color: var(--cm-name, inherit);
+}
+
+/* 답장 인용 말풍선 — 예전 채팅 디자인용 기본 모양 (새 디자인은 chat-modern.css) */
+.chat_reply_quote {
+  margin: 4px 0;
+  padding: 4px 8px;
+  border-left: 3px solid var(--보더색);
+  font-size: 12px;
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+.chat_reply_quote > [meta] {
+  font-weight: bold;
+}
+
+.chat[highlight] {
+  outline: 2px solid var(--보더색);
+}
+
 #chat_input {
   width: calc(85% - 35px);
   height: 26px;
@@ -2348,6 +2467,340 @@ temp[emoji] {
   cursor: pointer;
 }
 
+/* [v2] 알림센터 종 (로그인했을 때만 index_lol.js 가 보인다). 예전 디자인은 이모지, 새 디자인은 Lucide (site-modern.css) */
+#lol_lpanel_notif {
+  display: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  margin-right: 12px;
+  font-size: 19px;
+  line-height: 30px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+#lol_lpanel_notif::before {
+  content: '🔔';
+}
+
+#lol_lpanel_notif:hover {
+  opacity: 0.8;
+}
+
+#lol_lpanel_notif_badge {
+  display: none;
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: #e03131;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 15px;
+  text-align: center;
+}
+
+/* 알림센터 패널 (index_lol.js lol_notif_*). 테마 색을 따른다 */
+#lol_notif_panel {
+  display: none;
+  position: fixed;
+  z-index: 100001;
+  width: 340px;
+  max-height: 72vh;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--보더색);
+  border-radius: 10px;
+  background: var(--배경색);
+  color: var(--글자색);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  font-family: var(--app-font);
+  font-size: 13px;
+}
+
+#lol_notif_panel > [tabs] {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--보더색);
+}
+
+#lol_notif_panel > [tabs] > [tab] {
+  flex: 1;
+  padding: 11px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+#lol_notif_panel > [tabs] > [tab][selected] {
+  border-bottom: 2px solid #339af0;
+  font-weight: bold;
+  opacity: 1;
+}
+
+#lol_notif_content {
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+}
+
+#lol_notif_content[empty] {
+  padding: 34px 12px;
+  text-align: center;
+  opacity: 0.6;
+}
+
+/* 알림 한 줄 */
+#lol_notif_content > [item] {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--보더색);
+  cursor: pointer;
+}
+
+#lol_notif_content > [item]:hover {
+  background: rgba(128, 128, 128, 0.12);
+}
+
+#lol_notif_content > [item][unread] {
+  background: rgba(51, 154, 240, 0.14);
+}
+
+#lol_notif_content > [item] > [title] {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+#lol_notif_content > [item] > [text] {
+  margin-top: 2px;
+  font-size: 12px;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#lol_notif_content > [item] > [time] {
+  margin-top: 3px;
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+/* 쪽지 대화 목록 한 줄 */
+#lol_notif_content > [thread] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--보더색);
+  cursor: pointer;
+}
+
+#lol_notif_content > [thread]:hover {
+  background: rgba(128, 128, 128, 0.12);
+}
+
+#lol_notif_content > [thread] > img {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 30%;
+  object-fit: cover;
+  background: rgba(128, 128, 128, 0.3);
+}
+
+#lol_notif_content > [thread] > [main] {
+  flex: 1;
+  min-width: 0;
+}
+
+#lol_notif_content > [thread] [nick] {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+#lol_notif_content > [thread] [last] {
+  margin-top: 1px;
+  font-size: 12px;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#lol_notif_content > [thread] > [meta] {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+#lol_notif_content > [thread] [unread] {
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: #e03131;
+  color: white;
+  font-weight: bold;
+}
+
+/* 대화창: 위 머리(←, 닉네임)와 아래 입력칸은 고정, 가운데 메시지만 스크롤 */
+#lol_notif_content[conv] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#lol_notif_content > [head] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--보더색);
+}
+
+#lol_notif_content > [head] > [back] {
+  padding: 2px 6px;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+#lol_notif_content > [head] > [back]:hover {
+  opacity: 1;
+}
+
+#lol_notif_content > [head] > [nick] {
+  font-weight: bold;
+}
+
+#lol_notif_conv_body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-height: 120px;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+#lol_notif_conv_body > [datesep] {
+  margin: 8px 0 4px;
+  text-align: center;
+}
+
+#lol_notif_conv_body > [datesep] > span {
+  padding: 3px 12px;
+  border-radius: 11px;
+  background: rgba(128, 128, 128, 0.2);
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+#lol_notif_conv_body > [row] {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+#lol_notif_conv_body > [row][mine] {
+  justify-content: flex-end;
+}
+
+#lol_notif_conv_body > [row] > [avatar] {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 30%;
+  object-fit: cover;
+}
+
+#lol_notif_conv_body > [row] > [msg] {
+  position: relative;
+  max-width: 74%;
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: rgba(128, 128, 128, 0.2);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#lol_notif_conv_body > [row][mine] > [msg] {
+  border-top-right-radius: 4px;
+  background: #1971c2;
+  color: white;
+}
+
+#lol_notif_conv_body > [row]:not([mine]) > [msg][tail] {
+  border-top-left-radius: 4px;
+}
+
+#lol_notif_conv_body > [row] > [msg] > img {
+  display: block;
+  max-width: 100%;
+  margin-top: 4px;
+  border-radius: 6px;
+}
+
+#lol_notif_conv_body > [row] > [msg] > [time] {
+  margin-top: 3px;
+  font-size: 9px;
+  text-align: right;
+  opacity: 0.55;
+}
+
+#lol_notif_content > [input] {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px;
+  border-top: 1px solid var(--보더색);
+}
+
+#lol_notif_content > [input] > input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--보더색);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+#lol_notif_content > [input] > input:focus {
+  border-color: #339af0;
+}
+
+#lol_notif_content > [input] > button {
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #1c7ed6;
+  color: white;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#lol_notif_content > [input] > button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 #lol_lpanel_board {
   overflow-y: auto;
   overflow-x: clip;
@@ -2445,6 +2898,20 @@ temp[emoji] {
 .lol_article_list_item [type][kind=doodlr] { background-image: url('icon_doodlr.png'); }
 .lol_article_list_item [type][kind=image] { background-image: url('icon_img.png'); }
 .lol_article_list_item [type][kind=text] { background-image: url('icon_text.png'); }
+
+/* [v2] 시각 표기 색·굵기 (롤디칩 기준): 방금 전 빨강, n초 전 보라, n분·n시간 전 적갈색, 날짜 회색, 모두 굵게.
+   표기 규칙(24시간 이내 상대 시간)은 신 버전 것. index_lol.js lol_time_render 가 lol_bucket 을 붙인다 */
+[lol_time] {
+  font-weight: 800;
+  color: var(--lol-time-color);
+}
+[lol_bucket="now"] { --lol-time-color: #e53935; }
+[lol_bucket="sec"] { --lol-time-color: #501c60; }
+[lol_bucket="min"], [lol_bucket="hour"] { --lol-time-color: #8c3a38; }
+[lol_bucket="date"] { --lol-time-color: #9a9a9a; }
+:root[theme="dark"] [lol_bucket="now"] { --lol-time-color: #ef5350; }
+:root[theme="dark"] [lol_bucket="sec"] { --lol-time-color: #ce93d8; }
+:root[theme="dark"] [lol_bucket="min"], :root[theme="dark"] [lol_bucket="hour"] { --lol-time-color: #964b53; }
 
 /* 상대 시간에 마우스를 올리면 뜨는 정확한 시각 (index_lol.js 가 위치를 잡는다) */
 #lol_time_tip {
@@ -2758,7 +3225,7 @@ temp[emoji] {
 #lol_rpanel_body_date {
   font-weight: bold;
   text-align: right;
-  color: rgb(197,197,197);
+  color: var(--lol-time-color, rgb(197,197,197)); /* 경과 구간별 색 ([lol_bucket]), 시각이 아니면 예전 회색 */
   margin-right: 10px;
 }
 
@@ -2906,6 +3373,58 @@ temp[emoji] {
   color: white;
 }
 
+/* 내가 추천한 글: 추천 그래픽을 테두리로 강조 */
+#lol_rpanel_body_like[voted] {
+  outline: 3px solid #1c7ed6;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* 비추천 버튼: 추천 그래픽 바로 아래 가운데. 추천 수(#lol_rpanel_body_like_count)가 top:40px 로 버튼 위까지
+   내려와 있어, z-index 로 위에 올려야 클릭이 추천 버튼으로 새지 않는다 */
+#lol_rpanel_body_dislike {
+  display: none;
+  position: relative;
+  z-index: 5;
+  align-self: center;
+  margin: 8px auto 2px;
+  padding: 5px 16px;
+  border: 1.5px solid #e2a6a6;
+  border-radius: 15px;
+  background: rgba(224, 49, 49, 0.06);
+  color: #c0392b;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.12s, background 0.12s;
+}
+#lol_rpanel_body_dislike:hover {
+  opacity: 0.82;
+}
+#lol_rpanel_body_dislike[voted] {
+  color: white;
+  background: #e03131;
+  border-color: #e03131;
+}
+/* 추천 0인 글은 비추천 불가. pointer-events:none 을 주면 클릭이 아래 추천 버튼으로 통과하므로 보이기만 흐리게 */
+#lol_rpanel_body_dislike[disabled] {
+  opacity: 0.35;
+  cursor: default;
+}
+:root[theme="dark"] #lol_rpanel_body_dislike {
+  color: #ee8a8a;
+  border-color: #8a4141;
+  background: rgba(224, 49, 49, 0.10);
+}
+:root[theme="dark"] #lol_rpanel_body_dislike[voted] {
+  color: white;
+  background: #e03131;
+  border-color: #e03131;
+}
+
 /* 아이콘 변경 - 버튼 컨테이너 */
 #lol_icon_change_buttons {
   display: none;
@@ -3042,6 +3561,202 @@ temp[emoji] {
 .lol_reply_list_item [reply_body] [img][small]{
   max-width: 50%;
   cursor: zoom-in;
+}
+
+/* [v2] 답글 스레드: parent_id 깊이만큼 들여쓰기 (index_lol.js lol_thread_replies, 최대 4단) */
+.lol_reply_list_item[depth="1"] { margin-left: 22px; }
+.lol_reply_list_item[depth="2"] { margin-left: 44px; }
+.lol_reply_list_item[depth="3"] { margin-left: 66px; }
+.lol_reply_list_item[depth="4"] { margin-left: 88px; }
+
+.lol_reply_list_item[depth]:not([depth="0"]) {
+  border-left: 2px solid var(--롤백_보더색);
+  padding-left: 8px;
+  box-sizing: border-box;
+}
+
+/* 댓글의 '답글' 버튼 (이름 줄 오른쪽) */
+.lol_reply_list_item [reply_btn] {
+  flex-shrink: 0;
+  align-self: center;
+  margin-left: 10px;
+  color: #339af0;
+  font-size: 11px;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 댓글 속 '@닉네임' */
+.lol_mention {
+  color: #339af0;
+  font-weight: bold;
+}
+
+/* '↳ 닉 님에게 답글' 띠: 대상 댓글 아래, 입력창 위 */
+#lol_rpanel_reply_target_bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 15px 4px 0;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(51, 154, 240, 0.13);
+  font-size: 12px;
+}
+
+#lol_rpanel_reply_target_bar [cancel] {
+  color: #e03131;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* [v2] 롤백 모달 (차단목록·고정짤 등록, index_lol.js lol_modal_make). 테마 색을 따른다 */
+.lol_modal {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.62);
+  font-family: var(--app-font);
+  font-size: 14px;
+}
+
+.lol_modal > [box] {
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  max-width: 100%;
+  max-height: 80vh;
+  padding: 20px;
+  box-sizing: border-box;
+  border: 1px solid var(--보더색);
+  border-radius: 10px;
+  background: var(--배경색);
+  color: var(--글자색);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.lol_modal [head] {
+  margin-bottom: 10px;
+}
+
+.lol_modal [head] > [title] {
+  font-size: 17px;
+  font-weight: bold;
+}
+
+.lol_modal [head] > [sub] {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.65;
+}
+
+.lol_modal [body] {
+  flex: 1;
+  min-height: 90px;
+  overflow-y: auto;
+}
+
+.lol_modal [body] > [row] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--보더색);
+}
+
+.lol_modal [body] > [row] > img {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 30%;
+  object-fit: cover;
+  background: rgba(128, 128, 128, 0.3);
+}
+
+.lol_modal [body] > [row] > [info] {
+  flex: 1;
+  min-width: 0;
+}
+
+.lol_modal [body] [nick] {
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lol_modal [body] [when] {
+  font-size: 11px;
+  opacity: 0.65;
+}
+
+/* 고정짤 미리보기 (누르면 다시 고른다) */
+.lol_modal [body] > img[preview] {
+  display: block;
+  max-width: 100%;
+  max-height: 40vh;
+  margin: 0 auto;
+  border: 2px solid red;
+  cursor: pointer;
+}
+
+.lol_modal [status] {
+  min-height: 16px;
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.lol_modal [buttons] {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.lol_modal button {
+  padding: 7px 14px;
+  border: 1px solid var(--보더색);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lol_modal button:hover {
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.lol_modal button[kind="primary"] {
+  border-color: #4f78d1;
+  background: #4f78d1;
+  color: white;
+}
+
+.lol_modal button[kind="danger"] {
+  margin-right: auto;
+  border-color: #e03131;
+  background: #e03131;
+  color: white;
+}
+
+.lol_modal button[kind="link"] {
+  padding: 4px 6px;
+  border: 0;
+  color: #e03131;
+  font-weight: bold;
 }
 
 #lol_rpanel_reply_board_write_container {
@@ -3196,63 +3911,169 @@ temp[emoji] {
   cursor: pointer;
 }
 
-/* 글쓰기 - 이미지 첨부 부모 */
+/* 글쓰기 - 사진 첨부 (최대 10장, index_lol.js lol_write_images_render). 타일이 가로로 쌓이고 넘치면 줄바꿈 */
 #lol_write [image-holder] {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   margin: 20px;
 }
 
-/* 글쓰기 - 이미지 첨부 가이드 라벨 (사진 미 첨부) */
-#lol_write_image_placeholder {
-  min-width: 400px;
+#lol_write_images_box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.lol_write_images_tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 150px;
+  height: 150px;
+  box-sizing: border-box;
+  border-radius: 6px;
+}
+
+.lol_write_images_tile > img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border: 2px solid red;
+  border-radius: 4px;
+  background: rgba(128, 128, 128, 0.12);
+  cursor: grab;
+}
+
+.lol_write_images_tile[dragging] {
+  opacity: 0.4;
+}
+
+.lol_write_images_tile[drag_over]::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px dashed #339af0;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* 순서 배지 — 끌어 놓은 순서가 글에 그대로 보인다는 걸 숫자로 */
+.lol_write_images_tile > [order] {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.66);
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 18px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.lol_write_images_tile > [del] {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.66);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lol_write_images_tile > [del]:hover {
+  background: #e03131;
+}
+
+/* [+] 사진 더 첨부 */
+.lol_write_images_add {
+  border: 1px dashed red;
+  color: red;
+  font-size: 40px;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lol_write_images_add:hover {
+  background: rgba(224, 49, 49, 0.08);
+}
+
+/* 붙여넣기/드롭 칸 — 예전의 빨간 점선 사각형 (고정짤 등록 창에서도 쓴다) */
+.lol_write_images_drop {
+  width: 100%;
+  max-width: 400px;
   min-height: 200px;
+  padding: 0;
+  box-sizing: border-box;
   text-align: center;
   border: 1px dashed red;
-  cursor: pointer;
   background: transparent;
   caret-color: transparent;
   font-size: large;
+  cursor: pointer;
 }
-#lol_write_image_placeholder::placeholder {
+
+.lol_write_images_drop[drag_over] {
+  border-width: 6px;
+}
+
+.lol_write_images_drop::placeholder {
   color: red;
   font-weight: bold;
 }
 
-#lol_write_image_guide {
+/* 안내문 + [전체 비우기] 한 줄. 사진이 없으면 줄째로 감춘다 (index_lol.js) */
+#lol_write_images_bar {
   display: none;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+#lol_write_images_guide {
   color: red;
   font-weight: bold;
-  align-self: flex-end;
-  margin-left: 10px;
+}
+
+#lol_write_images_clear_button {
   flex-shrink: 0;
+  margin-left: auto;
+  padding: 3px 9px;
+  border: 1px solid #999;
+  border-radius: 5px;
+  background: transparent;
+  color: #888;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+#lol_write_images_clear_button:hover {
+  border-color: #e03131;
+  background: rgba(224, 49, 49, 0.10);
+  color: #e03131;
 }
 
 #lol_write_canvas {
   display: none;
-}
-
-/* 위아래 가운데 정렬을 위함 */
-/* #lol_write_image_placeholder::before { 
-  content: ' ';
-  display: inline-block;
-  height: 100%;
-  vertical-align: middle;
-} */
-
-/* 글쓰기 - 첨부 이미지 미리보기 */
-#lol_write_image {
-  display: none;
-  min-width: 20px;
-  min-height: 20px;
-  max-width: 100%;
-  max-height: 100%;
-  border: 2px solid red;
-  cursor: pointer;
-}
-#lol_write_image {
-  content: '이미지가 첨부되었습니다.';
-  color: red;
-  font-weight: bold;
 }
 
 
@@ -3417,6 +4238,49 @@ top: 0;
 /* 데스크톱에서는 숨기는 모바일 전용 요소 */
 #mobile_tabbar, #lol_rpanel_back {
   display: none;
+}
+
+/* [v2] 롤백 컴팩트 모드 (옵션 > 화면, PC 전용 — index_lol.js set_lol_compact 가 모바일 조건에서는 켜지 않는다)
+   글목록과 글상세를 글목록 폭 한 칸으로 합치고, 게시판이 열려 있으면 영상을 그 옆 남는 공간으로 옮긴다.
+   목록↔상세 전환은 모바일 레이아웃과 같은 #lol_panel[mobile_detail] 속성을 쓰고, 상세에서 목록으로는 우클릭으로 돌아간다 */
+:root[lol_compact] #lol_panel {
+  width: var(--lol-lpanel-width);
+  border-right: 1px solid var(--보더색);
+}
+
+:root[lol_compact] #lol_panel:not([mobile_detail]) > #lol_rpanel,
+:root[lol_compact] #lol_panel:not([mobile_detail]) > #lol_write {
+  display: none !important; /* JS가 인라인으로 켜는 것보다 우선 */
+}
+
+:root[lol_compact] #lol_panel[mobile_detail] > #lol_lpanel {
+  display: none;
+}
+
+:root[lol_compact] #lol_lpanel {
+  border-right: 0px;
+}
+
+/* 글상세에서 목록으로는 우클릭(index.js 의 contextmenu)으로 돌아간다. 모바일의 ← 버튼은 머리의 아이콘·스택·조회수와 겹쳐서 쓰지 않는다 */
+
+/* 게시판이 열려 있으면 영상·자막·안내 화면을 오른쪽 남는 공간으로 (닫히면 제자리) */
+:root[lol_compact] #video_player,
+:root[lol_compact] #m3u8_player,
+:root[lol_compact] #flv_player,
+:root[lol_compact] #twitch_player_panel,
+:root[lol_compact] #block_video,
+:root[lol_compact] #marquee_screen {
+  transition: left 0.24s ease, width 0.24s ease;
+}
+
+:root[lol_compact][lol_board_open] #video_player,
+:root[lol_compact][lol_board_open] #m3u8_player,
+:root[lol_compact][lol_board_open] #flv_player,
+:root[lol_compact][lol_board_open] #twitch_player_panel,
+:root[lol_compact][lol_board_open] #block_video,
+:root[lol_compact][lol_board_open] #marquee_screen {
+  left: var(--lol-lpanel-width);
+  width: calc(var(--stage-width) - var(--lol-lpanel-width));
 }
 
 /* 폭 768px 이하 화면, 또는 높이 500px 이하인 터치 기기 가로 화면 (index_UI.js의 g_mobile_media와 같은 조건)
@@ -3972,7 +4836,7 @@ top: 0;
     aspect-ratio: 16 / 9;
   }
 
-  #lol_rpanel_body_icon_change_placeholder, #lol_write_image_placeholder {
+  #lol_rpanel_body_icon_change_placeholder, .lol_write_images_drop {
     min-width: 0px;
     width: 100%;
     min-height: 140px;

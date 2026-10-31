@@ -151,6 +151,7 @@ function lol_complete_api_login(result)
 	lol_lpanel_write_button.style.display = 'block'
 	lol_lpanel_update()
 	lol_rpanel_update()
+	lol_notif_poll_start() // [v2] 알림센터 배지 (안 읽은 알림·쪽지)
 
 	var callbacks = g_lol_api_login_callbacks.splice(0)
 	for(var callback of callbacks)
@@ -375,10 +376,12 @@ function lol_lpanel_update_header()
 
 		// 내정보 버튼
 		lol_lpanel_userinfo.style.display = 'block'
-		
+
 		// 계정메뉴 - 외부 서버 로그인 아이디 표시
 		lol_lpanel_userinfo_menu_label_account_code.firstChild.nodeValue = g_lol_api_account_id
 	}
+
+	lol_lpanel_notif.style.display = g_lol_user_info ? 'block' : 'none' // [v2] 알림센터 종은 로그인했을 때만
 }
 
 /* 글목록 다시 그리기 */
@@ -594,7 +597,12 @@ function lol_on_article_detail(data)
 	else
 		data.replys = null
 
+	if(data['my_post'] != '1' && lol_is_my_content(data['author_id']))
+		data['my_post'] = '1' // [v2] 레거시 계정은 작성자 id 가 legacy_id 로 온다 (서버도 같은 보정을 하지만 혹시 몰라서)
+
 	g_lol_current_detail = data
+	if(!g_lol_same_article_prev)
+		lol_reply_target_clear() // [v2] 다른 글로 넘어가면 답글 대상 해제
 
 	lol_write_panel_toggle(false)
 	lol_rpanel_refresh.style.display = 'block'
@@ -658,21 +666,37 @@ function lol_time_render(el)
 	var exact = lol_format_kst(ms)
 	var diff = Math.floor((Date.now() - ms) / 1000)
 	var text = exact
+	var bucket = 'date' // 경과 구간 (색·굵기는 index.css [lol_bucket])
 
 	if(diff < 24 * 60 * 60)
 	{
 		if(diff < 1)
+		{
 			text = '방금 전'
+			bucket = 'now'
+		}
 		else if(diff < 60)
+		{
 			text = diff + '초 전'
+			bucket = 'sec'
+		}
 		else if(diff < 60 * 60)
+		{
 			text = Math.floor(diff / 60) + '분 전'
+			bucket = 'min'
+		}
 		else
+		{
 			text = Math.floor(diff / 3600) + '시간 전'
+			bucket = 'hour'
+		}
 		el.setAttribute('lol_exact', exact)
 	}
 	else
 		el.removeAttribute('lol_exact')
+
+	if(el.getAttribute('lol_bucket') != bucket)
+		el.setAttribute('lol_bucket', bucket)
 
 	if(el.textContent != text)
 		el.textContent = text
@@ -686,6 +710,7 @@ function lol_set_time(el, value, fallback_html)
 	{
 		el.removeAttribute('lol_time')
 		el.removeAttribute('lol_exact')
+		el.removeAttribute('lol_bucket')
 		if(fallback_html === undefined)
 			el.textContent = value || ''
 		else
@@ -4343,17 +4368,25 @@ function lol_onclick_userinfo_foreground()
 }
 
 /* 내 정보 - 닉네임 변경 클릭 */
+// [v2] 롤백은 닉네임을 바꾸면 24시간 동안 다시 바꿀 수 없다 → 바꾸기 전에 알린다. 거부 사유는 index_socket.js 의 lol_change_nickname 에서 보여 준다
 function lol_onclick_userinfo_nickname_change()
 {
 	event.stopPropagation()
+	lol_lpanel_userinfo_menu.style.display = 'none'
 
-	var new_nick = prompt('아이디를 입력하세요', g_lol_user_info['nickname'])
-	if(new_nick.length == 0)
+	var current = g_lol_user_info && g_lol_user_info['nickname'] || ''
+	if(!confirm('닉네임을 변경하시겠습니까?\n\n※ 한 번 변경하면 24시간 동안 다시 변경할 수 없습니다.'))
 		return
+	var input = prompt('새 닉네임을 입력하세요.\n(변경 후 24시간 동안 재변경 불가)', current)
+	if(input == null) // 취소
+		return
+	var new_nick = input.trim()
+	if(!new_nick)
+		return alert('닉네임을 입력해 주세요.')
+	if(new_nick == current)
+		return alert('현재 닉네임과 같습니다.')
 
 	socket.emit('lol_change_nickname', lol_add_api_auth({ user_id: g_lol_android_id, new_nick: new_nick }))
-
-	lol_lpanel_userinfo_menu.style.display = 'none'
 }
 
 /* 내 정보 - 아이콘 변경 클릭 */
@@ -4364,13 +4397,12 @@ function lol_onclick_userinfo_icon_change()
 	lol_rpanel_show_icon_change_panel()
 }
 
-/* 내 정보 - 차단목록 초기화 클릭 */
+/* 내 정보 - 차단목록 클릭 (예전 '차단목록 초기화' 자리) */
 function lol_onclick_userinfo_blocklist_reset()
 {
 	event.stopPropagation()
-	// TODO
-	
-	alert('만들기 귀찮아서 유기')
+	lol_lpanel_userinfo_menu.style.display = 'none'
+	lol_block_list_show()
 }
 
 /* 내 정보 - 롤디자게 로그아웃 클릭 */
@@ -4393,6 +4425,7 @@ function lol_onclick_userinfo_logout()
 	lol_forget_api_credentials()
 	g_lol_android_id = g_lol_guest_id
 	g_lol_user_info = null
+	lol_notif_reset() // [v2] 알림센터 배지·폴링 정리
 
 	lol_lpanel_userinfo_menu.style.display = 'none'
 
@@ -4405,9 +4438,10 @@ function lol_onclick_userinfo_logout()
 function lol_onclick_write_cancel() 
 {
 
-	if(lol_write_subject.value.length == 0 && 
+	if(lol_write_subject.value.length == 0 &&
 		lol_write_body.value.length == 0 &&
-		lol_write_youtube.value.length == 0)
+		lol_write_youtube.value.length == 0 &&
+		g_lol_write_images.length == 0)
 	{
 		lol_write_panel_toggle(false)
 		return
@@ -4420,13 +4454,7 @@ function lol_onclick_write_cancel()
 	lol_write_subject.value = ''
 	lol_write_body.value = ''
 	lol_write_youtube.value = ''
-
-	g_lol_write_image_data = ''
-	g_lol_write_image_data_gif = ''
-	lol_write_image.style.display = 'none'
-	lol_write_image_guide.style.display = 'none'
-	lol_write_image.src = ''
-	lol_write_image_placeholder.style.display = 'block'
+	lol_write_images_clear()
 
 	lol_write_panel_toggle(false)
 }
@@ -4440,14 +4468,17 @@ function lol_onclick_write_confirm()
 	if(lol_write_body.value.length == 0)
 		return
 
+	if(g_lol_write_images_busy)
+		return alert('사진을 읽는 중입니다. 잠시 후 다시 등록해 주세요.')
+
 	lol_request_api_credentials(function() {
 		socket.emit('lol_write', lol_add_api_auth({
 			android_id: g_lol_android_id,
 			subject: lol_write_subject.value,
 			body: lol_write_body.value,
 			youtube_url: lol_write_youtube.value,
-			image: g_lol_write_image_data_gif ? g_lol_write_image_data_gif : g_lol_write_image_data,
-			is_gif: g_lol_write_image_data_gif ? true : false
+			// [v2] 사진 최대 10장, 배열 순서 = 글에 보이는 순서. GIF·WebP 는 원본 그대로 (캔버스 변환은 애니메이션을 없앤다)
+			images: g_lol_write_images.map(function(item) { return { image: item.data, image_format: item.format } })
 		}))
 	})
 }
@@ -4522,11 +4553,14 @@ function lol_rpanel_update()
 	if(g_lol_android_id == g_lol_guest_id)
 	{
 		lol_rpanel_header_button.firstChild.nodeValue = '[롤백과사전 로그인하기]'
+		lol_rpanel_header_button.style.display = ''
 		lol_rpanel_header_memo_container.style.display = 'none'
 	}
 	else
 	{
 		lol_rpanel_header_button.innerHTML = '[차단하기]'
+		// [v2] 없는 글·내 글에서는 차단 버튼을 감춘다
+		lol_rpanel_header_button.style.display = (is_invalid || g_lol_current_detail['my_post'] == '1') ? 'none' : ''
 		lol_rpanel_header_memo_container.style.display = is_invalid ? 'none' : 'flex'
 	}
 
@@ -4616,6 +4650,7 @@ function lol_rpanel_update()
 	}
 	else
 		lol_rpanel_body_img4.style.display = 'none'
+	lol_rpanel_update_extra_images(zzals.slice(4)) // [v2] 5번째부터 (앱은 10장까지 올린다)
 
 	if(!g_lol_same_article_prev)
 	{
@@ -4631,7 +4666,8 @@ function lol_rpanel_update()
 	lol_rpanel_body_icon_change_size_slider.style.display = 'none'
 	lol_icon_change_buttons.style.display = 'none'
 	
-	lol_rpanel_body_body.innerHTML = g_lol_current_detail['post_text'].replace('size=1', '').replace(/\r\n/g, '<br>').replace(/？/g, '?').replace(/＆/g, '&')
+	// [v2] 신 API 는 줄바꿈을 LF 로 내려준다 → CRLF 만 바꾸면 여러 줄 글이 한 줄로 붙는다. <br>·<font> 가 박힌 옛 글에는 단독 LF 가 없어 영향 없음
+	lol_rpanel_body_body.innerHTML = lol_nl_to_br(g_lol_current_detail['post_text'].replace('size=1', '')).replace(/？/g, '?').replace(/＆/g, '&')
 	document.querySelectorAll('#lol_rpanel_body_body > [src]').forEach( e => {
 		var div = document.createElement('div')
 		div.classList.add('lol_rpanel_img_body')
@@ -4662,6 +4698,7 @@ function lol_rpanel_update()
 	else
 		lol_rpanel_body_like.style.display = 'none'
 	lol_rpanel_body_like_count.firstChild.nodeValue = g_lol_current_detail['likes']
+	lol_rpanel_update_vote(is_invalid) // [v2] 내 표 상태 강조·비추천 버튼
 
 	// 삭제 버튼
 	if(is_invalid || g_lol_current_detail['my_post'] != '1')
@@ -4705,6 +4742,9 @@ function lol_rpanel_update_replys()
 	var replys = g_lol_current_detail['replys']
 	lol_rpanel_reply_board.toggleAttribute('skeleton', !replys)
 
+	// [v2] 답글 입력창이 목록 안(대상 댓글 아래)에 있으면 목록을 비울 때 같이 지워지므로 먼저 제자리로
+	lol_reply_target_detach()
+
 	// 모든 자식 노드 삭제
 	while ( lol_rpanel_reply_board_list.hasChildNodes() )
 		lol_rpanel_reply_board_list.removeChild( lol_rpanel_reply_board_list.firstChild )
@@ -4723,11 +4763,15 @@ function lol_rpanel_update_replys()
 		return
 	}
 
-	for(var e of replys)
+	// [v2] '@닉네임' 강조용: 글 작성자와 댓글 작성자 (공백이 든 닉네임도 통째로 잡기 위해)
+	var mention_nicks = [g_lol_current_detail['nickname']].concat(replys.map(function(r) { return r && r['nickname'] }))
+
+	for(var e of lol_thread_replies(replys)) // [v2] 답글은 부모 댓글 아래에
 	{
 		var div = document.createElement('div')
 		div.classList.add('lol_reply_list_item')
 		div.setAttribute('seq', e['reply_seq'])
+		div.setAttribute('depth', Math.min(e.depth || 0, 4)) // [v2] 답글 들여쓰기 (CSS)
 		
 		// 아이콘
 		var img = document.createElement('img')
@@ -4770,6 +4814,18 @@ function lol_rpanel_update_replys()
 			nick_container.appendChild(del)
 		}
 
+		// [v2] 답글 버튼 (로그인했을 때만)
+		if(g_lol_android_id != g_lol_guest_id)
+		{
+			var reply_btn = document.createElement('div')
+			reply_btn.toggleAttribute('reply_btn', true)
+			reply_btn.classList.add('no-drag')
+			reply_btn.setAttribute('seq', e['reply_seq'])
+			reply_btn.setAttribute('nick', e['nickname'] || '')
+			reply_btn.textContent = '답글'
+			reply_btn.onclick = lol_onclick_reply_target
+			nick_container.appendChild(reply_btn)
+		}
 
 		reply_body.appendChild(nick_container)
 
@@ -4789,7 +4845,7 @@ function lol_rpanel_update_replys()
 
 		var text = document.createElement('div')
 		text.toggleAttribute('text', true)
-		text.innerHTML = e['reply_title']
+		text.innerHTML = lol_nl_to_br(lol_decorate_mentions(e['reply_title'], mention_nicks)) // [v2] '@닉네임' 강조 뒤에 줄바꿈을 <br> 로 (순서가 바뀌면 줄 첫머리 @ 를 놓친다)
 		// text.appendChild(document.createTextNode(e['reply_title']))
 		reply_body.appendChild(text)
 
@@ -4797,6 +4853,8 @@ function lol_rpanel_update_replys()
 
 		lol_rpanel_reply_board_list.appendChild(div)
 	}
+
+	lol_reply_target_attach() // [v2] 답글 대상이 있으면 입력창을 그 댓글 아래로
 }
 
 /* 아이콘 변경 창 열기 */
@@ -4848,6 +4906,7 @@ function lol_rpanel_show_icon_change_panel()
 	lol_set_time(lol_rpanel_body_date, "1996-03-15 01:33:00")
 
 	lol_rpanel_body_like.style.display = 'none'
+	lol_rpanel_body_dislike.style.display = 'none'
 	lol_rpanel_body_like_count.firstChild.nodeValue = '0'
 
 	lol_rpanel_body_delete_button.style.display = 'none'
@@ -4923,14 +4982,57 @@ function lol_onclick_reply_img()
 	element.toggleAttribute('small')
 }
 
-/* 추천 버튼 */
+/* 추천 버튼 (이미 추천한 글이면 서버가 취소로 처리한다) */
 function lol_onclick_like()
 {
-	if(g_lol_android_id == g_lol_guest_id)
+	if(g_lol_android_id == g_lol_guest_id || !g_lol_current_detail || !g_lol_current_detail['post_seq'])
 		return
 
-	socket.emit('lol_like', lol_add_api_auth({ post_seq: g_lol_current_detail['post_seq'], android_id: g_lol_android_id }))
+	socket.emit('lol_like', lol_add_api_auth({ post_seq: g_lol_current_detail['post_seq'], android_id: g_lol_android_id, action: 'up' }))
 }
+
+/* [v2] 비추천 버튼. 추천 0인 글은 비추천 불가, 내가 비추천한 글은 다시 눌러 취소 (롤백 앱 규칙) */
+function lol_onclick_dislike()
+{
+	event.stopPropagation()
+	if(g_lol_android_id == g_lol_guest_id || !g_lol_current_detail || !g_lol_current_detail['post_seq'])
+		return
+	if(lol_rpanel_body_dislike.hasAttribute('disabled'))
+		return
+
+	socket.emit('lol_like', lol_add_api_auth({ post_seq: g_lol_current_detail['post_seq'], android_id: g_lol_android_id, action: 'down' }))
+}
+
+/* [v2] 추천·비추천 표시 갱신: 내가 추천한 글은 추천 그래픽을 강조하고, 비추천 버튼의 표시·활성 상태를 맞춘다.
+   is_hidden: 글이 없을 때(없는 글, 아이콘 제작 화면). 게스트에게는 비추천 버튼을 보이지 않는다 */
+function lol_rpanel_update_vote(is_hidden)
+{
+	var vote = g_lol_current_detail && g_lol_current_detail['my_vote'] || 'neutral'
+	var likes = Number(g_lol_current_detail && g_lol_current_detail['likes']) || 0
+	lol_rpanel_body_like_count.firstChild.nodeValue = String(likes)
+	lol_rpanel_body_like.toggleAttribute('voted', vote == 'up')
+	lol_rpanel_body_dislike.style.display = is_hidden || g_lol_android_id == g_lol_guest_id ? 'none' : 'block'
+	lol_rpanel_body_dislike.toggleAttribute('voted', vote == 'down')
+	lol_rpanel_body_dislike.toggleAttribute('disabled', likes <= 0 && vote != 'down')
+}
+
+/* [v2] 작성자 id 가 내 식별자(local_user_key·legacy_id·android_id…) 중 하나면 내 글 */
+function lol_is_my_content(author_id)
+{
+	if(!author_id || !g_lol_user_info)
+		return false
+	var keys = ['local_user_key', 'user_key', 'id', 'legacy_id', 'legacy_android_id', 'legacy_device_id', 'android_id']
+	return keys.some(function(key) { return g_lol_user_info[key] != null && String(g_lol_user_info[key]) == String(author_id) })
+}
+
+/* [v2] 줄바꿈(LF·CR·CRLF)을 <br> 로. 멱등이라 여러 번 불러도 안전 */
+function lol_nl_to_br(text)
+{
+	return String(text == null ? '' : text).replace(/\r\n|\r|\n/g, '<br>')
+}
+
+/* [v2] 캔버스로 바꾸면 애니메이션이 사라지는 형식 → 원본 바이트를 그대로 올린다 (글·댓글 첨부 공통) */
+var g_lol_keep_original_formats = { 'image/gif': 'gif', 'image/webp': 'webp' }
 
 /* 글 이미지 클릭 (줌인, 줌아웃) */
 function lol_onclick_img()
@@ -4957,6 +5059,8 @@ function lol_onclick_img_add()
 function lol_onrclick_article_writer()
 {
 	event.preventDefault()
+	if(document.documentElement.hasAttribute('lol_compact')) // [v2] 컴팩트 모드: 목록이 바뀌니 목록으로
+		lol_onclick_rpanel_back()
 
 	socket.emit('lol_get_article_list_others', g_lol_current_detail.post_seq)
 }
@@ -4996,6 +5100,7 @@ function lol_onclick_edit_user_memo()
 }
 
 /* 이 계정에 로그인하기 버튼 또는 차단버튼 */
+// [v2] 차단: 작성자의 글·댓글이 보이지 않게 된다. 목록은 롤백 앱의 '내 정보 → 차단 관리'와 같다 (해제는 내 정보 → 차단목록)
 function lol_onclick_auth_or_block()
 {
 	if(g_lol_android_id == g_lol_guest_id)
@@ -5003,8 +5108,15 @@ function lol_onclick_auth_or_block()
 		lol_login_api_account()
 		return
 	}
+	if(!g_lol_current_detail || !g_lol_current_detail['post_seq'])
+		return
+	if(g_lol_current_detail['my_post'] == '1')
+		return alert('자신은 차단할 수 없습니다.')
 
-	// TODO: 차단하기
+	var nick = g_lol_current_detail['nickname'] || '이 사용자'
+	if(!confirm(nick + ' 님을 차단하시겠습니까?\n차단한 사용자의 글과 댓글은 보이지 않습니다.'))
+		return
+	socket.emit('lol_block_user', lol_add_api_auth({ post_seq: g_lol_current_detail['post_seq'] }))
 }
 
 /* 이 계정에 로그인하기 버튼 또는 차단버튼 우클릭 */
@@ -5086,9 +5198,16 @@ function lol_rpanel_reply_board_write_image_onpaste()
 		console.log('이미지 첨부 실패: 클립보드 내용이 이미지가 아니다..')
 		return
 	}
+	g_lol_write_reply_image_data_orig = ''
+	g_lol_write_reply_image_format = ''
 	var reader = new FileReader()
 	reader.onload = function(ev) { 
 		var ret = ev.target.result
+		if(g_lol_keep_original_formats[blob.type]) // [v2] GIF·WebP 는 원본을 보관해 두었다가 그대로 올린다
+		{
+			g_lol_write_reply_image_data_orig = ret.substring(ret.indexOf(',') + 1)
+			g_lol_write_reply_image_format = g_lol_keep_original_formats[blob.type]
+		}
 		lol_rpanel_reply_board_write_image_placeholder.style.display = 'none'
 		lol_rpanel_reply_board_write_image.src = ret
 		lol_rpanel_reply_board_write_image.style.display = 'block'
@@ -5108,6 +5227,8 @@ function lol_rpanel_reply_board_write_image_clear_text()
 function lol_clear_reply_image()
 {
 	g_lol_write_reply_image_data = ''
+	g_lol_write_reply_image_data_orig = ''
+	g_lol_write_reply_image_format = ''
 	lol_rpanel_reply_board_write_image.style.display = 'none'
 	lol_rpanel_reply_board_write_image_guide.style.display = 'none'
 	lol_rpanel_reply_board_write_image.src = ''
@@ -5144,12 +5265,24 @@ function lol_write_reply()
 	if(g_lol_android_id == g_lol_guest_id)
 		return
 
+	var body = lol_rpanel_reply_board_input.value
+	var parent_id = 0
+	if(g_lol_reply_target) // [v2] 답글: 부모 댓글 번호와 '@닉네임 ' 을 붙인다
+	{
+		parent_id = g_lol_reply_target.seq
+		var tag = '@' + g_lol_reply_target.nick + ' '
+		if(g_lol_reply_target.nick && !body.startsWith(tag))
+			body = tag + body
+	}
+
 	lol_request_api_credentials(function() {
 		socket.emit('lol_write_reply', lol_add_api_auth({
 			android_id: g_lol_android_id,
 			post_seq: g_lol_current_detail['post_seq'],
-			body: lol_rpanel_reply_board_input.value,
-			image: g_lol_write_reply_image_data
+			body: body,
+			parent_id: parent_id,
+			image: g_lol_write_reply_image_data_orig || g_lol_write_reply_image_data,
+			image_format: g_lol_write_reply_image_format || 'jpg' // [v2] GIF·WebP 는 원본 그대로
 		}))
 		lol_clear_reply_image()
 	})
@@ -5168,8 +5301,16 @@ function lol_panel_update()
 	{
 		lol_panel.style.display = 'none'
 	}
+	document.documentElement.toggleAttribute('lol_board_open', g_lol_panel_show) // [v2] 컴팩트 모드: 열려 있으면 영상을 옆으로 (CSS)
 
 	mobile_tab_sync()
+}
+
+/* [v2] 롤백 컴팩트 모드 (옵션 > 화면): 글목록과 글상세를 한 칸으로 합치고 영상을 그 옆에 둔다 (index.css :root[lol_compact]).
+   목록↔상세 전환은 모바일 레이아웃과 같은 #lol_panel[mobile_detail] 을 그대로 쓴다. 모바일 조건에서는 모바일 레이아웃이 우선 */
+function set_lol_compact(on)
+{
+	document.documentElement.toggleAttribute('lol_compact', Boolean(on) && !g_mobile_media.matches)
 }
 
 /* 글 쓰기 패널 토글 */
@@ -5217,88 +5358,901 @@ function lol_onclick_rpanel_back()
 
 window.addEventListener('popstate', _ => lol_mobile_show_detail(false))
 
-/* 글 쓰기 - 이미지 첨부란 불필요한 문자 입력 시 제거 처리 */
-async function lol_write_image_clear_text()
+/* ========== [v2] 글 쓰기 - 사진 여러 장 첨부 (최대 10장) ==========
+   붙여넣기(Ctrl+V)/파일 드롭 칸에 넣으면 타일로 쌓이고, 타일을 끌어다 놓으면 글에 보이는 순서가 바뀐다 (a,b,c,d → a,d,b,c).
+   GIF·WebP 는 원본 바이트 그대로(애니메이션 유지), 그 외는 예전처럼 JPEG 로 변환한다.
+   g_lol_write_images: [{ data(base64), format, preview(dataURL) }] — 배열 순서 = 글에 보이는 순서 */
+const LOL_WRITE_IMAGES_MAX = 10
+const LOL_WRITE_IMAGE_MAX_BYTES = 30 * 1024 * 1024 // 서버 상한 (LegacyPostImage.byte_size)
+
+function lol_base64_bytes(b64)
 {
-	lol_write_image_placeholder.value = ''
+	var n = b64 ? b64.length : 0
+	if(!n)
+		return 0
+	return Math.floor(n * 3 / 4) - (b64[n - 1] == '=' ? 1 : 0) - (b64[n - 2] == '=' ? 1 : 0)
 }
 
-/* 글 쓰기 - 이미지 제거 */
-function lol_clear_image()
+/* 파일 → { data, format, preview }. 읽지 못하면 null. force_jpeg 면 GIF·WebP 도 JPEG 로 (고정짤) */
+function lol_read_write_image(file, force_jpeg)
 {
-	g_lol_write_image_data = ''
-	g_lol_write_image_data_gif = ''
-	lol_write_image.style.display = 'none'
-	lol_write_image_guide.style.display = 'none'
-	lol_write_image.src = ''
-	lol_write_image_placeholder.style.display = 'block'
+	return new Promise(function(resolve) {
+		var reader = new FileReader()
+		reader.onerror = function() { resolve(null) }
+		reader.onload = function() {
+			var url = String(reader.result || '')
+			var keep = !force_jpeg && g_lol_keep_original_formats[file.type]
+			if(keep)
+				return resolve({ data: url.split(',')[1] || '', format: keep, preview: url })
+			var img = new Image()
+			img.onerror = function() { resolve(null) }
+			img.onload = function() {
+				lol_write_canvas.width = img.naturalWidth
+				lol_write_canvas.height = img.naturalHeight
+				lol_write_canvas.getContext('2d').drawImage(img, 0, 0)
+				var jpeg = lol_write_canvas.toDataURL('image/jpeg')
+				resolve({ data: jpeg.split(',')[1] || '', format: 'jpg', preview: jpeg })
+			}
+			img.src = url
+		}
+		reader.readAsDataURL(file)
+	})
 }
 
-/* 글 쓰기 - 클립보드로부터 이미지 첨부 */
-function lol_write_image_onpaste()
+async function lol_write_images_add(files)
 {
-	var pasteObj = (event.clipboardData || window.clipboardData); 
-	var blob = pasteObj.files[0]
-	if(!blob)
+	var list = Array.prototype.filter.call(files || [], function(f) { return f && /^image\//.test(f.type) })
+	if(!list.length)
+		return alert('이미지가 아닙니다.')
+	var room = LOL_WRITE_IMAGES_MAX - g_lol_write_images.length
+	if(list.length > room)
+		alert('사진은 최대 ' + LOL_WRITE_IMAGES_MAX + '장까지 첨부할 수 있습니다.')
+	if(room <= 0)
+		return
+	var take = list.slice(0, room)
+	g_lol_write_images_busy += take.length
+	g_lol_write_slot_open = false
+	lol_write_images_render()
+	for(var file of take)
 	{
-		console.log('이미지 첨부 실패: 클립보드 내용이 이미지가 아니다..')
+		var got = await lol_read_write_image(file)
+		g_lol_write_images_busy--
+		// 읽는 동안 다른 붙여넣기가 겹칠 수 있어 담기 직전에 다시 확인한다
+		if(got && got.data && g_lol_write_images.length < LOL_WRITE_IMAGES_MAX)
+		{
+			if(lol_base64_bytes(got.data) > LOL_WRITE_IMAGE_MAX_BYTES)
+				alert('사진 한 장이 30MB 를 넘어 첨부할 수 없습니다.' + (file.name ? '\n(' + file.name + ')' : ''))
+			else
+				g_lol_write_images.push(got)
+		}
+		lol_write_images_render()
+	}
+}
+
+function lol_write_images_clear()
+{
+	g_lol_write_images = []
+	g_lol_write_slot_open = false
+	g_lol_write_drag = -1
+	lol_write_images_render()
+}
+
+/* [전체 비우기] — 실수로 여러 장을 날리지 않도록 2장부터는 확인한다 */
+function lol_onclick_write_images_clear()
+{
+	if(g_lol_write_images.length > 1 && !confirm('첨부한 사진 ' + g_lol_write_images.length + '장을 모두 뺄까요?'))
+		return
+	lol_write_images_clear()
+}
+
+function lol_write_images_make_tile(image, index)
+{
+	var tile = document.createElement('div')
+	tile.classList.add('lol_write_images_tile')
+	tile.draggable = true
+	tile.addEventListener('dragstart', function(e) {
+		g_lol_write_drag = index
+		tile.toggleAttribute('dragging', true)
+		try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(index)) } catch(err) {}
+	})
+	tile.addEventListener('dragend', function() { g_lol_write_drag = -1; lol_write_images_render() })
+	tile.addEventListener('dragover', function(e) {
+		if(g_lol_write_drag < 0) // 파일 드롭은 점선 칸에서만 받는다
+			return
+		e.preventDefault()
+		e.stopPropagation()
+		try { e.dataTransfer.dropEffect = 'move' } catch(err) {}
+		tile.toggleAttribute('drag_over', true)
+	})
+	tile.addEventListener('dragleave', function() { tile.toggleAttribute('drag_over', false) })
+	tile.addEventListener('drop', function(e) {
+		if(g_lol_write_drag < 0)
+			return
+		e.preventDefault()
+		e.stopPropagation()
+		var from = g_lol_write_drag, to = index
+		g_lol_write_drag = -1
+		if(from != to)
+			g_lol_write_images.splice(to, 0, g_lol_write_images.splice(from, 1)[0])
+		lol_write_images_render()
+	})
+
+	var img = document.createElement('img')
+	img.src = image.preview
+	img.title = '끌어다 놓으면 사진 순서가 바뀝니다.'
+	tile.appendChild(img)
+
+	var order = document.createElement('div') // 실제로 보일 순서
+	order.toggleAttribute('order', true)
+	order.textContent = String(index + 1)
+	tile.appendChild(order)
+
+	var del = document.createElement('div')
+	del.toggleAttribute('del', true)
+	del.classList.add('no-drag')
+	del.textContent = '✕'
+	del.title = '이 사진 빼기'
+	del.onclick = function(e) { e.preventDefault(); e.stopPropagation(); g_lol_write_images.splice(index, 1); lol_write_images_render() }
+	tile.appendChild(del)
+	return tile
+}
+
+/* 붙여넣기/드롭 칸 — 예전의 빨간 점선 사각형과 같은 모양. on_files(files) 로 넘긴다 */
+function lol_make_image_drop_slot(on_files)
+{
+	var input = document.createElement('input')
+	input.type = 'text'
+	input.classList.add('lol_write_images_drop')
+	input.placeholder = '여기에 붙여넣기(Ctrl+V) 또는 파일 드롭'
+	input.maxLength = 0
+	input.addEventListener('input', function() { input.value = '' }) // 글자는 남기지 않는다
+	input.addEventListener('paste', function(e) {
+		var cd = e.clipboardData || window.clipboardData
+		if(cd && cd.files && cd.files.length)
+		{
+			e.preventDefault()
+			on_files(cd.files)
+		}
+	})
+	var stop = function(e) { e.preventDefault(); e.stopPropagation() }
+	input.addEventListener('dragenter', function(e) { stop(e); input.toggleAttribute('drag_over', true) })
+	input.addEventListener('dragover', function(e) { stop(e); input.toggleAttribute('drag_over', true) })
+	input.addEventListener('dragleave', function(e) { stop(e); input.toggleAttribute('drag_over', false) })
+	input.addEventListener('drop', function(e) { stop(e); input.toggleAttribute('drag_over', false); on_files(e.dataTransfer && e.dataTransfer.files) })
+	return input
+}
+
+/* 첨부란 전체를 상태에서 다시 그린다 (타일 → 점선 칸 또는 [+] → 안내문) */
+function lol_write_images_render(focus_slot)
+{
+	lol_write_images_box.replaceChildren()
+	g_lol_write_images.forEach(function(image, i) { lol_write_images_box.appendChild(lol_write_images_make_tile(image, i)) })
+
+	var slot = null
+	if(g_lol_write_images.length < LOL_WRITE_IMAGES_MAX)
+	{
+		if(g_lol_write_slot_open || !g_lol_write_images.length)
+			lol_write_images_box.appendChild(slot = lol_make_image_drop_slot(lol_write_images_add))
+		else
+		{
+			var add = document.createElement('div')
+			add.classList.add('lol_write_images_tile', 'lol_write_images_add', 'no-drag')
+			add.textContent = '+'
+			add.title = '사진 더 첨부하기'
+			add.onclick = function() { g_lol_write_slot_open = true; lol_write_images_render(true) }
+			lol_write_images_box.appendChild(add)
+		}
+	}
+	if(focus_slot && slot)
+		slot.focus()
+
+	lol_write_images_guide.textContent = g_lol_write_images_busy ? '이미지 첨부 중... 기다려주셈'
+		: g_lol_write_images.length ? '사진 ' + g_lol_write_images.length + '/' + LOL_WRITE_IMAGES_MAX + '장 첨부됨 · 사진을 끌어다 놓으면 순서가 바뀝니다.'
+		: ''
+	lol_write_images_clear_button.style.display = g_lol_write_images.length ? '' : 'none'
+	lol_write_images_bar.style.display = (g_lol_write_images_busy || g_lol_write_images.length) ? 'flex' : 'none'
+}
+
+/* ========== [v2] 댓글 답글 ==========
+   댓글의 '답글' 을 누르면 입력창이 그 댓글 아래로 내려오고 '↳ 닉 님에게 답글' 띠가 뜬다. 등록할 때 parent_id 와 '@닉네임 ' 이 붙는다.
+   입력창은 댓글 목록을 다시 그리기 전에 제자리(목록 아래)로 돌려 둔다 — 목록을 비울 때 같이 지워지지 않게 */
+var g_lol_reply_target = null // { seq, nick }
+
+function lol_onclick_reply_target()
+{
+	event.preventDefault()
+	event.stopPropagation()
+	var el = event.currentTarget
+	g_lol_reply_target = { seq: el.getAttribute('seq'), nick: el.getAttribute('nick') || '' }
+	lol_reply_target_attach()
+	lol_rpanel_reply_board_input.focus()
+}
+
+function lol_reply_target_clear()
+{
+	if(!g_lol_reply_target)
+		return
+	g_lol_reply_target = null
+	lol_reply_target_detach()
+}
+
+/* 입력창을 댓글 목록 아래 제자리로 (답글 띠는 지운다) */
+function lol_reply_target_detach()
+{
+	var bar = document.getElementById('lol_rpanel_reply_target_bar')
+	if(bar)
+		bar.remove()
+	if(lol_rpanel_reply_board_write_container.parentElement != lol_rpanel_reply_board)
+		lol_rpanel_reply_board.appendChild(lol_rpanel_reply_board_write_container)
+}
+
+/* 답글 대상이 있으면 입력창을 그 댓글 바로 아래로 옮기고 띠를 보인다. 대상 댓글이 사라졌으면(삭제 등) 해제 */
+function lol_reply_target_attach()
+{
+	lol_reply_target_detach()
+	if(!g_lol_reply_target)
+		return
+	var item = lol_rpanel_reply_board_list.querySelector('.lol_reply_list_item[seq="' + String(g_lol_reply_target.seq).replace(/["\\]/g, '\\$&') + '"]')
+	if(!item)
+	{
+		g_lol_reply_target = null
 		return
 	}
-	g_lol_write_image_data = ''
-	g_lol_write_image_data_gif = ''
-	var reader = new FileReader()
-	reader.onload = function(ev) { 
-		var ret = ev.target.result
-		if(blob.type == 'image/gif')
-			g_lol_write_image_data_gif = ret.substring(ret.indexOf(',') + 1)
-		lol_write_image_placeholder.style.display = 'none'
-		lol_write_image.src = ret
-		lol_write_image.style.display = 'block'
-		lol_write_image_guide.innerHTML = '이미지 첨부 중... 기다려주셈'
-		lol_write_image_guide.style.display = 'block'
-	}
-	reader.readAsDataURL(blob)
+
+	var bar = document.createElement('div')
+	bar.id = 'lol_rpanel_reply_target_bar'
+	bar.classList.add('no-drag')
+	var label = document.createElement('span')
+	label.appendChild(document.createTextNode('↳ '))
+	var nick = document.createElement('b')
+	nick.textContent = g_lol_reply_target.nick
+	label.appendChild(nick)
+	label.appendChild(document.createTextNode(' 님에게 답글'))
+	bar.appendChild(label)
+	var cancel = document.createElement('span')
+	cancel.toggleAttribute('cancel', true)
+	cancel.textContent = '✕ 취소'
+	cancel.onclick = lol_reply_target_clear
+	bar.appendChild(cancel)
+	item.after(bar, lol_rpanel_reply_board_write_container)
 }
 
-async function lol_write_image_ondrop(e)
+/* 답글을 부모 댓글 바로 아래로 정렬하고 depth 를 매긴다 (API 는 parent_id 만 준다). 부모가 없는 답글은 일반 댓글처럼 */
+function lol_thread_replies(replys)
 {
-	e.stopPropagation();
-    e.preventDefault();
- 
-	// console.warn(e.target.files)
-	// console.warn(e.dataTransfer)
-    // e.dataTransfer = e.originalEvent.dataTransfer;
-    var files = e.target.files || e.dataTransfer.files;
- 
-    if (files.length > 1) {
-        alert('응니얼굴');
-        return;
-    }
-
-	if (!files[0].type.match(/image.*/)) {
-        alert('이미지가 아닙니다.');
-		return;
+	var by_seq = {}, children = {}, roots = []
+	for(var r of replys)
+		by_seq[String(r['reply_seq'])] = r
+	for(var r of replys)
+	{
+		var pid = String(r['parent_id'] || 0)
+		if(pid != '0' && by_seq[pid])
+			(children[pid] = children[pid] || []).push(r)
+		else
+			roots.push(r)
 	}
-		
-	var file = files[0]
-	// console.log('file', file);
+	var out = []
+	var walk = function(list, depth) {
+		for(var r of list)
+		{
+			r.depth = depth
+			out.push(r)
+			if(children[String(r['reply_seq'])])
+				walk(children[String(r['reply_seq'])], depth + 1)
+		}
+	}
+	walk(roots, 0)
+	return out
+}
 
-	var base64_result = await readAsDataURL_async(file) // data:image/gif;base64,R0lGO ...
-	g_lol_write_image_data = ''
-	g_lol_write_image_data_gif = file.type == 'image/gif' ? base64_result.substring(base64_result.indexOf(',') + 1) : ''
-	// console.log('target', base64_result)
-	lol_write_image_placeholder.style.display = 'none'
-	lol_write_image.src = base64_result
-	lol_write_image.style.display = 'block'
-	lol_write_image_guide.innerHTML = '이미지 첨부 중... 기다려주셈'
-	lol_write_image_guide.style.display = 'block'
-	e.target.style.borderWidth = '1px';
+/* '@닉네임' 강조 (댓글 본문은 innerHTML 로 그려지므로 태그를 끼워 넣는다).
+   nicknames: 이 글의 작성자·댓글 작성자들. 공백이 든 닉네임('캐러밴 속의 세렌디피디')도 통째로 잡히도록
+   아는 닉네임을 긴 것부터 먼저 맞추고, 그 밖에는 공백 전까지 한 단어로 본다 */
+function lol_decorate_mentions(text, nicknames)
+{
+	var known = (nicknames || [])
+		.filter(function(n) { return n })
+		.map(function(n) { return String(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') })
+		.sort(function(a, b) { return b.length - a.length })
+	var reg = new RegExp('(^|[\\s>])@(' + known.concat(['[^\\s<@]+']).join('|') + ')', 'g')
+	return String(text == null ? '' : text).replace(reg, function(m, pre, nick) { return pre + '<span class="lol_mention">@' + nick + '</span>' })
+}
 
-	// var reader2 = new FileReader()
-	// reader2.onload = function (event) {
-	// 	console.warn('readAsBinaryString', event.target.result)
-	// }
-	// reader2.readAsBinaryString(file)
+/* [v2] 5번째 이후 첨부 사진: 상세의 사진 칸은 4개뿐이라 image_urls 의 나머지를 같은 모양으로 img4 아래에 이어 붙인다.
+   같은 글을 다시 그릴 때는 사진별 확대/축소 상태를 유지한다 (img1~4 와 같은 동작) */
+function lol_rpanel_update_extra_images(urls)
+{
+	var old = Array.prototype.slice.call(document.querySelectorAll('.lol_rpanel_img_extra'))
+	var keep = g_lol_same_article_prev ? old.map(function(e) { return e.hasAttribute('small') }) : []
+	old.forEach(function(e) { e.remove() })
+
+	var after = lol_rpanel_body_img4
+	urls.forEach(function(url, i) {
+		var div = document.createElement('div')
+		div.classList.add('lol_rpanel_img_body', 'lol_rpanel_img_extra')
+		div.toggleAttribute('small', i < keep.length ? keep[i] : true)
+		var img = document.createElement('img')
+		img.classList.add('lol_rpanel_img_img')
+		img.src = lol_convert_uri_to_mirror(url)
+		div.appendChild(img)
+		var add = document.createElement('div')
+		add.classList.add('lol_rpanel_img_add')
+		add.setAttribute('src', url)
+		add.onclick = lol_onclick_img_add
+		div.appendChild(add)
+		div.onclick = lol_onclick_img
+		after.after(div)
+		after = div
+	})
+}
+
+/* ========== [v2] 롤백 모달 (차단목록·고정짤 등록). 모양은 index.css 의 .lol_modal ========== */
+function lol_modal_make(id, title)
+{
+	var overlay = document.createElement('div')
+	overlay.id = id
+	overlay.classList.add('lol_modal')
+	overlay.onclick = function(e) { if(e.target == overlay) overlay.remove() }
+
+	var box = document.createElement('div')
+	box.toggleAttribute('box', true)
+	var head = document.createElement('div')
+	head.toggleAttribute('head', true)
+	var title_el = document.createElement('div')
+	title_el.toggleAttribute('title', true)
+	title_el.textContent = title
+	head.appendChild(title_el)
+	var sub = document.createElement('div')
+	sub.toggleAttribute('sub', true)
+	head.appendChild(sub)
+	box.appendChild(head)
+	var body = document.createElement('div')
+	body.toggleAttribute('body', true)
+	box.appendChild(body)
+	var status = document.createElement('div')
+	status.toggleAttribute('status', true)
+	box.appendChild(status)
+	var buttons = document.createElement('div')
+	buttons.toggleAttribute('buttons', true)
+	box.appendChild(buttons)
+	overlay.appendChild(box)
+	document.body.appendChild(overlay)
+
+	return { overlay: overlay, title: title_el, sub: sub, body: body, status: status, buttons: buttons, close: function() { overlay.remove() } }
+}
+
+function lol_modal_button(text, onclick, kind)
+{
+	var button = document.createElement('button')
+	button.type = 'button'
+	button.classList.add('no-drag')
+	if(kind)
+		button.setAttribute('kind', kind)
+	button.textContent = text
+	button.onclick = onclick
+	return button
+}
+
+/* ========== [v2] 차단목록 (롤백 앱 '내 정보 → 차단 관리'와 같은 목록) ========== */
+var g_lol_block_modal = null
+
+function lol_block_list_show()
+{
+	if(g_lol_block_modal && g_lol_block_modal.overlay.isConnected)
+		return
+	var m = g_lol_block_modal = lol_modal_make('lol_block_list_modal', '차단목록')
+	m.sub.textContent = '차단한 사용자의 글과 댓글은 보이지 않습니다.'
+	m.body.textContent = '불러오는 중…'
+	m.clear_all = lol_modal_button('전체 해제', function() {
+		if(!confirm('차단한 사용자를 모두 해제할까요?'))
+			return
+		m.status.textContent = '해제 중…'
+		socket.emit('lol_unblock', lol_add_api_auth({ all: true }))
+	}, 'danger')
+	m.clear_all.style.display = 'none'
+	m.buttons.appendChild(m.clear_all)
+	m.buttons.appendChild(lol_modal_button('닫기', m.close))
+	socket.emit('lol_block_list', lol_add_api_auth({}))
+}
+
+/* 서버의 lol_block_list 응답으로 목록을 그린다 */
+function lol_block_list_render(data)
+{
+	var m = g_lol_block_modal
+	if(!m || !m.overlay.isConnected)
+		return
+	m.body.replaceChildren()
+	if(!data || !data.ok)
+	{
+		m.body.textContent = '차단목록을 불러오지 못했습니다.'
+		return
+	}
+
+	var rows = data.results || []
+	m.title.textContent = '차단목록 (' + rows.length + '명' + (data.block_limit ? ' / 최대 ' + data.block_limit + '명' : '') + ')'
+	m.clear_all.style.display = rows.length ? '' : 'none'
+	if(data.unblocked !== undefined)
+		m.status.textContent = data.unblocked == 'all' ? '모두 해제했습니다.' : '해제했습니다.'
+	if(!rows.length)
+	{
+		m.body.textContent = '차단한 사용자가 없습니다.'
+		return
+	}
+
+	rows.forEach(function(b) {
+		var row = document.createElement('div')
+		row.toggleAttribute('row', true)
+		var img = document.createElement('img')
+		img.src = b.avatar_url ? lol_convert_uri_to_mirror(b.avatar_url) : 'static/icon_profile.png'
+		row.appendChild(img)
+		var info = document.createElement('div')
+		info.toggleAttribute('info', true)
+		var nick = document.createElement('div')
+		nick.toggleAttribute('nick', true)
+		nick.textContent = b.nickname || '(알 수 없음)'
+		info.appendChild(nick)
+		var when = document.createElement('div') // 앱과 같이 'N분 전 차단', 마우스를 올리면 정확한 시각
+		when.toggleAttribute('when', true)
+		var time = document.createElement('span')
+		lol_set_time(time, b.created_at)
+		when.appendChild(time)
+		when.appendChild(document.createTextNode(' 차단'))
+		info.appendChild(when)
+		row.appendChild(info)
+		row.appendChild(lol_modal_button('해제', function() {
+			if(!confirm((b.nickname || '이 사용자') + ' 님의 차단을 해제할까요?\n해당 사용자의 글과 댓글이 다시 표시됩니다.'))
+				return
+			m.status.textContent = '해제 중…'
+			socket.emit('lol_unblock', lol_add_api_auth({ blocked_user_id: b.id }))
+		}, 'link'))
+		m.body.appendChild(row)
+	})
+}
+
+/* ========== [v2] 알림센터 (롤백 헤더 🔔): 알림 탭 + 채팅(쪽지) 탭 ==========
+   서버의 lol_notif_badge 로 안 읽은 수를 받아 배지에 쓰고, 패널이 닫혀 있는데 수가 늘면 토스트로 알린다.
+   목록·대화는 열 때마다 서버에서 받는다 (lol_notif_list / lol_memo_threads / lol_memo_thread) */
+var g_lol_notif = { open: false, tab: 'notif', thread: null, total: null, toasted: false, timer: 0 }
+
+function lol_notif_toggle(event)
+{
+	event.stopPropagation()
+	if(g_lol_notif.open)
+		lol_notif_close()
+	else
+		lol_notif_open()
+}
+
+function lol_notif_open()
+{
+	if(g_lol_android_id == g_lol_guest_id)
+		return lol_login_api_account()
+	g_lol_notif.open = true
+	g_lol_notif.thread = null
+	lol_notif_panel.style.display = 'flex'
+	lol_notif_position()
+	lol_notif_switch_tab(g_lol_notif.tab || 'notif')
+}
+
+function lol_notif_close()
+{
+	g_lol_notif.open = false
+	g_lol_notif.thread = null
+	lol_notif_panel.style.display = 'none'
+}
+
+/* 🔔 바로 아래, 화면 밖으로 나가지 않게 */
+function lol_notif_position()
+{
+	var rect = lol_lpanel_notif.getBoundingClientRect()
+	var width = Math.min(340, window.innerWidth - 12)
+	lol_notif_panel.style.width = width + 'px'
+	lol_notif_panel.style.left = Math.max(6, Math.min(rect.left, window.innerWidth - width - 6)) + 'px'
+	lol_notif_panel.style.top = (rect.bottom + 6) + 'px'
+}
+
+function lol_notif_switch_tab(tab)
+{
+	g_lol_notif.tab = tab
+	g_lol_notif.thread = null
+	for(var t of lol_notif_panel.querySelectorAll('[tabs] > [tab]'))
+		t.toggleAttribute('selected', t.getAttribute('tab') == tab)
+	lol_notif_content.removeAttribute('conv')
+	lol_notif_set_empty('불러오는 중…')
+	socket.emit(tab == 'notif' ? 'lol_notif_list' : 'lol_memo_threads', lol_add_api_auth({}))
+}
+
+function lol_notif_set_empty(text)
+{
+	lol_notif_content.replaceChildren()
+	lol_notif_content.textContent = text
+	lol_notif_content.setAttribute('empty', '')
+}
+
+/* 알림 목록 (서버 lol_notif_list) */
+function lol_notif_render_list(data)
+{
+	if(!g_lol_notif.open || g_lol_notif.tab != 'notif')
+		return
+	if(!data || !data.ok)
+		return lol_notif_set_empty('알림을 불러오지 못했습니다.')
+	var list = data.results || []
+	if(!list.length)
+		return lol_notif_set_empty('알림이 없습니다.')
+
+	lol_notif_content.replaceChildren()
+	lol_notif_content.removeAttribute('empty')
+	list.forEach(function(n) {
+		var item = document.createElement('div')
+		item.toggleAttribute('item', true)
+		item.toggleAttribute('unread', !n.read)
+		var title = document.createElement('div')
+		title.toggleAttribute('title', true)
+		title.textContent = n.title
+		item.appendChild(title)
+		var text = document.createElement('div')
+		text.toggleAttribute('text', true)
+		text.textContent = n.body
+		item.appendChild(text)
+		var time = document.createElement('div')
+		time.toggleAttribute('time', true)
+		lol_set_time(time, n.created_at)
+		item.appendChild(time)
+		item.onclick = function() { lol_notif_click(n, item) }
+		lol_notif_content.appendChild(item)
+	})
+}
+
+/* 알림 클릭: 읽음 처리(배지는 바로 -1, 서버가 다시 센 값으로 보정)하고 글 알림이면 그 글로 */
+function lol_notif_click(n, item)
+{
+	if(!n.read && n.id != null)
+	{
+		n.read = true
+		item.removeAttribute('unread')
+		lol_notif_badge_bump(-1)
+		socket.emit('lol_notif_read', lol_add_api_auth({ notification_id: n.id }))
+	}
+	if(n.post_seq)
+	{
+		lol_notif_close()
+		lol_request_article_detail(n.post_seq)
+	}
+}
+
+/* 쪽지 대화 목록 (서버 lol_memo_threads) */
+function lol_notif_render_threads(data)
+{
+	if(!g_lol_notif.open || g_lol_notif.tab != 'memo' || g_lol_notif.thread)
+		return
+	if(!data || !data.ok)
+		return lol_notif_set_empty('채팅을 불러오지 못했습니다.')
+	var list = data.results || []
+	if(!list.length)
+		return lol_notif_set_empty('주고받은 채팅이 없습니다.')
+
+	lol_notif_content.replaceChildren()
+	lol_notif_content.removeAttribute('empty')
+	list.forEach(function(t) {
+		var row = document.createElement('div')
+		row.toggleAttribute('thread', true)
+		var img = document.createElement('img')
+		img.src = t.other_avatar_url ? lol_convert_uri_to_mirror(t.other_avatar_url) : 'static/icon_profile.png'
+		row.appendChild(img)
+		var main = document.createElement('div')
+		main.toggleAttribute('main', true)
+		var nick = document.createElement('div')
+		nick.toggleAttribute('nick', true)
+		nick.textContent = t.other_nickname || '(알 수 없음)'
+		main.appendChild(nick)
+		var last = document.createElement('div')
+		last.toggleAttribute('last', true)
+		last.textContent = t.last_body
+		main.appendChild(last)
+		row.appendChild(main)
+		var meta = document.createElement('div')
+		meta.toggleAttribute('meta', true)
+		var time = document.createElement('span')
+		lol_set_time(time, t.last_message_at)
+		meta.appendChild(time)
+		if(t.unread_count > 0)
+		{
+			var unread = document.createElement('span')
+			unread.toggleAttribute('unread', true)
+			unread.textContent = t.unread_count
+			meta.appendChild(unread)
+		}
+		row.appendChild(meta)
+		row.onclick = function() { lol_notif_open_thread(t) }
+		lol_notif_content.appendChild(row)
+	})
+}
+
+/* 대화 열기: 머리(←, 닉네임) + 메시지 영역 + 입력칸을 만들고 서버에 메시지를 요청 */
+function lol_notif_open_thread(t)
+{
+	g_lol_notif.thread = t
+	lol_notif_content.replaceChildren()
+	lol_notif_content.removeAttribute('empty')
+	lol_notif_content.setAttribute('conv', '')
+
+	var head = document.createElement('div')
+	head.toggleAttribute('head', true)
+	var back = document.createElement('span')
+	back.toggleAttribute('back', true)
+	back.textContent = '←'
+	back.onclick = function() { g_lol_notif.thread = null; lol_notif_switch_tab('memo') }
+	head.appendChild(back)
+	var nick = document.createElement('span')
+	nick.toggleAttribute('nick', true)
+	nick.textContent = t.other_nickname || ''
+	head.appendChild(nick)
+	lol_notif_content.appendChild(head)
+
+	var body = document.createElement('div')
+	body.id = 'lol_notif_conv_body'
+	body.textContent = '불러오는 중…'
+	lol_notif_content.appendChild(body)
+
+	var input_row = document.createElement('div')
+	input_row.toggleAttribute('input', true)
+	var input = document.createElement('input')
+	input.type = 'text'
+	input.id = 'lol_notif_conv_input'
+	input.placeholder = '메시지 입력'
+	input.maxLength = 1000
+	var send = document.createElement('button')
+	send.type = 'button'
+	send.id = 'lol_notif_conv_send'
+	send.textContent = '전송'
+	var do_send = function() {
+		var text = input.value.trim()
+		if(!text || send.disabled)
+			return
+		send.disabled = true
+		socket.emit('lol_memo_send', lol_add_api_auth({ thread_id: t.id, body: text }))
+	}
+	send.onclick = do_send
+	input.onkeydown = function(e) { if(e.key == 'Enter') { e.preventDefault(); do_send() } }
+	input_row.appendChild(input)
+	input_row.appendChild(send)
+	lol_notif_content.appendChild(input_row)
+	input.focus()
+
+	socket.emit('lol_memo_thread', lol_add_api_auth({ thread_id: t.id }))
+}
+
+/* 'YYYY-MM-DD HH:mm:ss' → 'YYYY년 M월 D일' / 'HH:mm' (대화 날짜 구분선·말풍선 시각) */
+function lol_format_day(value)
+{
+	var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ''))
+	return m ? m[1] + '년 ' + Number(m[2]) + '월 ' + Number(m[3]) + '일' : ''
+}
+
+function lol_format_hm(value)
+{
+	var m = /[T ](\d{2}):(\d{2})/.exec(String(value || ''))
+	return m ? m[1] + ':' + m[2] : ''
+}
+
+/* 대화 메시지 (서버 lol_memo_thread; 보낸 뒤에도 같은 응답). 상대 메시지 묶음의 첫 개에만 아바타 */
+function lol_notif_render_thread(data)
+{
+	var t = g_lol_notif.thread
+	if(!g_lol_notif.open || !t || !data || String(data.thread_id) != String(t.id))
+		return
+	var body = document.getElementById('lol_notif_conv_body')
+	if(!body)
+		return
+	var send = document.getElementById('lol_notif_conv_send')
+	if(send)
+		send.disabled = false
+	var input = document.getElementById('lol_notif_conv_input')
+	if(data.sent && input)
+		input.value = ''
+	if(!data.ok)
+	{
+		body.textContent = '대화를 불러오지 못했습니다.'
+		return
+	}
+
+	body.replaceChildren()
+	var prev_day = '', prev_mine = null
+	data.messages.forEach(function(m) {
+		var day = lol_format_day(m.created_at)
+		if(day && day != prev_day)
+		{
+			var sep = document.createElement('div')
+			sep.toggleAttribute('datesep', true)
+			var label = document.createElement('span')
+			label.textContent = day
+			sep.appendChild(label)
+			body.appendChild(sep)
+			prev_day = day
+			prev_mine = null
+		}
+		var row = document.createElement('div')
+		row.toggleAttribute('row', true)
+		row.toggleAttribute('mine', Boolean(m.mine))
+		var show_avatar = !m.mine && prev_mine !== false
+		if(!m.mine)
+		{
+			var avatar = document.createElement(show_avatar ? 'img' : 'div')
+			avatar.toggleAttribute('avatar', true)
+			if(show_avatar)
+				avatar.src = t.other_avatar_url ? lol_convert_uri_to_mirror(t.other_avatar_url) : 'static/icon_profile.png'
+			row.appendChild(avatar)
+		}
+		var bubble = document.createElement('div')
+		bubble.toggleAttribute('msg', true)
+		bubble.toggleAttribute('tail', show_avatar)
+		if(m.body)
+			bubble.appendChild(document.createTextNode(m.body))
+		if(m.image_url)
+		{
+			var img = document.createElement('img')
+			img.src = lol_convert_uri_to_mirror(m.image_url)
+			bubble.appendChild(img)
+		}
+		var time = document.createElement('div')
+		time.toggleAttribute('time', true)
+		time.textContent = lol_format_hm(m.created_at)
+		bubble.appendChild(time)
+		row.appendChild(bubble)
+		body.appendChild(row)
+		prev_mine = Boolean(m.mine)
+	})
+	body.scrollTop = body.scrollHeight
+}
+
+/* ---- 배지와 토스트 ---- */
+function lol_notif_badge_set(total)
+{
+	lol_lpanel_notif_badge.textContent = total > 99 ? '99+' : String(total)
+	lol_lpanel_notif_badge.style.display = total > 0 ? 'block' : 'none'
+}
+
+/* 서버 재조회 없이 배지를 delta 만큼 바로 조정 (다음 lol_notif_badge 가 서버 값으로 보정) */
+function lol_notif_badge_bump(delta)
+{
+	var current = parseInt(lol_lpanel_notif_badge.textContent, 10)
+	if(isNaN(current))
+		current = 0
+	g_lol_notif.total = Math.max(0, current + delta)
+	lol_notif_badge_set(g_lol_notif.total)
+}
+
+/* 서버의 lol_notif_badge { ok, notifications, memos, total }: 배지 갱신. 패널이 닫혀 있는데 늘었으면 토스트.
+   로그인 직후 첫 집계는 읽지 않은 것이 있을 때 한 번만 알린다 */
+function lol_notif_on_badge(data)
+{
+	if(!data || !data.ok)
+		return
+	var prev = g_lol_notif.total
+	g_lol_notif.total = data.total
+	lol_notif_badge_set(data.total)
+	if(g_lol_notif.open)
+		return
+	if(prev === null)
+	{
+		if(data.total > 0 && !g_lol_notif.toasted)
+		{
+			g_lol_notif.toasted = true
+			lol_notif_toast(data)
+		}
+		return
+	}
+	if(data.total > prev)
+		lol_notif_toast(data)
+}
+
+function lol_notif_toast(data)
+{
+	var parts = []
+	if(data.notifications > 0)
+		parts.push('알림 ' + data.notifications + '개')
+	if(data.memos > 0)
+		parts.push('쪽지 ' + data.memos + '개')
+	if(!parts.length)
+		return
+	make_toast(lol_lpanel, '🔔 읽지 않은 ' + parts.join(' · '), 2.5, 'flex-end', 'marginBottom:5vh')
+}
+
+/* 로그인하면 바로 한 번, 그 뒤 60초마다 안 읽은 수를 센다 (글목록을 새로 받을 때도 서버가 같이 보낸다) */
+function lol_notif_poll_start()
+{
+	lol_notif_poll_stop()
+	if(g_lol_android_id == g_lol_guest_id)
+		return
+	socket.emit('lol_notif_badge', lol_add_api_auth({}))
+	g_lol_notif.timer = setInterval(function() {
+		if(g_lol_android_id != g_lol_guest_id && socket.connected)
+			socket.emit('lol_notif_badge', lol_add_api_auth({}))
+	}, 60000)
+}
+
+function lol_notif_poll_stop()
+{
+	if(g_lol_notif.timer)
+		clearInterval(g_lol_notif.timer)
+	g_lol_notif.timer = 0
+}
+
+/* 로그아웃: 폴링 중단, 배지·패널 정리 */
+function lol_notif_reset()
+{
+	lol_notif_poll_stop()
+	lol_notif_close()
+	g_lol_notif.total = null
+	g_lol_notif.toasted = false
+	lol_notif_badge_set(0)
+}
+
+/* ========== [v2] 고정짤 (내 글에 자동으로 붙는 이미지, 프로필의 fixed_image_id) ========== */
+var g_lol_fixed_image_data = ''
+
+function lol_onclick_userinfo_fixed_image_set()
+{
+	event.stopPropagation()
+	lol_lpanel_userinfo_menu.style.display = 'none'
+	if(document.getElementById('lol_fixed_image_modal'))
+		return
+
+	g_lol_fixed_image_data = ''
+	var m = lol_modal_make('lol_fixed_image_modal', '고정짤 등록')
+	m.sub.textContent = '이미지를 복사한 뒤 아래 칸에 붙여넣기(Ctrl+V)하거나 파일을 끌어다 놓으세요. 등록하면 내 글에 자동으로 붙습니다. (정지 이미지로 저장)'
+
+	var preview = document.createElement('img')
+	preview.toggleAttribute('preview', true)
+	preview.title = '누르면 다시 고릅니다'
+	preview.style.display = 'none'
+	var slot = lol_make_image_drop_slot(async function(files) {
+		var file = Array.prototype.find.call(files || [], function(f) { return f && /^image\//.test(f.type) })
+		if(!file)
+			return alert('이미지가 아닙니다.')
+		m.status.textContent = '이미지 읽는 중…'
+		var got = await lol_read_write_image(file, true)
+		if(!got)
+		{
+			m.status.textContent = '이미지를 읽지 못했습니다.'
+			return
+		}
+		g_lol_fixed_image_data = got.data
+		preview.src = got.preview
+		preview.style.display = ''
+		slot.style.display = 'none'
+		m.status.textContent = '이미지가 준비되었습니다. [등록] 을 누르세요.'
+	})
+	preview.onclick = function() {
+		g_lol_fixed_image_data = ''
+		preview.style.display = 'none'
+		slot.style.display = ''
+		m.status.textContent = ''
+		slot.focus()
+	}
+	m.body.appendChild(slot)
+	m.body.appendChild(preview)
+	m.buttons.appendChild(lol_modal_button('취소', m.close))
+	m.buttons.appendChild(lol_modal_button('등록', function() {
+		if(!g_lol_fixed_image_data)
+			return alert('이미지를 먼저 붙여넣어 주세요.')
+		m.status.textContent = '등록 중…'
+		lol_request_api_credentials(function() {
+			socket.emit('lol_fixed_image', lol_add_api_auth({ image: g_lol_fixed_image_data }))
+		})
+	}, 'primary'))
+	setTimeout(function() { slot.focus() }, 0)
+}
+
+function lol_onclick_userinfo_fixed_image_clear()
+{
+	event.stopPropagation()
+	lol_lpanel_userinfo_menu.style.display = 'none'
+	if(!confirm('고정짤을 삭제할까요?'))
+		return
+	lol_request_api_credentials(function() {
+		socket.emit('lol_fixed_image', lol_add_api_auth({ clear: true }))
+	})
 }
 
 function readAsDataURL_async(file) {
@@ -5313,16 +6267,6 @@ function readAsDataURL_async(file) {
   
 	  reader.readAsDataURL(file);
 	})
-}
-
-async function lol_write_image_onload()
-{
-	lol_write_canvas.width = lol_write_image.naturalWidth
-	lol_write_canvas.height = lol_write_image.naturalHeight
-	lol_write_canvas.getContext('2d').drawImage(lol_write_image, 0,0)
-	if(!g_lol_write_image_data_gif)
-		g_lol_write_image_data = (lol_write_canvas.toDataURL("image/jpeg").substr(23))
-	lol_write_image_guide.innerHTML = '이미지가 첨부 되었습니다.'
 }
 
 /* 아이콘 변경 - 클립보드로부터 이미지 첨부 */
@@ -5498,6 +6442,16 @@ function lol_icon_change_confirm()
 function lol_mirror_uri(uri)
 {
 	return format('{0}/lolwiki_mirror?uri={1}', location.origin, encodeURIComponent(uri))
+}
+
+/* [v2] 중계 주소(/lolwiki_mirror?uri=…)면 원래 주소로, 아니면 그대로 (채팅에 끌어다 놓은 이미지 공유용) */
+function lol_unmirror_uri(uri)
+{
+	var m = /^(?:https?:\/\/[^/]+)?\/lolwiki_mirror\?uri=([^&#]+)/i.exec(String(uri || ''))
+	if(!m)
+		return uri
+	try { return decodeURIComponent(m[1]) }
+	catch(e) { return uri }
 }
 
 // [v2] 트래픽 절감: 이미지 서버가 https 로 직접 내려주는 이미지는 우리 서버를 거치지 않고 브라우저가 바로 받는다.
