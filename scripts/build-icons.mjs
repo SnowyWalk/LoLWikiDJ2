@@ -40,6 +40,8 @@ const ICONS = {
   resize: ["move-diagonal-2", "muted"],
   profile: ["user-round", "base"],
   refresh: ["rotate-cw", "base"],
+  bell: ["bell", "base"], // 롤백 알림센터
+  "bell-white": ["bell", "#ffffff"], // 모바일 탭바 등 어두운 바탕용 (예비)
   write: ["square-pen", "base"],
   memo: ["sticky-note", "muted"],
   "memo-edit": ["pencil", "muted"],

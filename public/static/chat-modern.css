@@ -64,12 +64,11 @@
   line-height: 1.45;
 }
 
-/* 일반 메시지: [아바타] [이름 · 시간 ··· TTS] / [본문] */
+/* 일반 메시지: 아바타를 왼쪽에 띄우고(float) 이름·시간과 본문이 그 옆에서 시작한다.
+   줄이 넘어가거나 이미지가 오면 예전 채팅처럼 아바타 아래 왼쪽 끝까지 흐른다
+   (격자로 두면 왼쪽에 아바타 폭만큼 늘 비어 글이 오른쪽으로 치우쳐 보였다) */
 :root[chat-modern] #chat > .chat_balloon {
-  display: grid;
-  grid-template-columns: 45px auto 1fr auto;
-  column-gap: 8px;
-  align-items: baseline;
+  display: block;
   padding: 8px 12px 9px 10px;
   background: var(--cm-bubble);
   color: var(--cm-text);
@@ -87,21 +86,31 @@
   background: var(--cm-bubble-me);
 }
 
+/* 띄운 아바타가 본문보다 커도 말풍선이 아바타까지 감싸도록 */
+:root[chat-modern] #chat > .chat_balloon::after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
 :root[chat-modern] #chat .chat_balloon > .chat_profile {
-  grid-column: 1;
-  grid-row: 1 / span 9;
+  float: left;
   /* 아이콘 규격은 기존 그대로 (45×45, 모서리 30%) — 유저들이 이 모양에 맞춰 아이콘을 만들어 왔다 */
-  align-self: start;
   width: 45px;
   height: 45px;
-  margin: 0;
+  margin: 0 8px 0 0;
   border-radius: 30%;
-  float: none;
+}
+
+/* 글만 있는 말풍선: 예전 채팅처럼 이름 줄과 첫 글줄만 아이콘 옆에 두고 둘째 글줄부터는 왼쪽 끝에서 시작하게,
+   아이콘이 흐름에서 차지하는 높이를 줄인다 (이름 줄 ≈19px + 첫 글줄 ≈22px 보다 작게 35px).
+   이미지·인용·글 카드가 있으면 아이콘과 겹치므로 적용하지 않는다 */
+:root[chat-modern] #chat .chat_balloon:has(> temp):not(:has(> .chat_img, > .chat_reply_quote, > .chat_lol_link)) > .chat_profile {
+  margin-bottom: -10px;
 }
 
 :root[chat-modern] #chat .chat_balloon > .nick {
-  grid-column: 2;
-  grid-row: 1;
+  display: inline-block;
   margin: 0;
   padding-left: 0 !important;
   font-size: calc(13px * var(--font-scale));
@@ -110,7 +119,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  max-width: calc(100% - 110px); /* 시간·TTS 아이콘 자리는 남긴다 */
+  vertical-align: middle;
 }
 
 :root[chat-modern] #chat .chat_balloon.me > .nick {
@@ -118,27 +128,22 @@
 }
 
 :root[chat-modern] #chat .chat_balloon > .chat_time {
-  grid-column: 3;
-  grid-row: 1;
   /* 이름과 글자 기준선을 맞추면 작은 시간 글자가 아래로 처져 보여서 이름 줄의 세로 가운데에 두고,
-     숫자는 글자 상자 아래쪽에 그려지므로 1px 더 올린다. 이름과의 간격은 칸 사이 간격(8px)에서 3px 당겨 5px */
-  align-self: center;
+     숫자는 글자 상자 아래쪽에 그려지므로 1px 더 올린다. 이름과의 간격 5px */
   position: relative;
   top: -1px;
-  margin: 0 0 0 -3px;
+  margin: 0 0 0 5px;
   font-size: calc(11px * var(--font-scale));
   line-height: 1;
   color: var(--cm-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  vertical-align: baseline;
+  vertical-align: middle;
 }
 
 :root[chat-modern] #chat .chat_balloon > .chat_tts_icon {
-  grid-column: 4;
-  grid-row: 1;
-  float: none;
-  align-self: center;
+  float: right;
+  margin-left: 6px;
   opacity: 0.75;
 }
 
@@ -146,17 +151,23 @@
   opacity: 1;
 }
 
+/* 본문은 블록으로: 띄운 아바타 옆에서 시작해 줄이 넘어가면 아바타 아래로 흐른다.
+   이미지는 폭 100% 라 아바타 옆에 들어가지 못해 자연히 아바타 아래에 놓인다 (예전 채팅과 같다) */
 :root[chat-modern] #chat .chat_balloon > temp,
-:root[chat-modern] #chat .chat_balloon > .chat_img,
-:root[chat-modern] #chat .chat_balloon > .chat_lol_link,
-:root[chat-modern] #chat .chat_balloon > div {
-  grid-column: 2 / -1;
+:root[chat-modern] #chat .chat_balloon > .chat_img {
+  display: block;
   min-width: 0;
 }
 
 :root[chat-modern] #chat .chat_balloon > temp {
   margin-top: 2px;
   overflow-wrap: anywhere;
+}
+
+/* 바탕이 있는 상자(답장 인용·롤백 글 카드)는 아바타 뒤로 깔리지 않게 자기 서식 맥락을 만든다 */
+:root[chat-modern] #chat .chat_balloon > .chat_reply_quote,
+:root[chat-modern] #chat .chat_balloon > .chat_lol_link {
+  overflow: hidden;
 }
 
 /* 채팅 속 주소 링크 */
@@ -190,21 +201,16 @@
   padding-bottom: 3px;
 }
 
-/* 뒤에 이어지는 메시지가 있으면 아이콘이 아래(다음 메시지의 빈 아이콘 칸)로 넘치게 해서
-   첫 줄과 다음 줄 사이에 아이콘 높이만큼의 틈이 생기지 않게 한다 */
-:root[chat-modern] #chat > .chat_balloon:has(+ .chat_balloon[continued]) > .chat_profile {
-  margin-bottom: -14px;
-  position: relative;
-  z-index: 1;
-}
-
 :root[chat-modern][theme=dark] #chat > .chat_balloon[continued] {
   box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.35);
 }
 
+/* 이어지는 메시지는 아바타 없이 왼쪽 끝부터 (띄운 자리를 차지하지 않게 크기도 0) */
 :root[chat-modern] #chat > .chat_balloon[continued] > .chat_profile {
   visibility: hidden;
+  width: 0;
   height: 0;
+  margin: 0;
 }
 
 :root[chat-modern] #chat > .chat_balloon[continued] > .nick,
@@ -230,6 +236,96 @@
 :root[chat-modern] #chat > .chat_balloon[continued] {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+}
+
+/* ---------- 답장 (index_chat.js chat_set_reply / chat_make_reply_quote) ---------- */
+
+/* ↩ 버튼은 말풍선 오른쪽 위에 겹쳐 두고 마우스를 올렸을 때만 보인다 */
+:root[chat-modern] #chat > .chat_balloon {
+  position: relative;
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_reply_btn {
+  display: none;
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cm-text) 8%, transparent);
+  color: var(--cm-muted);
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
+  cursor: pointer;
+}
+
+:root[chat-modern] #chat .chat_balloon:hover > .chat_reply_btn {
+  display: block;
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_reply_btn:hover {
+  background: color-mix(in srgb, var(--cm-text) 16%, transparent);
+  color: var(--cm-text);
+}
+
+/* TTS 아이콘이 같은 자리에 있으면 그 왼쪽으로 */
+:root[chat-modern] #chat .chat_balloon:has(> .chat_tts_icon) > .chat_reply_btn {
+  right: 34px;
+}
+
+/* 터치 화면은 마우스 올리기가 없으니 늘 흐리게 보여 준다 */
+@media (hover: none) {
+  :root[chat-modern] #chat .chat_balloon > .chat_reply_btn {
+    display: block;
+    opacity: 0.5;
+  }
+}
+
+/* 인용 말풍선: 이름 줄 아래, 본문 위 */
+:root[chat-modern] #chat .chat_balloon > .chat_reply_quote {
+  margin: 4px 0 2px;
+  padding: 5px 9px;
+  border-left: 3px solid var(--cm-muted);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cm-text) 6%, transparent);
+  color: var(--cm-muted);
+  font-size: calc(12px * var(--font-scale));
+  line-height: 1.35;
+  opacity: 1;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_reply_quote:hover {
+  background: color-mix(in srgb, var(--cm-text) 10%, transparent);
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_reply_quote > [meta] {
+  margin-bottom: 1px;
+  font-size: calc(11px * var(--font-scale));
+  font-weight: 700;
+  color: var(--cm-name);
+}
+
+/* 내 글에 온 답장: 노란 띠 / 내가 보낸 답장: 강조색 띠 */
+:root[chat-modern] #chat .chat_balloon > .chat_reply_quote[to_me] {
+  border-left-color: #f5b301;
+  background: rgba(245, 179, 1, 0.14);
+}
+
+:root[chat-modern] #chat .chat_balloon > .chat_reply_quote[from_me] {
+  border-left-color: var(--cm-accent);
+  background: color-mix(in srgb, var(--cm-accent) 12%, transparent);
+}
+
+/* 인용을 눌러 원본으로 이동했을 때 잠깐 강조 */
+:root[chat-modern] #chat > .chat[highlight] {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--cm-accent), var(--cm-shadow);
 }
 
 /* 이모지 하나만 보낸 경우: 말풍선 없이 크게 */

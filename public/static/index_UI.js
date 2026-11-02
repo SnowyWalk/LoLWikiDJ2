@@ -951,6 +951,35 @@ function onclick_video_info_volume_btn()
 	}
 
 	update_video_volume()
+	localStorage.setItem(g_storage_muted_key, player.isMuted() ? '1' : '0')
+}
+
+/* [v2] 볼륨·음소거 기억: 슬라이더와 음소거 버튼을 쓸 때 저장해 두고, 플레이어가 준비되면 되돌린다
+   (새로고침·재접속 때마다 유튜브 기본값으로 돌아가던 것). '이번 영상만 음소거'는 일시적이라 저장하지 않는다 */
+var g_storage_volume_key = 'video_volume'
+var g_storage_muted_key = 'video_muted'
+
+function restore_video_volume()
+{
+	if(!player || !player.setVolume)
+		return
+
+	var volume = parseInt(localStorage.getItem(g_storage_volume_key), 10)
+	if(!isNaN(volume))
+	{
+		volume = Math.max(0, Math.min(100, volume))
+		player.setVolume(volume)
+		video_info_volume_slider.value = volume
+		m3u8_player.volume = volume / 100
+		flv_player.volume = volume / 100
+	}
+	if(localStorage.getItem(g_storage_muted_key) == '1')
+	{
+		player.mute()
+		m3u8_player.muted = true
+		flv_player.muted = true
+	}
+	update_video_volume()
 }
 
 /* 이번 영상이 끝날 때까지만 음소거 */
@@ -972,6 +1001,7 @@ function onchange_video_info_volume_slider()
 	player.setVolume(video_info_volume_slider.value)
 	m3u8_player.volume = eval(video_info_volume_slider.value) / 100
 	flv_player.volume = eval(video_info_volume_slider.value) / 100
+	localStorage.setItem(g_storage_volume_key, video_info_volume_slider.value)
 }
 
 function update_video_volume()

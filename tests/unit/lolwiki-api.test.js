@@ -157,7 +157,7 @@ test('an expired access token refreshes from the browser refresh token and retri
 	}
 	const { auth, socket } = browserAuth(client, source)
 
-	assert.equal(await client.votePost('10', 'user-3', auth), true)
+	assert.equal((await client.votePost('10', 'user-3', auth)).ok, true)
 	assert.equal(voteAttempts, 2)
 	assert.equal(calls[1].uri, `${constants.API_BASE_URL}/auth/refresh`)
 	assert.deepEqual(calls[1].body, { refresh_token: 'refresh-3', device_id: 'browser-3' })
@@ -182,6 +182,8 @@ test('refresh failure automatically logs in with browser-stored ID/password and 
 				throw unauthorized('access expired')
 			return { status: 'OK', vote_state: 'up' }
 		}
+		if(options.uri.endsWith('/legacy-read-compat/post'))
+			return { status: 'OK', post: { post_seq: 20, likes: 3, vote: 'up' } }
 		throw new Error(`unexpected request: ${options.uri}`)
 	})
 	const source = {
@@ -194,12 +196,13 @@ test('refresh failure automatically logs in with browser-stored ID/password and 
 	}
 	const { auth } = browserAuth(client, source)
 
-	assert.equal(await client.votePost('20', 'user-4', auth), true)
+	assert.deepEqual(await client.votePost('20', 'user-4', auth), { ok: true, vote: 'up', likes: 3, post_seq: '20' })
 	assert.deepEqual(calls.map(call => call.uri), [
 		`${constants.API_BASE_URL}/board/legacy-write/posts/20/vote`,
 		`${constants.API_BASE_URL}/auth/refresh`,
 		`${constants.API_BASE_URL}/users/login`,
-		`${constants.API_BASE_URL}/board/legacy-write/posts/20/vote`
+		`${constants.API_BASE_URL}/board/legacy-write/posts/20/vote`,
+		`${constants.API_BASE_URL}/legacy-read-compat/post` // 투표 뒤 실제 추천 수·내 표 상태 재조회
 	])
 	assert.deepEqual(calls[2].body, { account_id: 'saved-account', password: 'saved-password' })
 	assert.equal(calls[3].headers.Authorization, 'Bearer relogin-access')
@@ -241,7 +244,8 @@ test('authentication is stateless between browsers and uses each request token',
 	await client.votePost('11', 'user-a', first)
 	await client.votePost('12', 'user-b', second)
 
-	assert.deepEqual(authorizationHeaders, ['Bearer browser-a-token', 'Bearer browser-b-token'])
+	// 투표마다 vote + 상세 재조회 두 번 요청
+	assert.deepEqual(authorizationHeaders, ['Bearer browser-a-token', 'Bearer browser-a-token', 'Bearer browser-b-token', 'Bearer browser-b-token'])
 })
 
 test('current-user retrieval uses only the latest /users/me API', async () => {
@@ -464,7 +468,7 @@ test('image upload stays unauthenticated and uses the browser device identifier'
 
 	const uploaded = await client.uploadImage(Buffer.from('image'), 'browser-8', 'jpg')
 
-	assert.deepEqual(uploaded, { id: 'image-1', format: 'jpg' })
+	assert.deepEqual(uploaded, { id: 'image-1', format: 'jpg', byteSize: 5 }) // byteSize: 글 첨부(attachments)에 필수
 	assert.equal(calls[0].uri, constants.IMAGE_UPLOAD_URL)
 	assert.equal(calls[0].headers['X-Device-ID'], 'browser-8')
 	assert.equal(calls[0].headers.Authorization, undefined)
@@ -581,4 +585,329 @@ test('dates are sent as plain Korea time whether or not the API attaches a time 
 	assert.equal(normalizeListPost({ created_at: '2026-07-21T15:44:15' }).post_date, '2026-07-21 15:44:15')
 	assert.equal(normalizeListPost({ created_at: '2026-07-21T15:44:15.123456' }).post_date, '2026-07-21 15:44:15')
 	assert.equal(normalizeComment({ created_at: '' }).reply_date, '')
+})
+
+test('a dislike sends action=down and reports the refreshed like count and my vote state', async () => {
+	const calls = []
+	const client = createLolWikiClient(async options => {
+		calls.push(options)
+		if(options.uri.endsWith('/vote'))
+			return { status: 'OK', vote: 'down' }
+		if(options.uri.endsWith('/legacy-read-compat/post'))
+			return { status: 'OK', post: { post_seq: 30, likes: 4, vote: 'down' } }
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-8', user_key: 'user-8' })
+
+	const result = await client.votePost('30', 'user-8', auth, 'down')
+
+	assert.deepEqual(calls[0].body, { action: 'down' })
+	assert.equal(calls[1].qs.post_seq, '30')
+	assert.equal(calls[1].qs.local_user_key, 'user-8') // 내 표 상태(vote)를 받기 위한 키
+	assert.deepEqual(result, { ok: true, vote: 'down', likes: 4, post_seq: '30' })
+})
+
+test('nickname change returns the server reason instead of throwing when the API rejects it', async () => {
+	const client = createLolWikiClient(async options => {
+		if(options.uri.endsWith('/users/me'))
+			return { user: { local_user_key: 'user-7', nickname: '옛닉' } }
+		if(options.uri.endsWith('/users')) {
+			const error = new Error('422 - rejected')
+			error.statusCode = 422
+			error.error = { detail: [{ msg: 'Value error, NICKNAME_CHANGE_COOLDOWN' }] } // FastAPI 형식
+			throw error
+		}
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-7', user_key: 'user-7' })
+
+	const result = await client.changeNickname('user-7', '새닉', auth)
+
+	assert.equal(result.ok, false)
+	assert.equal(result.status_code, 422)
+	assert.equal(result.message, 'Value error, NICKNAME_CHANGE_COOLDOWN')
+})
+
+test('nickname change reports the nickname the server saved', async () => {
+	const calls = []
+	const client = createLolWikiClient(async options => {
+		calls.push(options)
+		if(options.uri.endsWith('/users/me'))
+			return { user: { local_user_key: 'user-7', nickname: '옛닉', motto: '모토', avatar_image_id: 'avatar-1' } }
+		if(options.uri.endsWith('/users'))
+			return { status: 'OK', user: { nickname: '새닉' } }
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-7', user_key: 'user-7' })
+
+	const result = await client.changeNickname('user-7', '새닉', auth)
+
+	assert.deepEqual(result, { ok: true, nickname: '새닉', message: '' })
+	assert.equal(calls[1].body.nickname, '새닉')
+	assert.equal(calls[1].body.motto, '모토') // /users 는 프로필 전체를 덮어쓰므로 기존 값을 함께 보낸다
+	assert.equal(calls[1].body.avatar_image_id, 'avatar-1')
+})
+
+test('GIF and WebP attachments are uploaded in their original format instead of JPEG', async () => {
+	const calls = []
+	const client = createLolWikiClient(async options => {
+		calls.push(options)
+		if(options.uri === constants.IMAGE_UPLOAD_URL)
+			return { data: { id: `img-${calls.length}` } }
+		return { status: 'OK' }
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-9', user_key: 'user-9' })
+
+	await client.writePost('user-9', '제목', '본문', '', [{ image: 'QUJD', image_format: 'webp' }], auth)
+	await client.writeReply('10', 'user-9', '댓글', 'QUJD', auth, { imageFormat: 'gif' })
+	await client.writeReply('10', 'user-9', '댓글', 'QUJD', auth, { imageFormat: 'bmp' }) // 모르는 형식은 JPEG 로
+
+	const uploads = calls.filter(call => call.uri === constants.IMAGE_UPLOAD_URL)
+	assert.deepEqual(uploads.map(call => call.formData.image.options.contentType), ['image/webp', 'image/gif', 'image/jpeg'])
+	assert.ok(uploads[0].formData.image.options.filename.endsWith('.webp'))
+	assert.equal(uploads[0].headers.Authorization, undefined) // 이미지 서버는 Authorization 이 붙으면 거부한다
+
+	const post = calls.find(call => call.uri.endsWith('/board/legacy-write/posts'))
+	assert.equal(post.body.image_format, 'webp')
+	const replies = calls.filter(call => call.uri.endsWith('/posts/10/comments'))
+	assert.deepEqual(replies.map(call => call.body.image_format), ['gif', 'jpg'])
+	const pending = calls.filter(call => call.uri.endsWith('/images/pending'))
+	assert.deepEqual(pending.map(call => call.body.image_format), ['webp', 'gif', 'jpg'])
+})
+
+test('detail posts expose my vote state for the vote buttons', () => {
+	assert.equal(normalizeDetailPost(Object.assign({}, samplePost, { vote: 'up' }), null).my_vote, 'up')
+	assert.equal(normalizeDetailPost(samplePost, null).my_vote, 'neutral')
+})
+
+test('posts with several photos send attachments with byte sizes, in the order given', async () => {
+	const calls = []
+	const client = createLolWikiClient(async options => {
+		calls.push(options)
+		if(options.uri === constants.IMAGE_UPLOAD_URL)
+			return { data: { id: `img-${options.formData.image.options.contentType}` } }
+		return { status: 'OK' }
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-10', user_key: 'user-10' })
+
+	const result = await client.writePost('user-10', '제목', '본문', '', [
+		{ image: 'QUJD', image_format: 'jpg' },
+		{ image: 'QUJDRA==', image_format: 'webp' }
+	], auth)
+
+	const post = calls.find(call => call.uri.endsWith('/board/legacy-write/posts'))
+	assert.deepEqual(post.body.attachments, [
+		{ image_id: 'img-image/jpeg', image_format: 'jpg', byte_size: 3 },
+		{ image_id: 'img-image/webp', image_format: 'webp', byte_size: 4 }
+	])
+	assert.equal(post.body.image_id, undefined) // 2장 이상은 attachments 만
+	const pending = calls.filter(call => call.uri.endsWith('/images/pending'))
+	assert.deepEqual(pending.map(call => call.body.byte_size), [3, 4])
+	assert.deepEqual(result, { attached: 2, total: 2, image_error: '' })
+})
+
+test('if the server rejects attachments the post is retried with one photo and the same request id', async () => {
+	const posts = []
+	const client = createLolWikiClient(async options => {
+		if(options.uri === constants.IMAGE_UPLOAD_URL)
+			return { data: { id: 'img' } }
+		if(options.uri.endsWith('/board/legacy-write/posts')) {
+			posts.push(options.body)
+			if(options.body.attachments) {
+				const error = new Error('422')
+				error.statusCode = 422
+				error.error = { detail: [{ msg: 'Value error, IMAGE_SIZE_REQUIRED' }] }
+				throw error
+			}
+		}
+		return { status: 'OK' }
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-11', user_key: 'user-11' })
+
+	const result = await client.writePost('user-11', '제목', '본문', '', [{ image: 'QUJD' }, { image: 'QUJD' }], auth)
+
+	assert.equal(posts.length, 2)
+	assert.equal(posts[1].image_id, 'img')
+	assert.equal(posts[1].attachments, undefined)
+	assert.equal(posts[1].request_id, posts[0].request_id)
+	assert.equal(result.attached, 1)
+	assert.equal(result.total, 2)
+	assert.match(result.image_error, /IMAGE_SIZE_REQUIRED/)
+})
+
+test('a reply to a comment carries its parent id', async () => {
+	const calls = []
+	const client = createLolWikiClient(async options => {
+		calls.push(options)
+		return { status: 'OK' }
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-12', user_key: 'user-12' })
+
+	await client.writeReply('10', 'user-12', '@누군가 답글', '', auth, { parentId: '55' })
+
+	assert.equal(calls[0].body.parent_id, 55)
+	assert.equal(calls[0].body.image_id, '')
+})
+
+test('blocking resolves the numeric author id from the new post id and clears the block cache', async () => {
+	const calls = []
+	const client = createLolWikiClient(async options => {
+		calls.push(options)
+		if(options.uri.endsWith('/legacy-read-compat/post'))
+			return { post: Object.assign({}, samplePost, { post_seq: 8526228, author_id: 'legacy-author' }) }
+		if(options.uri.endsWith('/board/posts'))
+			return { results: [{ id: 1000, legacy_post_seq: 8526300 }] } // offset 7526300
+		if(options.uri.endsWith('/board/posts/928'))
+			return { post: { id: 928, legacy_post_seq: 8526228, author: { id: 77, nickname: '작성자' } } }
+		if(options.uri.endsWith('/blocks'))
+			return { status: 'OK' }
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-13', user_key: 'user-13' })
+
+	const result = await client.blockUser('8526228', auth)
+
+	assert.deepEqual(result, { ok: true, nickname: '작성자', blocked_user_id: 77 })
+	const block = calls.find(call => call.uri.endsWith('/blocks') && call.method === 'POST')
+	assert.deepEqual(block.body, { blocker_local_user_key: 'user-13', blocked_user_id: 77, blocked: true })
+	assert.equal(block.headers.Authorization, 'Bearer token')
+})
+
+test('the block list is normalized and unblocking all removes every entry', async () => {
+	const posted = []
+	let listed = 0
+	const client = createLolWikiClient(async options => {
+		if(options.uri.endsWith('/blocks') && options.method === 'GET') {
+			listed++
+			return listed === 1
+				? { results: [{ id: 5, nickname: '갑', avatar_url: 'https://img.lolwiki.kr/i/a/thumb', created_at: '2026-07-21T15:47:26+09:00' }, { id: 6, nickname: '을' }], block_limit: 50 }
+				: { results: [], block_limit: 50 }
+		}
+		if(options.uri.endsWith('/blocks') && options.method === 'POST') {
+			posted.push(options.body)
+			return { status: 'OK' }
+		}
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-14', user_key: 'user-14' })
+
+	const after = await client.unblock(auth, 'all')
+
+	assert.deepEqual(posted, [
+		{ blocker_local_user_key: 'user-14', blocked_user_id: 5, blocked: false },
+		{ blocker_local_user_key: 'user-14', blocked_user_id: 6, blocked: false }
+	])
+	assert.deepEqual(after, { results: [], block_limit: 50 })
+
+	listed = 0
+	const list = await client.listBlocks(auth)
+	assert.equal(list.results[0].created_at, '2026-07-21 15:47:26')
+	assert.equal(list.results[1].avatar_url, '')
+})
+
+test('setting and clearing the fixed image keeps the rest of the profile', async () => {
+	const users = []
+	const client = createLolWikiClient(async options => {
+		if(options.uri.endsWith('/users/me'))
+			return { user: { local_user_key: 'user-15', nickname: '닉', motto: '모토', avatar_image_id: 'avatar', fixed_image_id: 'old-fixed' } }
+		if(options.uri === constants.IMAGE_UPLOAD_URL)
+			return { data: { id: 'new-fixed' } }
+		if(options.uri.endsWith('/users')) {
+			users.push(options.body)
+			return { status: 'OK' }
+		}
+		return { status: 'OK' }
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-15', user_key: 'user-15' })
+
+	await client.setFixedImage('QUJD', auth)
+	await client.clearFixedImage(auth)
+
+	assert.deepEqual(users[0], { local_user_key: 'user-15', nickname: '닉', motto: '모토', avatar_image_id: 'avatar', fixed_image_id: 'new-fixed' })
+	assert.deepEqual(users[1], { local_user_key: 'user-15', nickname: '닉', motto: '모토', avatar_image_id: 'avatar', clear_fixed_image: true })
+})
+
+test('a post is mine when its author id matches any identifier of my profile (legacy accounts use legacy_id)', async () => {
+	const client = createLolWikiClient(async options => {
+		if(options.uri.endsWith('/users/me'))
+			return { user: { id: 1011, local_user_key: 'legacy:abc', legacy_id: 'CD19-UUID', nickname: '나' } }
+		if(options.uri.endsWith('/legacy-read-compat/post'))
+			return { post: Object.assign({}, samplePost, { author_id: 'CD19-UUID' }) }
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-16' })
+
+	await client.getUserInfo(auth) // 로그인·복원 때 받아 두는 프로필
+	const detail = await client.getArticleDetail('legacy:abc', '8526228', auth)
+
+	assert.equal(detail.my_post, '1')
+	assert.equal(normalizeDetailPost(samplePost, { local_user_key: 'legacy:abc' }).my_post, '0') // 남의 글
+})
+
+test('notifications and memo threads are normalized for the notification center', async () => {
+	const client = createLolWikiClient(async options => {
+		if(options.uri.endsWith('/users/me'))
+			return { user: { id: 1011, local_user_key: 'legacy:abc', nickname: '나' } }
+		if(options.uri.endsWith('/push/notifications'))
+			return { unread_count: 2, results: [
+				{ id: 7, title: '새 댓글', body: '누가 댓글을 달았습니다', created_at: '2026-07-21T15:47:26+09:00', read: false, deep_link: 'lolwiki://post/8526228?comment=5' },
+				{ id: 8, title: '공지', body: '', created_at: '2026-07-21T15:00:00', read: true }
+			] }
+		if(options.uri.endsWith('/memos'))
+			return { results: [
+				{ id: 'th-1', other_nickname: '친구', other_avatar_url: 'https://img.lolwiki.kr/i/a/thumb', last_body: '', last_image_id: 'img', last_message_at: '2026-07-21T15:47:26+09:00', unread_count: 3 },
+				{ id: 'th-2', other_nickname: '둘', last_body: '안녕', updated_at: '2026-07-20T10:00:00', unread_count: 0 }
+			] }
+		if(options.uri.endsWith('/memos/th-1'))
+			return { results: [
+				{ id: 1, sender_user_id: 1011, body: '내가 보냄', created_at: '2026-07-21T15:47:26+09:00' },
+				{ id: 2, sender_id: 2022, body: '', image_id: 'pic', created_at: '2026-07-21T15:48:00+09:00' }
+			] }
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-17', user_key: 'legacy:abc' })
+
+	const notifs = await client.listNotifications(auth)
+	assert.equal(notifs.unread_count, 2)
+	assert.deepEqual(notifs.results[0], { id: 7, title: '새 댓글', body: '누가 댓글을 달았습니다', created_at: '2026-07-21 15:47:26', read: false, post_seq: '8526228' })
+	assert.equal(notifs.results[1].post_seq, '')
+
+	const threads = await client.listMemoThreads(auth)
+	assert.equal(threads.unread_count, 3)
+	assert.equal(threads.results[0].last_body, '[이미지]')
+	assert.equal(threads.results[1].last_message_at, '2026-07-20 10:00:00')
+
+	const thread = await client.getMemoThread(auth, 'th-1')
+	assert.deepEqual(thread.messages.map(m => [m.mine, m.body, m.image_url]), [[true, '내가 보냄', ''], [false, '', 'https://img.lolwiki.kr/i/pic/resize']])
+
+	assert.deepEqual(await client.unreadCounts(auth), { notifications: 2, memos: 3, total: 5 })
+})
+
+test('sending a memo posts the body with my key and nickname, then returns the refreshed thread', async () => {
+	const posts = []
+	const client = createLolWikiClient(async options => {
+		if(options.uri.endsWith('/users/me'))
+			return { user: { id: 1011, local_user_key: 'legacy:abc', nickname: '나' } }
+		if(options.uri.endsWith('/memos/th-1/messages')) {
+			posts.push(options.body)
+			return { status: 'OK' }
+		}
+		if(options.uri.endsWith('/memos/th-1'))
+			return { messages: [{ id: 1, sender_user_id: 1011, body: '보낸 글', created_at: '2026-07-21T15:47:26' }] }
+		if(options.uri.endsWith('/push/notifications/read')) {
+			posts.push(options.body)
+			return { status: 'OK' }
+		}
+		throw new Error(`unexpected request: ${options.uri}`)
+	})
+	const { auth } = browserAuth(client, { access_token: 'token', device_id: 'browser-18', user_key: 'legacy:abc' })
+
+	const thread = await client.sendMemo(auth, 'th-1', '보낸 글')
+	await client.readNotification(auth, 7)
+	await client.readNotification(auth)
+
+	assert.deepEqual(posts[0], { sender_local_user_key: 'legacy:abc', sender_nickname: '나', body: '보낸 글' })
+	assert.equal(thread.messages[0].mine, true)
+	assert.deepEqual(posts[1], { local_user_key: 'legacy:abc', notification_id: 7 })
+	assert.deepEqual(posts[2], { local_user_key: 'legacy:abc' })
 })

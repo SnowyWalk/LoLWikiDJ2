@@ -1,4 +1,10 @@
-var g_last_chat = ''
+// [v2] 보낸 채팅 기록 (최대 50개). 입력창에서 ↑/↓ 로 넘겨 본다 (chat_history_keydown)
+var g_chat_history = []
+var g_chat_history_index = -1 // -1: 기록을 보고 있지 않음
+var g_chat_history_draft = '' // 기록을 넘겨 보기 시작할 때 입력 중이던 글
+const CHAT_HISTORY_MAX = 50
+// [v2] 답장 대상 { id, name, time, text } (chat_set_reply). 보낼 때 reply_to 로 붙는다
+var g_chat_reply = null
 var mute_list = []
 var tts_mute_list = []
 var ping_time = 0
@@ -32,6 +38,8 @@ function add_message(data)
 		if(pending)
 		{
 			pending.removeAttribute('pending')
+			if(data.id)
+				pending.setAttribute('chat_id', data.id) // 답장 대상이 될 수 있게 서버가 붙인 id 를 받는다
 			var pending_time = pending.querySelector('.chat_time')
 			if(pending_time && data.time)
 				pending_time.textContent = data.time
@@ -42,6 +50,8 @@ function add_message(data)
 	var need_scroll = is_scroll_bottom() || g_nick == 'OBS'
 
 	var message = document.createElement('div')
+	if(data.id)
+		message.setAttribute('chat_id', data.id) // [v2] 답장 대상 식별용
 	if(g_chat_modern && data.client_id)
 		message.setAttribute('client_id', data.client_id)
 	if(g_chat_modern && data.pending)
@@ -116,7 +126,23 @@ function add_message(data)
 			timeFont.classList.add('chat_time')
 			timeFont.appendChild(document.createTextNode(g_chat_modern ? data.time : '  ' + data.time))
 			message.appendChild(timeFont)
-			
+
+			// [v2] 답장: 원본 요약을 인용 말풍선으로 (누르면 원본으로 이동)
+			if(data.reply_to && data.reply_to.id)
+				message.appendChild(chat_make_reply_quote(data, data.reply_to))
+
+			// [v2] 말풍선 위에 마우스를 올리면 나오는 답장 버튼 (새 디자인만)
+			if(g_chat_modern && g_nick != 'OBS')
+			{
+				var reply_btn = document.createElement('button')
+				reply_btn.type = 'button'
+				reply_btn.classList.add('chat_reply_btn', 'no-drag')
+				reply_btn.title = '답장'
+				reply_btn.textContent = '↩'
+				reply_btn.onclick = function(event) { event.stopPropagation(); chat_set_reply(message, data) }
+				message.appendChild(reply_btn)
+			}
+
 			if(data.name == g_nick)
 				className = 'me'
 			else
@@ -281,9 +307,159 @@ function add_message(data)
 
 		if(data.type == 'message' && decodeURIComponent(location.hash.substring(1)).split(',').filter(x => x.length > 0 && text.indexOf(x) != -1).length > 0)
 			play_call_audio()
+
+		// [v2] 내 글에 다른 사람이 답장하면 호출음
+		if(data.reply_to && data.reply_to.name == g_nick && data.name != g_nick)
+			play_call_audio()
 	}
 
 	return message
+}
+
+/* [v2] 답장 ------------------------------------------------------------------
+   말풍선의 ↩ 를 누르면 입력창 위에 '답장 중' 띠가 뜨고, 보낼 때 reply_to: { id, name, time, text } 가 붙는다.
+   받는 쪽은 그 요약을 인용 말풍선으로 그리고, 누르면 원본 메시지로 스크롤한다 (서버가 메시지마다 id 를 붙인다) */
+
+/* 메시지 요약 글: 글이면 앞 120자, 이미지·영상이면 표시만 */
+function chat_message_summary(message)
+{
+	var text = String(message || '')
+	if(imgReg.test(text))
+		return '[이미지]'
+	if(videoReg.test(text))
+		return '[영상]'
+	text = text.replace(/\s+/g, ' ').trim()
+	return text.length > 120 ? text.substring(0, 120) + '…' : text
+}
+
+function chat_set_reply(message_el, data)
+{
+	var id = message_el.getAttribute('chat_id') || data.id // 내가 보낸 메시지는 서버 확인이 올 때 id 가 붙는다
+	if(!id)
+		return
+	var time_el = message_el.querySelector('.chat_time')
+	g_chat_reply = { id: id, name: data.name, time: time_el ? time_el.textContent.trim() : data.time, text: chat_message_summary(data.message) }
+	chat_render_reply_bar()
+	chat_input.focus()
+}
+
+function chat_clear_reply()
+{
+	if(!g_chat_reply)
+		return
+	g_chat_reply = null
+	chat_render_reply_bar()
+}
+
+function chat_render_reply_bar()
+{
+	var bar = document.getElementById('chat_reply_bar')
+	if(!bar)
+	{
+		bar = document.createElement('div')
+		bar.id = 'chat_reply_bar'
+		bar.addEventListener('mousedown', function(event) { event.preventDefault() }) // 눌러도 입력창 포커스를 빼앗지 않게
+		chat_input.parentElement.appendChild(bar)
+	}
+	bar.replaceChildren()
+	if(!g_chat_reply)
+	{
+		bar.style.display = 'none'
+		return
+	}
+
+	var top = document.createElement('div')
+	top.toggleAttribute('top', true)
+	var label = document.createElement('span')
+	label.textContent = '답장 중'
+	top.appendChild(label)
+	var cancel = document.createElement('button')
+	cancel.type = 'button'
+	cancel.textContent = '취소'
+	cancel.onclick = chat_clear_reply
+	top.appendChild(cancel)
+	bar.appendChild(top)
+
+	var preview = document.createElement('div')
+	preview.toggleAttribute('preview', true)
+	var meta = document.createElement('span')
+	meta.toggleAttribute('meta', true)
+	meta.textContent = g_chat_reply.name + ' | ' + g_chat_reply.time
+	preview.appendChild(meta)
+	preview.appendChild(document.createTextNode(g_chat_reply.text))
+	bar.appendChild(preview)
+	bar.style.display = 'block'
+}
+
+/* 인용 말풍선. 내 글에 온 답장은 노란 띠, 내가 보낸 답장은 파란 띠 (색은 chat-modern.css) */
+function chat_make_reply_quote(data, reply_to)
+{
+	var quote = document.createElement('div')
+	quote.classList.add('chat_reply_quote', 'no-drag')
+	quote.setAttribute('reply_id', reply_to.id)
+	if(reply_to.name == g_nick && data.name != g_nick)
+		quote.toggleAttribute('to_me', true)
+	else if(data.name == g_nick && reply_to.name != g_nick)
+		quote.toggleAttribute('from_me', true)
+
+	var meta = document.createElement('div')
+	meta.toggleAttribute('meta', true)
+	meta.textContent = (reply_to.name || '') + (reply_to.time ? ' | ' + reply_to.time : '')
+	quote.appendChild(meta)
+	var text = document.createElement('div')
+	text.textContent = reply_to.text || ''
+	quote.appendChild(text)
+	quote.title = '원본 메시지로 이동'
+	quote.onclick = function(event) { event.stopPropagation(); chat_jump_to(reply_to.id) }
+	return quote
+}
+
+/* 원본 메시지로 스크롤하고 잠깐 강조. 지워졌으면(/clear 등) 아무 일도 하지 않는다 */
+function chat_jump_to(id)
+{
+	var target = chat.querySelector('[chat_id="' + id + '"]')
+	if(!target)
+		return
+	target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+	target.toggleAttribute('highlight', true)
+	setTimeout(function() { target.removeAttribute('highlight') }, 1500)
+}
+
+/* [v2] 보낸 채팅 기록 ---------------------------------------------------------- */
+function chat_history_push(message)
+{
+	if(g_chat_history[g_chat_history.length - 1] != message) // 같은 글을 연달아 보내면 한 번만
+		g_chat_history.push(message)
+	if(g_chat_history.length > CHAT_HISTORY_MAX)
+		g_chat_history.shift()
+	g_chat_history_index = -1
+	g_chat_history_draft = ''
+}
+
+/* ↑/↓ 로 기록 넘겨 보기 (호출 목록이 떠 있지 않을 때). 처리했으면 true */
+function chat_history_keydown(event)
+{
+	if(event.key == 'ArrowUp')
+	{
+		if(g_chat_history_index + 1 >= g_chat_history.length)
+			return g_chat_history.length > 0 // 가장 오래된 기록이면 그대로 두되, 커서가 맨 앞으로 가지 않게 막는다
+		if(g_chat_history_index == -1)
+			g_chat_history_draft = chat_input.value
+		g_chat_history_index++
+	}
+	else if(event.key == 'ArrowDown')
+	{
+		if(g_chat_history_index < 0)
+			return false
+		g_chat_history_index--
+	}
+	else
+		return false
+
+	chat_input.value = g_chat_history_index < 0 ? g_chat_history_draft : g_chat_history[g_chat_history.length - 1 - g_chat_history_index]
+	setTimeout(function() { chat_input.setSelectionRange(chat_input.value.length, chat_input.value.length) }, 10)
+	event.preventDefault()
+	return true
 }
 
 /* 채팅창에 시스템 메시지 추가 함수 */
@@ -419,9 +595,9 @@ function send(force_tts = false) {
 	}
 
 	// 입력되어있는 데이터 가져오기
-	var message = chat_input.value 
+	var message = chat_input.value
 	if(message)
-		g_last_chat = message
+		chat_history_push(message)
 
 	if(message && force_tts && !ttsReg.test(message))
 		message = '/tts ' + message
@@ -764,9 +940,10 @@ function send(force_tts = false) {
 	{
 		client_id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
 		var local_time = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul' })
-		add_message({ type: 'message', message: message, tts_hash: tts_hash, name: g_nick, time: local_time, icon_id: me.icon_id, icon_ver: me.icon_ver, client_id: client_id, pending: true })
+		add_message({ type: 'message', message: message, tts_hash: tts_hash, name: g_nick, time: local_time, icon_id: me.icon_id, icon_ver: me.icon_ver, client_id: client_id, pending: true, reply_to: g_chat_reply })
 	}
-	socket.emit('chat_message', { type: 'message', message: message, tts_hash: tts_hash, client_id: client_id })
+	socket.emit('chat_message', { type: 'message', message: message, tts_hash: tts_hash, client_id: client_id, reply_to: g_chat_reply })
+	chat_clear_reply()
 	scrollDown()
 }
 
@@ -776,18 +953,21 @@ function chat_keydown() {
 	// 호출 목록이 떠 있으면 위·아래·Enter·Tab·Esc 는 목록이 먼저 쓴다
 	if(chat_mention_keydown(window.event))
 		return
+	// [v2] ↑/↓ 는 보낸 기록 넘겨 보기
+	if(chat_history_keydown(window.event))
+		return
 
 	if (window.event.keyCode == 13)
 	{
+		if(!chat_input.value.trim() && g_chat_reply) // [v2] 빈 입력에 Enter 는 답장 대상 해제
+		{
+			chat_clear_reply()
+			return
+		}
 		send(window.event.shiftKey && option_checkbox_tts_key_bind.checked)
 	}
-	else if(window.event.keyCode == 38 && g_last_chat)
-	{
-		chat_input.value = g_last_chat
-		setTimeout(_ => {
-			chat_input.setSelectionRange(chat_input.value.length, chat_input.value.length)
-		}, 10);
-	}
+	else if(window.event.key == 'Escape')
+		chat_clear_reply()
 }
 
 /* [v2] '@' 호출 목록
@@ -821,20 +1001,22 @@ function chat_mention_close()
 function chat_mention_update()
 {
 	var caret = chat_input.selectionStart
-	var m = caret == chat_input.selectionEnd ? /(^|\s)@(\S*)$/.exec(chat_input.value.substring(0, caret)) : null
-	if(!m || g_nick == 'OBS')
+	var before = caret == chat_input.selectionEnd ? chat_input.value.substring(0, caret) : ''
+	var m = /(^|\s)@(\S*)$/.exec(before)
+	var vol = !m ? /^\/vol\s+(\S*)$/i.exec(before) : null // [v2] '/vol 닉' 에도 같은 목록 (입력 시작 부분에서만)
+	if((!m && !vol) || g_nick == 'OBS')
 	{
 		chat_mention_close()
 		return
 	}
 
-	var query = m[2].toLowerCase()
+	var query = (m ? m[2] : vol[1]).toLowerCase()
 	var nicks = (g_users || []).map(function(u) { return u.nick }).filter(function(nick) { return nick && nick != g_nick })
 	var starts = nicks.filter(function(nick) { return nick.toLowerCase().startsWith(query) })
 	var contains = nicks.filter(function(nick) { return !nick.toLowerCase().startsWith(query) && nick.toLowerCase().indexOf(query) >= 0 })
 	var collator = new Intl.Collator('ko')
 	var items = starts.sort(collator.compare).concat(contains.sort(collator.compare)).slice(0, CHAT_MENTION_MAX)
-	if('everyone'.startsWith(query))
+	if(m && 'everyone'.startsWith(query))
 		items.push('everyone') // 모두 호출 (index_chat.js 의 호출 알림이 'everyone' 을 받는다)
 	if(!items.length)
 	{
@@ -844,7 +1026,7 @@ function chat_mention_update()
 
 	var prev = g_chat_mention && g_chat_mention.items[g_chat_mention.index]
 	var index = Math.max(0, items.indexOf(prev))
-	g_chat_mention = { start: caret - m[2].length - 1, items: items, index: index }
+	g_chat_mention = { start: caret - query.length - (m ? 1 : 0), items: items, index: index, mode: m ? 'at' : 'vol' }
 
 	var box = chat_mention_box()
 	box.replaceChildren()
@@ -869,7 +1051,8 @@ function chat_mention_update()
 function chat_mention_select(index)
 {
 	var box = document.getElementById('chat_mention')
-	g_chat_mention.index = (index + g_chat_mention.items.length) % g_chat_mention.items.length
+	// 양 끝에서 멈춘다 (맨 아래에서 ↓, 맨 위에서 ↑ 를 눌러도 반대쪽으로 넘어가지 않는다)
+	g_chat_mention.index = Math.max(0, Math.min(index, g_chat_mention.items.length - 1))
 	Array.prototype.forEach.call(box.children, function(li, i) { li.toggleAttribute('selected', i == g_chat_mention.index) })
 	box.children[g_chat_mention.index].scrollIntoView({ block: 'nearest' })
 }
@@ -881,7 +1064,7 @@ function chat_mention_pick(index)
 		return
 	var value = chat_input.value
 	var caret = chat_input.selectionStart
-	var insert = '@' + mention.items[index] + ' '
+	var insert = mention.mode == 'vol' ? mention.items[index] : '@' + mention.items[index] + ' '
 	chat_input.value = value.substring(0, mention.start) + insert + value.substring(caret).replace(/^ /, '')
 	var pos = mention.start + insert.length
 	chat_input.setSelectionRange(pos, pos)
@@ -898,6 +1081,10 @@ function chat_mention_keydown(event)
 	{
 		case 'ArrowDown': chat_mention_select(g_chat_mention.index + 1); break
 		case 'ArrowUp': chat_mention_select(g_chat_mention.index - 1); break
+		case 'PageDown': chat_mention_select(Math.min(g_chat_mention.index + 5, g_chat_mention.items.length - 1)); break
+		case 'PageUp': chat_mention_select(Math.max(g_chat_mention.index - 5, 0)); break
+		case 'Home': chat_mention_select(0); break
+		case 'End': chat_mention_select(g_chat_mention.items.length - 1); break
 		case 'Enter':
 		case 'Tab':
 			if(event.isComposing) // 한글 조합 중 Enter 는 조합 확정
@@ -912,6 +1099,7 @@ function chat_mention_keydown(event)
 }
 
 chat_input.addEventListener('input', chat_mention_update)
+chat_input.addEventListener('input', function() { g_chat_history_index = -1 }) // 글을 고치기 시작하면 기록 넘겨 보기 끝
 chat_input.addEventListener('click', chat_mention_update)
 chat_input.addEventListener('keyup', function(event) { // 좌우로 커서만 옮겨도 다시 판단
 	if(['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(event.key) >= 0)
@@ -1009,9 +1197,16 @@ function ondrop_chat_input_file(e)
     // e.dataTransfer = e.originalEvent.dataTransfer;
     var files = e.target.files || e.dataTransfer.files;
 
-	console.log(e, e.dataTransfer, e.dataTransfer.files, e.dataTransfer.files[0], files)
+	// [v2] 페이지 안의 이미지(롤백 글 사진)를 끌어다 놓은 경우: 다른 출처에서 바로 불러온 이미지는 파일로 오지 않고 주소만 온다
+	// (예전엔 롤백 이미지가 전부 같은 출처의 중계 주소라 파일로 왔다). 주소를 /img 로 공유한다 — 글 상세의 공유 아이콘과 같다
+	if(!files || !files.length)
+	{
+		var url = chat_dropped_image_url(e.dataTransfer)
+		if(url && g_nick)
+			socket.emit('chat_message', { type: 'message', message: format('/img {0}', url), tts_hash: '' })
+		return
+	}
 
- 
     if (files.length > 1) {
         alert('응니얼굴');
         return;
@@ -1021,8 +1216,28 @@ function ondrop_chat_input_file(e)
         alert('이미지가 아닙니다.');
 		return;
 	}
-		
+
 	chat_send_image(e.dataTransfer.files[0])
+}
+
+/* 끌어다 놓은 데이터에서 이미지 주소: text/html 의 <img src> 를 먼저, 없으면 text/uri-list.
+   우리 서버 중계 주소(/lolwiki_mirror?uri=…)면 원래 주소로 되돌린다 (index_lol.js lol_unmirror_uri) */
+function chat_dropped_image_url(dt)
+{
+	if(!dt)
+		return ''
+	var url = ''
+	var m = /<img[^>]+src=["']([^"']+)["']/i.exec(dt.getData('text/html') || '')
+	if(m)
+	{
+		var decoder = document.createElement('textarea') // &amp; 같은 엔티티 풀기
+		decoder.innerHTML = m[1]
+		url = decoder.value
+	}
+	if(!url)
+		url = (dt.getData('text/uri-list') || '').split(/\r?\n/).find(function(line) { return line && line[0] != '#' }) || ''
+	url = lol_unmirror_uri(url.trim())
+	return /^https?:\/\//i.test(url) ? url : ''
 }
 
 /* 이미지 저장소 버튼 클릭 이벤트 */

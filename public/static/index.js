@@ -81,9 +81,13 @@ var g_lol_search_vote = false
 var g_lol_search_mine = false
 var g_lol_same_article_prev = false
 var g_lol_is_award = false // 명예의전당 여부 (스크롤 안되게 하기 위해)
-var g_lol_write_image_data = '' // 글 첨부 이미지
-var g_lol_write_image_data_gif = '' // gif용 파일스트림 데이터
+var g_lol_write_images = [] // [v2] 글 첨부 사진 [{ data(base64), format, preview }] 최대 10장 — 배열 순서 = 글에 보이는 순서
+var g_lol_write_images_busy = 0 // [v2] 읽는 중인 파일 수
+var g_lol_write_slot_open = false // [v2] 빈 첨부 칸(점선)이 열려 있는가
+var g_lol_write_drag = -1 // [v2] 순서를 바꾸려고 끌고 있는 타일 번호
 var g_lol_write_reply_image_data = '' // 댓글 첨부 이미지
+var g_lol_write_reply_image_data_orig = '' // [v2] 댓글 첨부 GIF·WebP 원본
+var g_lol_write_reply_image_format = ''
 var g_lol_spec_android_id = g_lol_spec_android_id
 var g_lol_last_scroll_time = 0
 var g_lol_bookmark_list = [] // [ 
@@ -198,6 +202,10 @@ function on_page_ready() {
 	option_checkbox_confirm_leave.checked = localStorage.getItem('option_checkbox_confirm_leave') == 'true' // 기본값 꺼짐
 	option_checkbox_lol_title_bold.checked = localStorage.getItem('option_checkbox_lol_title_bold') != 'false' // 기본값 켜짐
 	document.documentElement.setAttribute('lol_title_bold', option_checkbox_lol_title_bold.checked ? 'on' : 'off')
+	option_checkbox_livechat.checked = localStorage.getItem('option_checkbox_livechat') == 'true' // 기본값 꺼짐 (실제 적용은 index_livechat.js 가 같은 키를 읽는다)
+	option_checkbox_lol_compact.checked = localStorage.getItem('option_checkbox_lol_compact') == 'true' // 기본값 꺼짐
+	set_lol_compact(option_checkbox_lol_compact.checked)
+	g_mobile_media.addEventListener('change', _ => set_lol_compact(option_checkbox_lol_compact.checked)) // 창 크기가 모바일 조건을 넘나들면 다시 판단
 
 
 	// 옵션에 이벤트 추가
@@ -220,6 +228,29 @@ function on_page_ready() {
 		localStorage.setItem('option_checkbox_lol_title_bold', option_checkbox_lol_title_bold.checked)
 		document.documentElement.setAttribute('lol_title_bold', option_checkbox_lol_title_bold.checked ? 'on' : 'off')
 	}
+	option_checkbox_lol_compact.onchange = _ => {
+		localStorage.setItem('option_checkbox_lol_compact', option_checkbox_lol_compact.checked)
+		set_lol_compact(option_checkbox_lol_compact.checked)
+	}
+	option_checkbox_livechat.onchange = _ => {
+		localStorage.setItem('option_checkbox_livechat', option_checkbox_livechat.checked)
+		livechat_set_enabled(option_checkbox_livechat.checked)
+	}
+
+	// [v2] 컴팩트 모드: 글 내용에서 우클릭하면 글목록으로 (이미지·영상·링크·입력창·닉네임 위, 글자를 고르는 중엔 평소 우클릭)
+	lol_rpanel.addEventListener('contextmenu', function(event) {
+		if(!document.documentElement.hasAttribute('lol_compact') || !lol_panel.hasAttribute('mobile_detail'))
+			return
+		if(event.target.closest('img, video, a, input, textarea, #lol_rpanel_header_nick'))
+			return
+		if(String(window.getSelection && window.getSelection()).trim())
+			return
+		event.preventDefault()
+		lol_onclick_rpanel_back()
+	})
+
+	// [v2] 로그인 화면의 최근 닉네임
+	render_login_recent()
 
 	/* [v2] 옵션 묶음 접기·펴기 상태 기억 ({ display: true, voice: false, ... }). 처음 값은 dj.html 의 open */
 	var option_sections = {}
@@ -347,11 +378,20 @@ function on_page_ready() {
 	lol_rpanel_back.onclick = lol_onclick_rpanel_back
 
 	lol_lpanel_userinfo.onclick = lol_onclick_userinfo_button
+	// [v2] 알림센터: 🔔 로 열고 닫기, 바깥을 누르면 닫기, 창 크기가 바뀌면 자리 다시 잡기
+	lol_lpanel_notif.onclick = lol_notif_toggle
+	lol_notif_panel.onclick = function(event) { event.stopPropagation() }
+	for(var tab of lol_notif_panel.querySelectorAll('[tabs] > [tab]'))
+		tab.onclick = function() { lol_notif_switch_tab(this.getAttribute('tab')) }
+	document.addEventListener('click', function() { if(g_lol_notif.open) lol_notif_close() })
+	window.addEventListener('resize', function() { if(g_lol_notif.open) lol_notif_position() })
 	lol_lpanel_userinfo_menu_background.onclick = lol_onclick_userinfo_background
 	lol_lpanel_userinfo_menu_inner_background.onclick = lol_onclick_userinfo_foreground
 	lol_lpanel_userinfo_menu_button_nickname_change.onclick = lol_onclick_userinfo_nickname_change
 	lol_lpanel_userinfo_menu_button_icon_change.onclick = lol_onclick_userinfo_icon_change
 	lol_lpanel_userinfo_menu_button_blocklist_reset.onclick = lol_onclick_userinfo_blocklist_reset
+	lol_lpanel_userinfo_menu_button_fixed_image_set.onclick = lol_onclick_userinfo_fixed_image_set
+	lol_lpanel_userinfo_menu_button_fixed_image_clear.onclick = lol_onclick_userinfo_fixed_image_clear
 	// [v2] 쓰기 계정 로그아웃 버튼은 롤디자게 로그아웃으로 합침
 	lol_lpanel_userinfo_menu_button_logout.onclick = lol_onclick_userinfo_logout
 
@@ -365,6 +405,7 @@ function on_page_ready() {
 	lol_rpanel_refresh.onclick = lol_onclick_aritcle_refresh
 	lol_rpanel_body_instant_queue.onclick = lol_onclick_youtube_instant_queue
 	lol_rpanel_body_like.onclick = lol_onclick_like
+	lol_rpanel_body_dislike.onclick = lol_onclick_dislike
 	lol_rpanel_body_img1.onclick = lol_onclick_img
 	lol_rpanel_body_img2.onclick = lol_onclick_img
 	lol_rpanel_body_img3.onclick = lol_onclick_img
@@ -396,14 +437,9 @@ function on_page_ready() {
 
 	lol_write_cancel.onclick = lol_onclick_write_cancel
 	lol_write_confirm.onclick = lol_onclick_write_confirm
-	lol_write_image_placeholder.ondrop = lol_write_image_ondrop
-	lol_write_image_placeholder.onpaste = lol_write_image_onpaste
-	lol_write_image_placeholder.ondragenter = function (e) { e.stopPropagation(); e.preventDefault(); e.target.style.borderWidth = '10px'; }
-	lol_write_image_placeholder.ondragover = function (e) { e.stopPropagation(); e.preventDefault(); e.target.style.borderWidth = '10px'; }
-	lol_write_image_placeholder.ondragleave = function (e) { e.stopPropagation(); e.preventDefault(); e.target.style.borderWidth = '1px'; }
-	lol_write_image_placeholder.onchange = lol_write_image_clear_text
-	lol_write_image.onclick = lol_clear_image
-	lol_write_image.onload = lol_write_image_onload
+	// [v2] 사진 여러 장 첨부란 (점선 칸·타일은 index_lol.js 가 그린다)
+	lol_write_images_clear_button.onclick = lol_onclick_write_images_clear
+	lol_write_images_render()
 
 	register_ui_tooltip_event(lol_rpanel_reply_board_write_image_placeholder, '여기에 붙여넣기(Ctrl+V)로 이미지 첨부')
 
