@@ -337,6 +337,9 @@ function on_page_ready() {
 	video_info_volume_slider.oninput = onchange_video_info_volume_slider
 	video_info_volume_mute_once_btn.onclick = onclick_video_info_volume_mute_once_btn
 
+	/* [v2] 영상 전체화면 (index_UI.js video_fullscreen_set) */
+	video_fullscreen_init()
+
 	/* 롤디자게 숨겨진 버튼 */
 	current_playlist_info_box.addEventListener('contextmenu', onrclick_playlist_info_box)
 

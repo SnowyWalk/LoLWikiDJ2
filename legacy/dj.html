@@ -17,6 +17,8 @@
   <link rel="stylesheet" href="/static/site-modern.css?ver=$_version">
   <!-- [v2] 추가 테마 (오리지날 라이트·다크 위에 색만 덮는다. site-modern·chat-modern 뒤에 와야 한다) -->
   <link rel="stylesheet" href="/static/themes.css?ver=$_version">
+  <!-- [v2] 영상 전체화면 + 채팅 겹쳐 보기 (다른 스타일을 덮으므로 맨 뒤에) -->
+  <link rel="stylesheet" href="/static/video-fullscreen.css?ver=$_version">
   <!-- [v2] 소켓 클라이언트는 socket.io 서버가 직접 제공, 채널은 경로(/1004)로 정해져 서버가 넣어 준다 -->
   <script src="/socket.io/socket.io.js"></script>
   <script>window.__DJ_CHANNEL__ = "$_channel";</script>
@@ -396,8 +398,9 @@
     <!-- 하단 영상 정보 -->
     <div id="video_info">
       <div id="video_info_dj">-<font color=gray><b><a id="video_link" href='#' onclick="show_video_link()"></a></b></font></div>
-      <!-- 오른쪽부터 [슬라이더][스피커][한 번만 음소거][라이브 채팅 켜기] 순서로 오른쪽에 붙는다 (float: right) -->
+      <!-- 오른쪽부터 [전체화면][슬라이더][스피커][한 번만 음소거][라이브 채팅 켜기] 순서로 오른쪽에 붙는다 (float: right) -->
       <div id="video_info_volume_box">
+        <div id="video_info_fullscreen_btn"></div>
         <input type="range" min=0 max=100 value=0.5 step=1 class="no-drag" id="video_info_volume_slider">
         <div id="video_info_volume_btn"></div>
         <div id="video_info_volume_mute_once_btn"></div>
@@ -435,6 +438,15 @@
   <video id="m3u8_player"></video>
   <video id="flv_player"></video>
   <div id="marquee_screen"></div>
+
+  <!-- [v2] 영상 전체화면 중에만 영상 위를 덮는 투명한 막: 유튜브 재생바가 마우스·탭에 반응해 뜨지 않게 (video-fullscreen.css) -->
+  <div id="video_fs_shield"></div>
+
+  <!-- [v2] 영상 전체화면 중에만 보이는 버튼 (video-fullscreen.css, index_UI.js video_fullscreen_set) -->
+  <div id="video_fs_toolbar" class="no-drag">
+    <div id="video_fs_chat_btn"></div>
+    <div id="video_fs_exit_btn"></div>
+  </div>
 
   <!-- 영상 위 광고 -->
   <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script> -->

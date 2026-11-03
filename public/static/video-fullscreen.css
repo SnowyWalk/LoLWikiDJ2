@@ -1,0 +1,212 @@
+/*
+ * 영상 전체화면 + 채팅 겹쳐 보기 (2026-11-03)
+ *
+ * <html video_fullscreen> 일 때만 적용된다 (index_UI.js video_fullscreen_set).
+ * 영상 레이어(유튜브·트위치·m3u8·flv)와 채팅은 모두 body 바로 아래 position: fixed 라서,
+ * 영상 크기 변수(--stage-*)를 화면 전체로 바꾸고 채팅을 가로 화면에선 그 위 오른쪽에 반투명으로 겹치고, 세로 화면에선 영상 아래에 둔다.
+ * 다른 스타일(index·chat-modern·site-modern·themes)보다 뒤에 불러와서 같은 우선순위 규칙을 덮는다.
+ */
+
+/* ---------- 영상: 화면 전체 ---------- */
+/* 모바일 키보드: 키보드가 올라오면 브라우저가 보이는 영역(visual viewport)만 줄이거나 아래로 밀어서
+   화면에 붙인(fixed) 영상이 위로 밀려 가려진다. index_UI.js video_fullscreen_viewport_sync 가 보이는 영역을 재서 넣어 준다
+   --fs-vv-top: 보이는 영역이 밀려 내려간 거리, --fs-vv-h: 보이는 영역 높이, --fs-kb: 보이는 영역 아래로 가려진 높이 (키보드 없으면 모두 0·전체) */
+html[video_fullscreen] {
+  --stage-width: 100%;
+  --stage-height: var(--fs-vv-h, 100%);
+  background-color: black;
+}
+
+/* 영상 레이어를 보이는 영역 맨 위에 맞춘다 */
+html[video_fullscreen] #video_player,
+html[video_fullscreen] #m3u8_player,
+html[video_fullscreen] #flv_player,
+html[video_fullscreen] #twitch_player_panel,
+html[video_fullscreen] #block_video,
+html[video_fullscreen] #marquee_screen {
+  top: var(--fs-vv-top, 0px);
+}
+
+html[video_fullscreen] #video_player,
+html[video_fullscreen] #m3u8_player,
+html[video_fullscreen] #flv_player,
+html[video_fullscreen] #twitch_player_panel {
+  border: 0;
+  background-color: black;
+}
+
+/* 영상 위 투명한 막: 유튜브(트위치·m3u8 포함) 플레이어 안으로 마우스·탭이 들어가지 않아 마우스 움직임에 재생바·제목이 뜨지 않게 한다. */
+#video_fs_shield {
+  display: none;
+}
+
+html[video_fullscreen] #video_fs_shield {
+  display: block;
+  position: fixed;
+  top: var(--fs-vv-top, 0px);
+  left: 0;
+  width: var(--stage-width);
+  height: var(--stage-height);
+  z-index: 4;
+}
+
+/* 하단 정보바·모바일 탭바·롤백·재생목록 패널·채팅 탭 머리는 숨긴다 */
+html[video_fullscreen] #bottom_bar,
+html[video_fullscreen] #mobile_tabbar,
+html[video_fullscreen] #playlist_control_panel,
+html[video_fullscreen] #lol_panel,
+html[video_fullscreen] #mainchat_header {
+  display: none !important;
+}
+
+/* ---------- 채팅: 영상 위 오른쪽에 겹쳐 띄운다 ---------- */
+html[video_fullscreen] #mainchat {
+  top: auto;
+  bottom: var(--fs-kb, 0px); /* 키보드 바로 위 */
+  left: auto;
+  right: 0;
+  width: clamp(240px, 32%, 380px);
+  height: clamp(120px, 30%, 400px);
+  z-index: 5;
+  box-sizing: border-box;
+  padding-right: env(safe-area-inset-right); /* 가로로 든 아이폰의 노치 쪽 */
+  border: 0;
+  /* 왼쪽은 영상이 비치게 투명, 오른쪽으로 갈수록 어둡게 → 흰 글자가 밝은 장면에서도 읽힌다 */
+  background: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5) 35%);
+  /* 위쪽 끝은 영상 속으로 흐려지게 (잘린 말풍선이 딱 끊겨 보이지 않도록) */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 48px);
+  mask-image: linear-gradient(to bottom, transparent, black 48px);
+
+  /* 말풍선·입력창 색 (chat-modern.css 의 변수를 이 안에서만 바꾼다). 테마와 상관없이 어두운 반투명 */
+  --cm-bubble: rgba(18, 20, 26, 0.6);
+  --cm-bubble-me: rgba(40, 46, 66, 0.66);
+  --cm-text: #f1f3f6;
+  --cm-muted: rgba(255, 255, 255, 0.62);
+  --cm-name: #a9c1ff;
+  --cm-name-me: #ff9ebb;
+  --cm-shadow: none;
+  --cm-system-bg: rgba(0, 0, 0, 0.42);
+  --cm-system-text: #e5e7eb;
+  --cm-input-bg: rgba(0, 0, 0, 0.45);
+  --cm-input-border: rgba(255, 255, 255, 0.22);
+  --cm-scrollbar: rgba(255, 255, 255, 0.25);
+  color: #f1f3f6;
+}
+
+/* 채팅 숨기기 (스크롤 위치가 남도록 display 대신 visibility) */
+html[video_fullscreen][video_fullscreen_chat_hidden] #mainchat {
+  visibility: hidden;
+}
+
+html[video_fullscreen] #chat_extra {
+  background: transparent;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+html[video_fullscreen] #mainchat #chat > .chat_balloon[continued] {
+  margin-top: 0px;
+  padding-top: 1px;
+  box-shadow: none;
+}
+
+/* 답장 중 띠: 기본 배경(입력창 색)이 반투명이라 뒤 말풍선 글자와 겹쳐 읽히지 않으므로 불투명하게 */
+html[video_fullscreen] #mainchat #chat_reply_bar {
+  background-color: #15171d;
+  border-color: rgba(255, 255, 255, 0.18);
+  text-align: left;
+}
+
+/* ---------- 모바일: 채팅창을 더 높게, 입력줄은 작게 ---------- */
+@media (max-width: 768px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  html[video_fullscreen] #mainchat {
+    /* 보이는 영역의 85%. 키보드로 보이는 영역이 240px 보다 낮아져도 위로 넘치지 않게 */
+    height: max(min(240px, var(--fs-vv-h, 100%)), calc(var(--fs-vv-h, 100%) * 0.85));
+  }
+
+  html[video_fullscreen] #chat_extra {
+    height: 42px;
+  }
+
+  html[video_fullscreen] #chat_extra > div:first-child {
+    width: 125%;
+    transform: scale(0.8);
+    transform-origin: left top;
+  }
+}
+
+/* ---------- 왼쪽 위 버튼: [채팅 숨기기/보이기] [나가기] ---------- */
+#video_fs_toolbar {
+  display: none;
+}
+
+html[video_fullscreen] #video_fs_toolbar {
+  display: flex;
+  position: fixed;
+  top: calc(var(--fs-vv-top, 0px) + max(10px, env(safe-area-inset-top)));
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 6;
+  gap: 8px;
+}
+
+#video_fs_toolbar > div {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  /* 아이콘(background-image)은 버튼마다 따로 주므로 여기선 나머지만 (background 한꺼번에 쓰면 아이콘을 덮는다) */
+  background-color: rgba(0, 0, 0, 0.5);
+  background-position: center;
+  background-size: 20px 20px;
+  background-repeat: no-repeat;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+#video_fs_toolbar > div:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+#video_fs_chat_btn {
+  background-image: url(icons/dark/fs-chat.svg);
+}
+
+#video_fs_chat_btn[off] {
+  background-image: url(icons/dark/fs-chat-off.svg);
+}
+
+#video_fs_exit_btn {
+  background-image: url(icons/dark/fs-exit.svg);
+}
+
+/* ---------- 세로 화면: 영상은 맨 위에 가로 폭 가득(16:9), 채팅은 그 아래 ----------
+   세로에서 영상 위에 겹치면 작은 영상을 가리기만 하므로 겹치지 않고 위아래로 나눈다. */
+@media (orientation: portrait) {
+  html[video_fullscreen] {
+    --stage-height: 56.25vw;
+  }
+
+  /* 영상 바로 아래부터 키보드(없으면 화면 아래) 위까지 */
+  html[video_fullscreen] #mainchat {
+    top: calc(var(--fs-vv-top, 0px) + 56.25vw);
+    width: 100%;
+    height: auto;
+    padding-right: 0;
+    background: #000;
+    -webkit-mask-image: none;
+    mask-image: none;
+    /* 뒤가 검은 바탕이라 말풍선을 불투명하게 (반투명일 때와 같은 색) → 1px 겹쳐도 진해지지 않는다 */
+    --cm-bubble: #0b0c10;
+    --cm-bubble-me: #181c28;
+  }
+
+  /* 불투명해졌으니 chat-modern.css 처럼 1px 겹쳐 이음새 줄(소수 배율 화면)을 막는다 */
+  html[video_fullscreen] #mainchat #chat > .chat_balloon[continued] {
+    margin-top: -1px;
+    padding-top: 1px;
+  }
+
+  html[video_fullscreen] #chat_extra {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

@@ -59,6 +59,11 @@ const ICONS = {
   "livechat-grip": ["grip-vertical", "#ffffff"],
   "livechat-opacity": ["droplet", "#ffffff"],
   "livechat-close": ["x", "#ffffff"],
+  // 영상 전체화면: 음량 옆 켜기 버튼, 전체화면 중 영상 위에 뜨는 버튼(어두운 바탕이라 흰색)
+  fullscreen: ["maximize", "base"],
+  "fs-exit": ["minimize", "#ffffff"],
+  "fs-chat": ["message-square", "#ffffff"],
+  "fs-chat-off": ["message-square-off", "#ffffff"],
 };
 
 for (const [theme, colors] of Object.entries(THEMES)) {

@@ -201,6 +201,12 @@
   --stage-height: calc(100% - var(--bottom-height));
 }
 
+/* 아이폰 사파리 텍스트 자동 확대 끔 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   overflow: hidden;
   margin: 0;
@@ -497,7 +503,7 @@ input, textarea {
   position: absolute;
   right: 0px;
   top: 0px;
-  width: 291px; /* 슬라이더 165 + 스피커 35 + 한 번만 음소거 56 + 라이브 채팅 켜기 35 */
+  width: 326px; /* 전체화면 35 + 슬라이더 165 + 스피커 35 + 한 번만 음소거 56 + 라이브 채팅 켜기 35 */
   height: 25px;
   /* border-left: 1px solid;
   border-bottom: 1px solid; */
@@ -548,6 +554,18 @@ input, textarea {
   margin-right: 10px;
   border-radius: 6px;
   background: url('icons/light/livechat.svg') center / 20px 20px no-repeat;
+  cursor: pointer;
+}
+
+/* [v2] 영상 전체화면 켜기 (video-fullscreen.css) */
+#video_info_fullscreen_btn {
+  position: relative;
+  float: right;
+  width: 25px;
+  height: 25px;
+  margin-right: 10px;
+  border-radius: 6px;
+  background: url('icons/light/fullscreen.svg') center / 20px 20px no-repeat;
   cursor: pointer;
 }
 
@@ -4469,6 +4487,16 @@ top: 0;
     height: 18px;
     margin: 0px;
     background-size: contain;
+  }
+
+  #video_info_fullscreen_btn {
+    float: none;
+    flex: none;
+    order: 2; /* 슬라이더 오른쪽 끝 */
+    width: 22px;
+    height: 22px;
+    margin: 0px;
+    background-size: 19px 19px;
   }
 
   #video_info_livechat_btn {

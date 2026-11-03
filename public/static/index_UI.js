@@ -1589,3 +1589,140 @@ function make_toast(parent_element, text, duration_sec, align = 'center', ...css
 		// t.style.animationDuration = '0.75s'
 	}, duration_sec * 1000, background_element, text_element)
 }
+
+/* [v2] 영상 전체화면 + 채팅 겹쳐 보기 -----------------------------------------------------------
+   페이지 전체(<html>)를 전체화면으로 올리고 <html video_fullscreen> 로 영상을 화면 가득 채운 뒤 채팅을 그 위에 겹친다 (video-fullscreen.css).
+   영상 iframe 을 다른 요소 안으로 옮기면 다시 불러오므로 옮기지 않고 CSS 만 바꾼다. */
+var g_video_fullscreen_native = false // 브라우저 전체화면에 들어갔는지
+
+function video_fullscreen_api() { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled) }
+function video_fullscreen_element() { return document.fullscreenElement || document.webkitFullscreenElement || null }
+function video_fullscreen_on() { return document.documentElement.hasAttribute('video_fullscreen') }
+
+function video_fullscreen_init()
+{
+	video_info_fullscreen_btn.onclick = _ => video_fullscreen_set(true)
+	register_ui_tooltip_event(video_info_fullscreen_btn, '영상을 전체화면으로 보고 채팅을 그 위에 띄웁니다.')
+	video_fs_exit_btn.onclick = _ => video_fullscreen_set(false)
+	video_fs_chat_btn.onclick = video_fullscreen_toggle_chat
+	video_fs_exit_btn.title = '전체화면 나가기'
+	video_fullscreen_update_chat_btn()
+
+	// Esc·뒤로 가기·브라우저 메뉴로 전체화면이 풀리면 같이 끈다
+	var on_change = _ => {
+		if(g_video_fullscreen_native && !video_fullscreen_element())
+			video_fullscreen_set(false)
+	}
+	document.addEventListener('fullscreenchange', on_change)
+	document.addEventListener('webkitfullscreenchange', on_change)
+
+	// 화면 채우기만 한 경우(아이폰 등): 뒤로 가기는 사이트를 떠나지 않고 전체화면만 끈다
+	window.addEventListener('popstate', _ => {
+		if(video_fullscreen_on() && !(history.state && history.state.video_fullscreen))
+			video_fullscreen_set(false, true)
+	})
+	document.addEventListener('keydown', e => {
+		if(e.key == 'Escape' && video_fullscreen_on() && !g_video_fullscreen_native)
+			video_fullscreen_set(false)
+	})
+
+	// 모바일 키보드가 올라오고 내려갈 때 보이는 영역에 맞춰 영상·채팅 위치를 다시 잡는다
+	if(window.visualViewport)
+	{
+		visualViewport.addEventListener('resize', video_fullscreen_viewport_sync)
+		visualViewport.addEventListener('scroll', video_fullscreen_viewport_sync)
+	}
+}
+
+/* 키보드가 올라오면 브라우저가 보이는 영역(visual viewport)만 줄이거나(아이폰·크롬) 화면 자체를 줄인다(일부 브라우저). */
+function video_fullscreen_viewport_sync()
+{
+	var style = document.documentElement.style
+	var vv = window.visualViewport
+	// 손가락으로 확대 중이면 보이는 영역이 키보드와 상관없이 바뀌므로 건드리지 않는다
+	if(!vv || !video_fullscreen_on() || vv.scale > 1.01)
+	{
+		style.removeProperty('--fs-vv-top')
+		style.removeProperty('--fs-vv-h')
+		style.removeProperty('--fs-kb')
+		return
+	}
+	var top = Math.max(0, vv.offsetTop)
+	var kb = Math.max(0, window.innerHeight - vv.height - top)
+	style.setProperty('--fs-vv-top', top + 'px')
+	style.setProperty('--fs-vv-h', vv.height + 'px')
+	style.setProperty('--fs-kb', kb + 'px')
+}
+
+function video_fullscreen_set(on, from_history = false)
+{
+	var root = document.documentElement
+	if(on == video_fullscreen_on())
+		return
+
+	if(on)
+	{
+		// 채팅이 보이도록 롤백·재생목록 패널을 닫고 채팅 탭으로
+		if(g_lol_panel_show)
+			onrclick_playlist_info_box()
+		if(g_show_playlist_control_panel)
+			show_playlist_control_panel(false)
+		set_chat_category(mainchat_header_chat)
+		mobile_tab_sync()
+
+		root.toggleAttribute('video_fullscreen', true)
+		g_video_fullscreen_native = false
+
+		// 전체화면 요청은 클릭 처리 안에서 바로 불러야 한다
+		var req = video_fullscreen_api() && (root.requestFullscreen ? root.requestFullscreen({ navigationUI: 'hide' }) : root.webkitRequestFullscreen())
+		if(req && req.then)
+		{
+			req.then(_ => g_video_fullscreen_native = true)
+				.catch(_ => video_fullscreen_push_history()) // 거부되면 화면 채우기만
+		}
+		else if(video_fullscreen_element()) // webkit: 약속 없이 바로 들어간다
+			g_video_fullscreen_native = true
+		else
+			video_fullscreen_push_history()
+	}
+	else
+	{
+		root.removeAttribute('video_fullscreen')
+		if(video_fullscreen_element())
+		{
+			var exit = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen()
+			if(exit && exit.catch)
+				exit.catch(_ => {})
+		}
+		g_video_fullscreen_native = false
+		// 들어갈 때 쌓은 기록 칸은 지워서 다음 뒤로 가기가 헛돌지 않게
+		if(!from_history && history.state && history.state.video_fullscreen)
+			history.back()
+	}
+
+	video_fullscreen_viewport_sync()
+	resize()
+	setTimeout(scrollDown, 50) // 채팅 칸 크기가 바뀌었으니 맨 아래로
+}
+
+function video_fullscreen_push_history()
+{
+	if(video_fullscreen_on() && !(history.state && history.state.video_fullscreen))
+		history.pushState({ video_fullscreen: true }, '')
+}
+
+/* 전체화면 중 채팅 숨기기/보이기 */
+function video_fullscreen_toggle_chat()
+{
+	document.documentElement.toggleAttribute('video_fullscreen_chat_hidden')
+	video_fullscreen_update_chat_btn()
+	if(!document.documentElement.hasAttribute('video_fullscreen_chat_hidden'))
+		setTimeout(scrollDown, 50)
+}
+
+function video_fullscreen_update_chat_btn()
+{
+	var hidden = document.documentElement.hasAttribute('video_fullscreen_chat_hidden')
+	video_fs_chat_btn.toggleAttribute('off', hidden)
+	video_fs_chat_btn.title = hidden ? '채팅 보이기' : '채팅 숨기기'
+}
