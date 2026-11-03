@@ -285,7 +285,10 @@ function add_message(data)
 		message.style.backgroundColor = data.bg
 
 	if(need_scroll)
+	{
+		chat_trim_old()
 		scrollDown()
+	}
 
 	// 호출 사운드
 	if(option_checkbox_mention.checked) // 호출 알림 체크되어있어야 재생
@@ -410,6 +413,23 @@ function chat_make_reply_quote(data, reply_to)
 	quote.title = '원본 메시지로 이동'
 	quote.onclick = function(event) { event.stopPropagation(); chat_jump_to(reply_to.id) }
 	return quote
+}
+
+/* [v2] 오래된 채팅 자동 삭제: 채팅이 설정한 개수를 넘으면 위에서부터 지운다 (쌓일수록 느려지는 것 방지).
+   맨 아래를 보고 있을 때만 부른다 → 위로 올려 옛 채팅을 읽는 동안에는 지우지 않아 화면이 밀리지 않는다 */
+function chat_trim_old()
+{
+	if(!g_chat_auto_trim)
+		return
+	var over = chat.children.length - g_chat_auto_trim
+	if(over <= 0)
+		return
+	while(over-- > 0)
+		chat.firstElementChild.remove()
+	// 묶음의 첫 메시지가 지워졌으면 남은 첫 메시지에 다시 이름·아바타를 보인다
+	var first = chat.firstElementChild
+	if(first && first.hasAttribute('continued'))
+		first.removeAttribute('continued')
 }
 
 /* 원본 메시지로 스크롤하고 잠깐 강조. 지워졌으면(/clear 등) 아무 일도 하지 않는다 */
@@ -548,7 +568,10 @@ function add_play_message(data)
 	chat.appendChild(base)
 
 	if(need_scroll)
+	{
+		chat_trim_old()
 		scrollDown()
+	}
 
 	return base
 }

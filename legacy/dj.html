@@ -351,6 +351,15 @@
           <span class="option_label">페이지를 닫을 때 확인<small>실수로 탭을 닫거나 새로고침하지 않도록 한 번 묻습니다</small></span>
           <input type="checkbox" id="option_checkbox_confirm_leave" name="option_checkbox_confirm_leave"/>
         </label>
+        <div class="option_item">
+          <div class="option_label">오래된 채팅 자동 삭제<small>채팅이 쌓이면 오래된 것부터 지웁니다. 채팅을 위로 올려 읽는 중에는 지우지 않고, 맨 아래로 돌아온 뒤 새 채팅이 오면 지웁니다.</small></div>
+          <div class="option_segment">
+            <input type="radio" id="chat_auto_trim_0" name="chat_auto_trim" value="0" checked/><label for="chat_auto_trim_0" class="no-drag">끄기</label>
+            <input type="radio" id="chat_auto_trim_200" name="chat_auto_trim" value="200"/><label for="chat_auto_trim_200" class="no-drag">200개</label>
+            <input type="radio" id="chat_auto_trim_500" name="chat_auto_trim" value="500"/><label for="chat_auto_trim_500" class="no-drag">500개</label>
+            <input type="radio" id="chat_auto_trim_1000" name="chat_auto_trim" value="1000"/><label for="chat_auto_trim_1000" class="no-drag">1000개</label>
+          </div>
+        </div>
         <div class="option_buttons">
           <button id="option_button_chat_clear" class="nanum no-drag">채팅 로그 지우기</button>
           <button id="option_button_logout" class="nanum no-drag">로그아웃</button>

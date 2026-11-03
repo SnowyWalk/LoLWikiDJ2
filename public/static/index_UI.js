@@ -855,6 +855,19 @@ function onclick_chat_category_option_logout()
 	location.reload()
 }
 
+/* [v2] 오래된 채팅 자동 삭제 개수 (0 = 끄기) */
+function set_chat_auto_trim(count)
+{
+	count = Number(count)
+	if([0, 200, 500, 1000].indexOf(count) < 0)
+		count = 0
+	g_chat_auto_trim = count
+	localStorage.setItem(g_storage_chat_auto_trim_key, count)
+	document.querySelector(format('[name=chat_auto_trim][value="{0}"]', count)).checked = true
+	if(is_scroll_bottom())
+		chat_trim_old()
+}
+
 function onclick_chat_category_option_chat_clear()
 {
 	while(chat.hasChildNodes())

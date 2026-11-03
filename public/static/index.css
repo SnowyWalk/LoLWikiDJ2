@@ -1191,6 +1191,7 @@ div.recent_list_video {
 
 /* 하나 고르기: radio 를 붙어 있는 버튼 묶음 모양으로. 칸이 모자라면 다음 줄로 내려가 폭을 채운다 */
 .option_segment {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   justify-content: flex-end;
