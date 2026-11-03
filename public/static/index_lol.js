@@ -4618,7 +4618,7 @@ function lol_rpanel_update()
 	if(zzals.length > 0)
 	{
 		lol_rpanel_body_img1.style.display = 'block'
-		lol_rpanel_body_img1_img.src = lol_convert_uri_to_mirror(zzals[0])
+		dezeolmo_set_src(lol_rpanel_body_img1_img, lol_convert_uri_to_mirror(zzals[0]))
 		lol_rpanel_body_img1_add.setAttribute('src', zzals[0])
 	}
 	else
@@ -4627,7 +4627,7 @@ function lol_rpanel_update()
 	if(zzals.length > 1)
 	{
 		lol_rpanel_body_img2.style.display = 'block'
-		lol_rpanel_body_img2_img.src = lol_convert_uri_to_mirror(zzals[1])
+		dezeolmo_set_src(lol_rpanel_body_img2_img, lol_convert_uri_to_mirror(zzals[1]))
 		lol_rpanel_body_img2_add.setAttribute('src', zzals[1])
 	}
 	else
@@ -4636,7 +4636,7 @@ function lol_rpanel_update()
 	if(zzals.length > 2)
 	{
 		lol_rpanel_body_img3.style.display = 'block'
-		lol_rpanel_body_img3_img.src = lol_convert_uri_to_mirror(zzals[2])
+		dezeolmo_set_src(lol_rpanel_body_img3_img, lol_convert_uri_to_mirror(zzals[2]))
 		lol_rpanel_body_img3_add.setAttribute('src', zzals[2])
 	}
 	else
@@ -4645,7 +4645,7 @@ function lol_rpanel_update()
 	if(zzals.length > 3)
 	{
 		lol_rpanel_body_img4.style.display = 'block'
-		lol_rpanel_body_img4_img.src = lol_convert_uri_to_mirror(zzals[3])
+		dezeolmo_set_src(lol_rpanel_body_img4_img, lol_convert_uri_to_mirror(zzals[3]))
 		lol_rpanel_body_img4_add.setAttribute('src', zzals[3])
 	}
 	else
@@ -4675,7 +4675,7 @@ function lol_rpanel_update()
 		e.parentNode.insertBefore(div, e)
 
 		var img = document.createElement('img')
-		img.src = lol_convert_uri_to_mirror(e.getAttribute('src'))
+		dezeolmo_set_src(img, lol_convert_uri_to_mirror(e.getAttribute('src')))
 		img.style.width = '100%'
 		img.classList.add('lol_rpanel_img_img')
 		div.appendChild(img)
@@ -4838,7 +4838,7 @@ function lol_rpanel_update_replys()
 			var img = document.createElement('img')
 			img.toggleAttribute('img', true)
 			img.toggleAttribute('small', true)
-			img.src = lol_convert_uri_to_mirror(reply_image_url)
+			dezeolmo_set_src(img, lol_convert_uri_to_mirror(reply_image_url))
 			img.onclick = lol_onclick_reply_img
 			reply_body.appendChild(img)
 		}
@@ -5673,7 +5673,7 @@ function lol_rpanel_update_extra_images(urls)
 		div.toggleAttribute('small', i < keep.length ? keep[i] : true)
 		var img = document.createElement('img')
 		img.classList.add('lol_rpanel_img_img')
-		img.src = lol_convert_uri_to_mirror(url)
+		dezeolmo_set_src(img, lol_convert_uri_to_mirror(url))
 		div.appendChild(img)
 		var add = document.createElement('div')
 		add.classList.add('lol_rpanel_img_add')
@@ -6091,7 +6091,7 @@ function lol_notif_render_thread(data)
 		if(m.image_url)
 		{
 			var img = document.createElement('img')
-			img.src = lol_convert_uri_to_mirror(m.image_url)
+			dezeolmo_set_src(img, lol_convert_uri_to_mirror(m.image_url))
 			bubble.appendChild(img)
 		}
 		var time = document.createElement('div')
@@ -6437,6 +6437,49 @@ function lol_icon_change_confirm()
 	}))
 
 	alert('아이콘 변경을 요청했습니다.')
+}
+
+// [v2] 데이터 절약 모드: 이미지를 바로 받지 않고 가려 둔 칸만 보여 주다가, 누르면 그때 받는다 (채팅·롤백 공통)
+// 한 번 열어 본 주소는 기억해 두어, 같은 글을 다시 그리거나 같은 이미지가 또 올라와도 다시 가리지 않는다.
+var g_dezeolmo_opened = new Set()
+var g_dezeolmo_blank = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' // 1×1 투명
+
+function dezeolmo_set_src(img, url)
+{
+	// 롤백 글 이미지 칸은 엘리먼트를 다시 쓰므로 이전 글에서 걸어 둔 잠금부터 푼다
+	img.removeEventListener('click', dezeolmo_onclick, true)
+	img.classList.remove('dezeolmo_locked')
+	delete img.dataset.dezeolmoSrc
+
+	if(!url || !option_checkbox_dezeolmo.checked || g_dezeolmo_opened.has(url))
+	{
+		img.src = url
+		return
+	}
+	img.src = g_dezeolmo_blank
+	img.dataset.dezeolmoSrc = url
+	img.classList.add('dezeolmo_locked')
+	img.addEventListener('click', dezeolmo_onclick, true)
+}
+
+/* 가린 이미지 클릭: 받기만 하고, 감싼 칸의 원래 클릭 동작(크게 보기 등)은 막는다 */
+function dezeolmo_onclick(e)
+{
+	e.stopImmediatePropagation()
+	e.preventDefault()
+	dezeolmo_open(this)
+}
+
+function dezeolmo_open(img)
+{
+	var url = img.dataset.dezeolmoSrc
+	img.removeEventListener('click', dezeolmo_onclick, true)
+	img.classList.remove('dezeolmo_locked')
+	delete img.dataset.dezeolmoSrc
+	// 채팅은 눌러서 연 이미지도 다 받은 뒤 맨 아래로 내린다
+	img.onload = img.closest('#chat') ? scrollDown : null
+	g_dezeolmo_opened.add(url)
+	img.src = url
 }
 
 function lol_mirror_uri(uri)

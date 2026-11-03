@@ -1765,6 +1765,23 @@ temp[emoji] {
   width: 100%;
 }
 
+/* 데이터 절약 모드로 가려 둔 이미지 (index_lol.js dezeolmo_set_src) */
+img.dezeolmo_locked {
+  display: block;
+  width: 100%;
+  min-width: 140px;
+  aspect-ratio: 16 / 9;
+  max-height: 200px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  cursor: pointer;
+  background:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'124'%20height%3D'26'%3E%3Crect%20width%3D'124'%20height%3D'26'%20rx%3D'13'%20fill%3D'black'%20fill-opacity%3D'0.55'%2F%3E%3Ctext%20x%3D'62'%20y%3D'17.5'%20font-size%3D'12'%20font-family%3D'sans-serif'%20fill%3D'white'%20text-anchor%3D'middle'%3E%EB%88%8C%EB%9F%AC%EC%84%9C%20%EC%9D%B4%EB%AF%B8%EC%A7%80%20%EB%B3%B4%EA%B8%B0%3C%2Ftext%3E%3C%2Fsvg%3E") center no-repeat,
+    radial-gradient(circle at 28% 32%, rgba(255, 255, 255, 0.35), transparent 55%),
+    radial-gradient(circle at 74% 70%, rgba(0, 0, 0, 0.22), transparent 60%),
+    rgba(128, 128, 128, 0.35);
+}
+
 /* 채팅 속 주소 링크 (index_chat.js chat_append_linked_text) */
 #chat a[chat_link] {
   color: var(--영상주소복사_글자색);

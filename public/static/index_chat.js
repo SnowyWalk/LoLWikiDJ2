@@ -173,19 +173,17 @@ function add_message(data)
 		var img_url = imgReg.exec(text)[2]
 		text = text.replace(imgReg, '')
 
-		if(!option_checkbox_dezeolmo.checked)
-		{
-			var lol_link_img = document.createElement('img')
-			lol_link_img.classList.add('chat_img')
-			lol_link_img.src = lol_convert_uri_to_mirror(img_url)
-			lol_link_img.onmouseenter = image_onmouseenter
-			lol_link_img.onmouseout = image_onmouseout
-			lol_link_img.onmousemove = image_onmousemove
-			lol_link_img.onerror = function() { lol_link_img.style.height = '0px'; }
-			if(need_scroll)
-				lol_link_img.onload = scrollDown
-			message.appendChild(lol_link_img)
-		}
+		// 데이터 절약 모드면 가린 img로 두었다가 클릭 후 받도록 (index_lol.js dezeolmo_set_src)
+		var lol_link_img = document.createElement('img')
+		lol_link_img.classList.add('chat_img')
+		dezeolmo_set_src(lol_link_img, lol_convert_uri_to_mirror(img_url))
+		lol_link_img.onmouseenter = image_onmouseenter
+		lol_link_img.onmouseout = image_onmouseout
+		lol_link_img.onmousemove = image_onmousemove
+		lol_link_img.onerror = function() { lol_link_img.style.height = '0px'; }
+		if(need_scroll)
+			lol_link_img.onload = scrollDown
+		message.appendChild(lol_link_img)
 	}
 
 	if(videoReg.test(text))
@@ -1255,6 +1253,8 @@ function chat_scroll() {
 
 function image_onmouseenter()
 {
+	if(event.target.classList.contains('dezeolmo_locked')) // 가려 둔 이미지는 크게 보기도 받지 않는다
+		return
 	image_expander.style.display = 'block'
 	image_expander_src.src = event.target.src
 	image_expander_set_pos(event.clientX, event.clientY)
