@@ -4325,7 +4325,7 @@ top: 0;
 
     --lol-lpanel-width: 100%;
     --playlist-info-height: 48px;
-    --m-playlist-list-height: 38%; /* 재생목록 패널 위쪽 재생목록 리스트 높이 */
+    --m-playlist-search-height: 40px; /* 재생목록 패널 맨 위 검색줄 높이 */
   }
 
   /* ---------- 영상 ---------- */
@@ -4638,14 +4638,48 @@ top: 0;
     border: 0px;
   }
 
-  /* ---------- 재생목록 패널: [재생목록 리스트 | 선택한 재생목록 버튼줄 | 영상 목록] 세로로 ---------- */
+  /* ---------- 재생목록 패널: [검색줄 | 선택한 재생목록 이름·버튼줄 | 영상 목록] 세로로 ----------
+     재생목록 고르기는 접어 두고, 이름줄을 누르면 영상 목록 위로 펼친다 (index_UI.js playlist_picker_toggle).
+     영상 목록이 패널 대부분을 쓰게 된다 */
   #playlist_control_panel_playlist_container {
-    width: 100%;
-    height: var(--m-playlist-list-height);
+    display: contents; /* 검색줄·재생목록 리스트를 패널 기준으로 직접 배치 */
   }
 
   #playlist_control_panel_playlist_search {
-    height: 40px;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    height: var(--m-playlist-search-height);
+  }
+
+  /* 재생목록 고르기: 접혀 있다가 [picker_open] 이면 이름줄 아래에 영상 목록을 덮고 펼쳐진다 */
+  #playlist_control_panel_playlist_header {
+    display: none;
+    position: absolute;
+    z-index: 2;
+    top: calc(var(--m-playlist-search-height) + var(--playlist-info-height));
+    left: 0px;
+    right: 0px;
+    max-height: 60%;
+    background-color: var(--플레이리스트_배경색);
+    border-bottom: var(--플레이리스트_헤더_보더_아래);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
+  }
+
+  #playlist_control_panel[picker_open] > #playlist_control_panel_playlist_container > #playlist_control_panel_playlist_header {
+    display: block;
+  }
+
+  /* 이름줄을 누르면 재생목록 고르기가 열린다는 표시 (▾, 열리면 ▴) */
+  #playlist_control_panel_playlist_info_name {
+    padding-right: 26px;
+    background: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'8'%3E%3Cpath%20d%3D'M1%201.5l5%205%205-5'%20fill%3D'none'%20stroke%3D'%23999'%20stroke-width%3D'1.8'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") right 8px center / 12px 8px no-repeat;
+    cursor: pointer;
+  }
+
+  #playlist_control_panel[picker_open] #playlist_control_panel_playlist_info_name {
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'8'%3E%3Cpath%20d%3D'M1%206.5l5-5%205%205'%20fill%3D'none'%20stroke%3D'%23999'%20stroke-width%3D'1.8'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E");
   }
 
   .playlist_button {
@@ -4661,7 +4695,7 @@ top: 0;
   }
 
   #playlist_control_panel_playlist_info {
-    top: var(--m-playlist-list-height);
+    top: var(--m-playlist-search-height);
     left: 0px;
     font-size: 16px;
     line-height: var(--playlist-info-height);
@@ -4692,7 +4726,7 @@ top: 0;
   }
 
   #playlist_control_panel_videolist_header {
-    top: calc(var(--m-playlist-list-height) + var(--playlist-info-height));
+    top: calc(var(--m-playlist-search-height) + var(--playlist-info-height));
     left: 0px;
     border-left: 0px;
   }

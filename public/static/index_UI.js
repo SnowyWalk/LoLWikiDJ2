@@ -121,6 +121,7 @@ function show_playlist_control_panel(isShow)
 		update_playlist()
 
 	playlist_control_panel.style.display = isShow ? 'block' : 'none'
+	playlist_picker_toggle(false)
 	mobile_tab_sync()
 }
 
@@ -232,10 +233,19 @@ function onclick_playlist_button()
 
 	var playlist_id = thisElement.getAttribute('playlist_id')
 
+	playlist_picker_toggle(false) // 모바일: 고르면 접는다 (같은 걸 다시 눌러도)
 	if(g_playlist_control_panel_current_playlist_id == playlist_id)
 		return
 
 	select_playlist_button(playlist_id)
+}
+
+/* [v2] 모바일 재생목록 패널: 재생목록 고르기 펼치기/접기 (CSS 는 #playlist_control_panel[picker_open]) */
+function playlist_picker_toggle(open)
+{
+	if(open === undefined)
+		open = !playlist_control_panel.hasAttribute('picker_open')
+	playlist_control_panel.toggleAttribute('picker_open', open)
 }
 
 /* 컨트롤패널 - 선택된 재생목록의 영상 목록 UI 구성 */

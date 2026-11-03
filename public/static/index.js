@@ -345,6 +345,17 @@ function on_page_ready() {
 	playlist_control_panel_playlist_search_close_button.onclick = onclick_playlist_control_panel_search_close_button
 
 	/* 플레이리스트 관련 */
+	// 모바일: 이름줄을 누르면 재생목록 고르기를 펼치고, 그 밖을 누르면 접는다
+	playlist_control_panel_playlist_info_name.addEventListener('click', _ => { if(g_mobile_media.matches) playlist_picker_toggle() })
+	playlist_control_panel.addEventListener('click', e => {
+		if(!playlist_control_panel.hasAttribute('picker_open'))
+			return
+		if(e.target.closest('#playlist_control_panel_playlist_header, #playlist_control_panel_playlist_info_name'))
+			return
+		playlist_picker_toggle(false)
+		e.stopPropagation() // 닫으려고 누른 곳(영상 등)이 같이 실행되지 않게
+		e.preventDefault()
+	}, true)
 	playlist_control_panel_playlist_info_new_video_button.addEventListener('contextmenu', onrclick_playlist_control_panel_playlist_info_new_video_button, false)
 	playlist_control_panel_playlist_info_delete_button.addEventListener('contextmenu', onrclick_playlist_control_panel_playlist_info_delete_button, false)
 	playlist_control_panel_playlist_info_rename_button.addEventListener('contextmenu', onrclick_playlist_control_panel_playlist_info_rename_button, false)
