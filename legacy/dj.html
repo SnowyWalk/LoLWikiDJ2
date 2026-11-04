@@ -117,6 +117,8 @@
 
   <!-- 우측 채팅 영역 -->
   <div id="mainchat">
+    <!-- [v2] 영상 전체화면(가로 화면) 중에만 보이는 채팅창 손잡이: 끌어서 옮긴다 (video-fullscreen.css, index_UI.js video_fullscreen_chat_drag_*) -->
+    <div id="video_fs_chat_grip" title="끌어서 채팅창 옮기기"></div>
     <!-- 채팅 헤더 영역 -->
     <div id="mainchat_header">
       <!-- 카테고리 : 챗 버튼 -->
@@ -441,6 +443,7 @@
   <!-- [v2] 영상 전체화면 중에만 보이는 버튼 (video-fullscreen.css, index_UI.js video_fullscreen_set) -->
   <div id="video_fs_toolbar" class="no-drag">
     <div id="video_fs_chat_btn"></div>
+    <div id="video_fs_chat_size_btn"></div>
     <div id="video_fs_exit_btn"></div>
   </div>
 

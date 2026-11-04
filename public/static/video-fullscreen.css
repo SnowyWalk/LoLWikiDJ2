@@ -33,6 +33,7 @@ html[video_fullscreen] #flv_player,
 html[video_fullscreen] #twitch_player_panel {
   border: 0;
   background-color: black;
+  opacity: 0.999;
 }
 
 /* 영상 위 투명한 막: 유튜브(트위치·m3u8 포함) 플레이어 안으로 마우스·탭이 들어가지 않아 마우스 움직임에 재생바·제목이 뜨지 않게 한다. */
@@ -61,21 +62,26 @@ html[video_fullscreen] #mainchat_header {
 
 /* ---------- 채팅: 영상 위 오른쪽에 겹쳐 띄운다 ---------- */
 html[video_fullscreen] #mainchat {
+  /* 자리: 손잡이로 옮겨 둔 곳 (index_UI.js video_fullscreen_place_chat 가 --fs-chat-left·bottom 을 넣는다. 없으면 오른쪽 아래) */
   top: auto;
-  bottom: var(--fs-kb, 0px); /* 키보드 바로 위 */
-  left: auto;
-  right: 0;
-  width: clamp(240px, 32%, 380px);
-  height: clamp(120px, 30%, 400px);
+  bottom: calc(var(--fs-kb, 0px) + var(--fs-chat-bottom, 0px));
+  left: var(--fs-chat-left, auto);
+  right: auto;
+  --fs-chat-w: clamp(240px, 32%, 380px);
+  --fs-chat-h: clamp(120px, 30%, 400px);
+  --fs-chat-h-ratio: 0.6;
+  --fs-chat-h-min: 200px;
+  width: var(--fs-chat-w);
+  height: var(--fs-chat-h);
   z-index: 5;
   box-sizing: border-box;
   padding-right: env(safe-area-inset-right); /* 가로로 든 아이폰의 노치 쪽 */
   border: 0;
   /* 왼쪽은 영상이 비치게 투명, 오른쪽으로 갈수록 어둡게 → 흰 글자가 밝은 장면에서도 읽힌다 */
   background: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5) 35%);
-  /* 위쪽 끝은 영상 속으로 흐려지게 (잘린 말풍선이 딱 끊겨 보이지 않도록) */
-  -webkit-mask-image: linear-gradient(to bottom, transparent, black 48px);
-  mask-image: linear-gradient(to bottom, transparent, black 48px);
+  /* 위쪽 끝은 영상 속으로 흐려지게 (잘린 말풍선이 딱 끊겨 보이지 않도록). 맨 위 손잡이(18px)는 흐리지 않는다 */
+  -webkit-mask-image: linear-gradient(to bottom, black 18px, transparent 18px, black 66px);
+  mask-image: linear-gradient(to bottom, black 18px, transparent 18px, black 66px);
 
   /* 말풍선·입력창 색 (chat-modern.css 의 변수를 이 안에서만 바꾼다). 테마와 상관없이 어두운 반투명 */
   --cm-bubble: rgba(18, 20, 26, 0.6);
@@ -91,6 +97,47 @@ html[video_fullscreen] #mainchat {
   --cm-input-border: rgba(255, 255, 255, 0.22);
   --cm-scrollbar: rgba(255, 255, 255, 0.25);
   color: #f1f3f6;
+}
+
+/* 키보드가 올라와 있으면 옮겨 둔 높이 대신 키보드 바로 위 */
+html[video_fullscreen][video_fs_kb] #mainchat {
+  bottom: var(--fs-kb, 0px);
+}
+
+/* 손잡이: 채팅창 맨 위 가운데 막대. 끌어서 옮긴다 (index_UI.js video_fullscreen_chat_drag_*) */
+#video_fs_chat_grip {
+  display: none;
+}
+
+html[video_fullscreen] #video_fs_chat_grip {
+  display: block;
+  flex: none;
+  height: 18px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html[video_fullscreen] #video_fs_chat_grip::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 7px auto 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.45);
+  transition: background-color 0.15s;
+}
+
+html[video_fullscreen] #video_fs_chat_grip:hover::before,
+html[video_fs_chat_dragging] #video_fs_chat_grip::before {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+html[video_fs_chat_dragging],
+html[video_fs_chat_dragging] * {
+  cursor: grabbing !important;
 }
 
 /* 채팅 숨기기 (스크롤 위치가 남도록 display 대신 visibility) */
@@ -119,8 +166,7 @@ html[video_fullscreen] #mainchat #chat_reply_bar {
 /* ---------- 모바일: 채팅창을 더 높게, 입력줄은 작게 ---------- */
 @media (max-width: 768px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
   html[video_fullscreen] #mainchat {
-    /* 보이는 영역의 85%. 키보드로 보이는 영역이 240px 보다 낮아져도 위로 넘치지 않게 */
-    height: max(min(240px, var(--fs-vv-h, 100%)), calc(var(--fs-vv-h, 100%) * 0.85));
+    height: max(min(var(--fs-chat-h-min), var(--fs-vv-h, 100%)), calc(var(--fs-vv-h, 100%) * var(--fs-chat-h-ratio)));
   }
 
   html[video_fullscreen] #chat_extra {
@@ -179,6 +225,45 @@ html[video_fullscreen] #video_fs_toolbar {
   background-image: url(icons/dark/fs-exit.svg);
 }
 
+/* 크기 버튼은 지금 단계(S·M·L)를 글자로 */
+#video_fs_toolbar > #video_fs_chat_size_btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font: 700 14px/1 sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 채팅을 숨겼으면 크기 버튼은 필요 없다 */
+html[video_fullscreen_chat_hidden] #video_fs_toolbar > #video_fs_chat_size_btn {
+  display: none;
+}
+
+/* ---------- 채팅 크기 (가로 화면만, index_UI.js video_fullscreen_apply_chat_layout) ---------- */
+/* 크기: PC 는 폭·높이를, 모바일 가로 화면은 폭과 보이는 영역에 대한 높이 비율을 바꾼다 (보통 = #mainchat 기본값) */
+html[video_fullscreen][video_fs_chat_size=s] #mainchat {
+  --fs-chat-w: clamp(200px, 24%, 300px);
+  --fs-chat-h: clamp(100px, 22%, 280px);
+  --fs-chat-h-ratio: 0.42;
+  --fs-chat-h-min: 150px;
+}
+
+html[video_fullscreen][video_fs_chat_size=l] #mainchat {
+  --fs-chat-w: clamp(280px, 40%, 520px);
+  --fs-chat-h: clamp(160px, 50%, 640px);
+  --fs-chat-h-ratio: 0.85;
+  --fs-chat-h-min: 240px;
+}
+
+/* 화면 왼쪽 절반에 옮겨 두면: 바탕 그라데이션도 거꾸로 (영상 가운데 쪽이 투명), 노치 여백도 왼쪽에 */
+html[video_fullscreen][video_fs_chat_side=left] #mainchat {
+  padding-right: 0;
+  padding-left: env(safe-area-inset-left);
+  background: linear-gradient(to left, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5) 35%);
+}
+
 /* ---------- 세로 화면: 영상은 맨 위에 가로 폭 가득(16:9), 채팅은 그 아래 ----------
    세로에서 영상 위에 겹치면 작은 영상을 가리기만 하므로 겹치지 않고 위아래로 나눈다. */
 @media (orientation: portrait) {
@@ -186,9 +271,10 @@ html[video_fullscreen] #video_fs_toolbar {
     --stage-height: 56.25vw;
   }
 
-  /* 영상 바로 아래부터 키보드(없으면 화면 아래) 위까지 */
+  /* 영상 바로 아래부터 키보드(없으면 화면 아래) 위까지. 옮겨 둔 위치는 쓰지 않는다 (index_UI.js 가 세로에선 --fs-chat-left·bottom 을 지운다) */
   html[video_fullscreen] #mainchat {
     top: calc(var(--fs-vv-top, 0px) + 56.25vw);
+    left: 0;
     width: 100%;
     height: auto;
     padding-right: 0;
@@ -208,5 +294,11 @@ html[video_fullscreen] #video_fs_toolbar {
 
   html[video_fullscreen] #chat_extra {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* 세로 화면은 위치·크기를 고를 일이 없다 */
+  #video_fs_toolbar > #video_fs_chat_size_btn,
+  html[video_fullscreen] #video_fs_chat_grip {
+    display: none;
   }
 }

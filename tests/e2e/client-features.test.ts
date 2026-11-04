@@ -34,6 +34,7 @@ async function open(options: BrowserContextOptions = {}, init?: () => void): Pro
 }
 
 const MOBILE: BrowserContextOptions = { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true };
+const MOBILE_LANDSCAPE: BrowserContextOptions = { ...MOBILE, viewport: { width: 915, height: 412 } };
 
 /** 채팅 n 개를 바로 그린다. name 을 안 주면 3명이 번갈아 (같은 사람이 이어지면 continued 묶음이 된다) */
 function addMessages(page: Page, count: number, name?: string, from = 0) {
@@ -270,6 +271,107 @@ describe("영상 전체화면", () => {
     await page.context().close();
   });
 
+  describe("채팅 위치·크기 (가로 화면)", () => {
+    const chatBox = (page: Page) =>
+      page.evaluate(() => {
+        const r = mainchat.getBoundingClientRect();
+        return { left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), width: Math.round(r.width), height: Math.round(r.height) };
+      });
+
+    test("PC: 크기 버튼은 M→L→S 로 돌고, 다시 들어가도 남는다", async () => {
+      const page = await open();
+      await page.click("#video_info_fullscreen_btn");
+      await page.waitForFunction(() => !!document.fullscreenElement);
+      const vw = await page.evaluate(() => innerWidth);
+      assert.equal((await chatBox(page)).right, vw); // 기본: 오른쪽 아래, 보통
+      assert.equal(await page.textContent("#video_fs_chat_size_btn"), "M");
+      const medium = await chatBox(page);
+
+      await page.click("#video_fs_chat_size_btn");
+      assert.equal(await page.textContent("#video_fs_chat_size_btn"), "L");
+      const large = await chatBox(page);
+      assert.ok(large.width > medium.width && large.height > medium.height);
+      assert.equal(large.right, vw); // 커져도 오른쪽 끝에 붙은 채
+      await page.click("#video_fs_chat_size_btn");
+      assert.equal(await page.textContent("#video_fs_chat_size_btn"), "S");
+      const small = await chatBox(page);
+      assert.ok(small.width < medium.width && small.height < medium.height);
+
+      await page.reload({ waitUntil: "load" });
+      await page.evaluate(() => video_fullscreen_set(true));
+      assert.equal((await chatBox(page)).width, small.width);
+      await page.context().close();
+    });
+
+    test("PC: 손잡이를 끌어 옮기고, 화면 밖으로는 못 나가며, 다시 들어가도 같은 자리", async () => {
+      const page = await open();
+      await page.click("#video_info_fullscreen_btn");
+      await page.waitForFunction(() => !!document.fullscreenElement);
+      const grip = () =>
+        page.evaluate(() => {
+          const r = video_fs_chat_grip.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        });
+      const drag = async (dx: number, dy: number) => {
+        const g = await grip();
+        await page.mouse.move(g.x, g.y);
+        await page.mouse.down();
+        await page.mouse.move(g.x + dx / 2, g.y + dy / 2);
+        await page.mouse.move(g.x + dx, g.y + dy);
+        await page.mouse.up();
+      };
+      const before = await chatBox(page);
+      await drag(-900, -200);
+      let box = await chatBox(page);
+      assert.equal(box.left, before.left - 900);
+      assert.equal(box.bottom, before.bottom - 200);
+      assert.equal(await page.evaluate(() => document.documentElement.getAttribute("video_fs_chat_side")), "left");
+
+      await drag(-5000, 5000); // 왼쪽 아래 끝까지만
+      box = await chatBox(page);
+      assert.equal(box.left, 0);
+      assert.equal(box.bottom, await page.evaluate(() => innerHeight));
+
+      await drag(300, -100);
+      const placed = await chatBox(page);
+      await page.reload({ waitUntil: "load" });
+      await page.evaluate(() => video_fullscreen_set(true));
+      box = await chatBox(page);
+      assert.ok(Math.abs(box.left - placed.left) <= 1 && Math.abs(box.bottom - placed.bottom) <= 1, JSON.stringify([box, placed]));
+      await page.context().close();
+    });
+
+    test("모바일 가로: 크기 단계가 높이를 바꾼다 (작게 < 보통 < 크게)", async () => {
+      const page = await open(MOBILE_LANDSCAPE);
+      await page.tap("#video_info_fullscreen_btn");
+      const heights: number[] = [];
+      for (const size of ["s", "m", "l"]) {
+        await page.evaluate((size) => {
+          localStorage.setItem("video_fs_chat_size", size);
+          video_fullscreen_apply_chat_layout();
+        }, size);
+        heights.push((await chatBox(page)).height);
+      }
+      assert.ok(heights[0] < heights[1] && heights[1] < heights[2], heights.join());
+      await page.context().close();
+    });
+
+    test("모바일 세로: 손잡이·크기 버튼이 없고, 왼쪽 위로 옮겨 두고 크게로 골라 둬도 영상 아래 가로 폭 가득", async () => {
+      const page = await open(MOBILE, () => {
+        localStorage.setItem("video_fs_chat_pos", JSON.stringify({ x: 0, y: 1 }));
+        localStorage.setItem("video_fs_chat_size", "l");
+      });
+      await page.tap("#video_info_fullscreen_btn");
+      assert.equal(await page.evaluate(() => getComputedStyle(video_fs_chat_grip).display), "none");
+      assert.equal(await page.evaluate(() => getComputedStyle(video_fs_chat_size_btn).display), "none");
+      const box = await chatBox(page);
+      assert.equal(box.left, 0);
+      assert.equal(box.width, 412);
+      assert.equal(box.bottom, 915);
+      await page.context().close();
+    });
+  });
+
   describe("전체화면을 지원하지 않는 브라우저 (아이폰 사파리)", () => {
     const noFullscreenApi = () => {
       Object.defineProperty(Document.prototype, "fullscreenEnabled", { get: () => false });
@@ -347,6 +449,24 @@ describe("영상 전체화면", () => {
         await page.context().close();
       });
     }
+
+    test("가로: 위로 옮겨 둔 채팅도 키보드가 올라오면 키보드 바로 위로, 내려가면 제자리로", async () => {
+      const page = await open(MOBILE_LANDSCAPE, fakeVisualViewport);
+      await page.evaluate(() => {
+        localStorage.setItem("video_fs_chat_pos", JSON.stringify({ x: 0.5, y: 1 }));
+        localStorage.setItem("video_fs_chat_size", "s");
+        video_fullscreen_apply_chat_layout();
+      });
+      await page.tap("#video_info_fullscreen_btn");
+      await keyboard(page, 0, false);
+      const free = await rects(page);
+      assert.ok(free.chatBottom < 412 - 50, String(free.chatBottom)); // 위로 옮겨 둔 자리
+      await keyboard(page, 200, false);
+      assert.equal(Math.round((await rects(page)).chatBottom), 412 - 200);
+      await keyboard(page, 0, false);
+      assert.equal(Math.round((await rects(page)).chatBottom), Math.round(free.chatBottom));
+      await page.context().close();
+    });
 
     test("나가면 키보드 위치 변수를 지운다", async () => {
       const page = await open(MOBILE, fakeVisualViewport);
@@ -427,6 +547,10 @@ declare global {
   const playlist_control_panel_playlist_search_input: HTMLInputElement;
   const option_checkbox_tts_key_bind: HTMLInputElement;
   const chat_send: HTMLButtonElement;
+  const video_fs_chat_grip: HTMLDivElement;
+  const video_fs_chat_size_btn: HTMLDivElement;
+  function video_fullscreen_apply_chat_layout(): void;
+  function video_fullscreen_set(on: boolean): void;
   const option_checkbox_dezeolmo: HTMLInputElement;
   const socket: { connected: boolean; emit: (event: string, data?: unknown) => unknown };
   var g_isLogin: boolean;

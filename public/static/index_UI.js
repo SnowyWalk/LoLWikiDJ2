@@ -1607,6 +1607,13 @@ function video_fullscreen_init()
 	video_fs_chat_btn.onclick = video_fullscreen_toggle_chat
 	video_fs_exit_btn.title = '전체화면 나가기'
 	video_fullscreen_update_chat_btn()
+	video_fs_chat_size_btn.onclick = video_fullscreen_cycle_chat_size
+	video_fullscreen_apply_chat_layout()
+	video_fs_chat_grip.addEventListener('pointerdown', video_fullscreen_chat_drag_start)
+	video_fs_chat_grip.addEventListener('pointermove', video_fullscreen_chat_drag_move)
+	video_fs_chat_grip.addEventListener('pointerup', video_fullscreen_chat_drag_end)
+	video_fs_chat_grip.addEventListener('pointercancel', video_fullscreen_chat_drag_end)
+	window.addEventListener('resize', video_fullscreen_place_chat) // 창 크기·화면 방향이 바뀌면 같은 비율 자리로
 
 	// Esc·뒤로 가기·브라우저 메뉴로 전체화면이 풀리면 같이 끈다
 	var on_change = _ => {
@@ -1645,6 +1652,8 @@ function video_fullscreen_viewport_sync()
 		style.removeProperty('--fs-vv-top')
 		style.removeProperty('--fs-vv-h')
 		style.removeProperty('--fs-kb')
+		document.documentElement.removeAttribute('video_fs_kb')
+		video_fullscreen_place_chat()
 		return
 	}
 	var top = Math.max(0, vv.offsetTop)
@@ -1652,6 +1661,9 @@ function video_fullscreen_viewport_sync()
 	style.setProperty('--fs-vv-top', top + 'px')
 	style.setProperty('--fs-vv-h', vv.height + 'px')
 	style.setProperty('--fs-kb', kb + 'px')
+	// 키보드가 올라와 있으면 옮겨 둔 높이 대신 키보드 바로 위에 둔다 (video-fullscreen.css)
+	document.documentElement.toggleAttribute('video_fs_kb', kb > 0)
+	video_fullscreen_place_chat()
 }
 
 function video_fullscreen_set(on, from_history = false)
@@ -1725,4 +1737,113 @@ function video_fullscreen_update_chat_btn()
 	var hidden = document.documentElement.hasAttribute('video_fullscreen_chat_hidden')
 	video_fs_chat_btn.toggleAttribute('off', hidden)
 	video_fs_chat_btn.title = hidden ? '채팅 보이기' : '채팅 숨기기'
+}
+
+/* 겹친 채팅의 크기(작게·보통·크게)와 위치(손잡이로 끌어 옮기기). 가로 화면(PC·모바일 가로)에서만 쓰인다 (세로 화면은 영상 아래에 따로 둔다)
+   크기는 <html video_fs_chat_size=s|m|l> 로 video-fullscreen.css 가 맞추고, 위치는 --fs-chat-left·--fs-chat-bottom 으로 준다. 고른 값은 다음에도 쓴다 */
+const VIDEO_FS_CHAT_SIZES = ['s', 'm', 'l']
+const VIDEO_FS_CHAT_SIZE_NAMES = { s: '작게', m: '보통', l: '크게' }
+var g_video_fs_portrait = window.matchMedia('(orientation: portrait)')
+var g_video_fs_chat_drag = null // 끄는 중: { id, x, y, left, bottom }
+
+function video_fullscreen_apply_chat_layout()
+{
+	var size = localStorage.getItem('video_fs_chat_size')
+	if(!VIDEO_FS_CHAT_SIZES.includes(size))
+		size = 'm'
+	document.documentElement.setAttribute('video_fs_chat_size', size)
+	video_fs_chat_size_btn.textContent = size.toUpperCase()
+	var next = VIDEO_FS_CHAT_SIZES[(VIDEO_FS_CHAT_SIZES.indexOf(size) + 1) % VIDEO_FS_CHAT_SIZES.length]
+	video_fs_chat_size_btn.title = '채팅 크기: ' + VIDEO_FS_CHAT_SIZE_NAMES[size] + ' (누르면 ' + VIDEO_FS_CHAT_SIZE_NAMES[next] + ')'
+	video_fullscreen_place_chat()
+}
+
+function video_fullscreen_cycle_chat_size()
+{
+	var size = document.documentElement.getAttribute('video_fs_chat_size')
+	var next = VIDEO_FS_CHAT_SIZES[(VIDEO_FS_CHAT_SIZES.indexOf(size) + 1) % VIDEO_FS_CHAT_SIZES.length]
+	localStorage.setItem('video_fs_chat_size', next)
+	video_fullscreen_apply_chat_layout()
+	setTimeout(scrollDown, 50) // 채팅 칸 크기가 바뀌었으니 맨 아래로
+}
+
+/* 저장한 위치: 화면 안에서 채팅창이 움직일 수 있는 범위에 대한 비율 (x: 0 왼쪽 끝 ~ 1 오른쪽 끝, y: 0 아래 끝 ~ 1 위 끝).
+   픽셀 대신 비율이라 창 크기·화면 방향·채팅 크기가 바뀌어도 화면 밖으로 나가지 않는다. 기본은 오른쪽 아래 */
+function video_fullscreen_chat_pos()
+{
+	var pos = null
+	try { pos = JSON.parse(localStorage.getItem('video_fs_chat_pos')) } catch(e) {}
+	var ratio = v => (typeof v == 'number' && isFinite(v)) ? Math.min(1, Math.max(0, v)) : null
+	return { x: ratio(pos && pos.x) ?? 1, y: ratio(pos && pos.y) ?? 0 }
+}
+
+/* 저장한 위치(비율)를 지금 화면에 맞춰 픽셀로 넣는다. 세로 화면이거나 전체화면이 아니면 지운다 */
+function video_fullscreen_place_chat()
+{
+	var root = document.documentElement
+	if(!video_fullscreen_on() || g_video_fs_portrait.matches)
+	{
+		root.style.removeProperty('--fs-chat-left')
+		root.style.removeProperty('--fs-chat-bottom')
+		root.removeAttribute('video_fs_chat_side')
+		return
+	}
+	if(g_video_fs_chat_drag)
+		return
+	var pos = video_fullscreen_chat_pos()
+	video_fullscreen_set_chat_px(pos.x * Math.max(0, window.innerWidth - mainchat.offsetWidth),
+	                             pos.y * Math.max(0, window.innerHeight - mainchat.offsetHeight))
+}
+
+function video_fullscreen_set_chat_px(left, bottom)
+{
+	var root = document.documentElement
+	root.style.setProperty('--fs-chat-left', Math.round(left) + 'px')
+	root.style.setProperty('--fs-chat-bottom', Math.round(bottom) + 'px')
+	// 화면 왼쪽 절반에 있으면 바탕 그라데이션·노치 여백을 왼쪽 기준으로 (video-fullscreen.css)
+	root.setAttribute('video_fs_chat_side', left + mainchat.offsetWidth / 2 < window.innerWidth / 2 ? 'left' : 'right')
+}
+
+function video_fullscreen_chat_drag_start(e)
+{
+	if(e.button)
+		return
+	var rect = mainchat.getBoundingClientRect()
+	g_video_fs_chat_drag = { id: e.pointerId, x: e.clientX, y: e.clientY, left: rect.left, bottom: window.innerHeight - rect.bottom }
+	video_fs_chat_grip.setPointerCapture(e.pointerId)
+	document.documentElement.toggleAttribute('video_fs_chat_dragging', true)
+	e.preventDefault()
+}
+
+function video_fullscreen_chat_drag_move(e)
+{
+	var drag = g_video_fs_chat_drag
+	if(!drag || e.pointerId != drag.id)
+		return
+	var clamp = (v, max) => Math.min(Math.max(0, max), Math.max(0, v))
+	var left = clamp(drag.left + e.clientX - drag.x, window.innerWidth - mainchat.offsetWidth)
+	// 키보드가 올라와 있으면 높이는 키보드 위로 고정되므로 좌우로만
+	var bottom = document.documentElement.hasAttribute('video_fs_kb') ? drag.bottom : clamp(drag.bottom - (e.clientY - drag.y), window.innerHeight - mainchat.offsetHeight)
+	drag.cur_left = left
+	drag.cur_bottom = bottom
+	video_fullscreen_set_chat_px(left, bottom)
+}
+
+function video_fullscreen_chat_drag_end(e)
+{
+	var drag = g_video_fs_chat_drag
+	if(!drag || e.pointerId != drag.id)
+		return
+	g_video_fs_chat_drag = null
+	document.documentElement.removeAttribute('video_fs_chat_dragging')
+	if(drag.cur_left == undefined) // 누르기만 하고 움직이지 않았다
+		return
+	var free_x = window.innerWidth - mainchat.offsetWidth
+	var free_y = window.innerHeight - mainchat.offsetHeight
+	var old = video_fullscreen_chat_pos()
+	localStorage.setItem('video_fs_chat_pos', JSON.stringify({
+		x: free_x > 0 ? drag.cur_left / free_x : old.x,
+		y: document.documentElement.hasAttribute('video_fs_kb') ? old.y : (free_y > 0 ? drag.cur_bottom / free_y : old.y),
+	}))
+	video_fullscreen_place_chat()
 }
