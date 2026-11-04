@@ -95,61 +95,55 @@ describe("오래된 채팅 자동 삭제", () => {
   });
 });
 
-describe("모든 채팅을 TTS 로 보내기", () => {
-  /** 로그인한 것처럼 두고 socket.emit 을 가로챈다. 입력창에 text 를 넣고 send() 한 뒤
+describe("전송 버튼 꾹 눌러 TTS 보내기", () => {
+  /** 로그인한 것처럼 두고 socket.emit 을 가로챈다. 입력창에 text 를 넣고 전송 버튼을 holdMs 동안 누른 뒤 떼고(클릭까지)
      서버로 보낸 채팅과 TTS 요청(/tts 로 보내면 send 가 /tts 를 떼고 'tts' 이벤트를 따로 보낸다)을 돌려준다 */
-  async function sendText(page: Page, text: string): Promise<{ chat?: string; tts?: string }> {
-    return page.evaluate((text) => {
-      const w = window as unknown as { __sent: [string, { message?: string; text?: string }][] };
-      if (!w.__sent) {
-        w.__sent = [];
-        g_isLogin = true;
-        socket.emit = ((event: string, data: { message?: string; text?: string }) => {
-          w.__sent.push([event, data]);
-          return socket;
-        }) as typeof socket.emit;
-      }
-      w.__sent.length = 0;
-      g_last_tts = 0; // TTS 는 1초에 한 번만 보내므로 연달아 보내도 되게
-      chat_input.value = text;
-      send();
-      const find = (name: string) => w.__sent.find(([event]) => event === name)?.[1];
-      return { chat: find("chat_message")?.message, tts: find("tts")?.text };
-    }, text);
+  async function pressSend(page: Page, text: string, holdMs: number, pointerType = "touch") {
+    return page.evaluate(
+      async ({ text, holdMs, pointerType }) => {
+        const w = window as unknown as { __sent: [string, { message?: string; text?: string }][] };
+        if (!w.__sent) {
+          w.__sent = [];
+          g_isLogin = true;
+          socket.emit = ((event: string, data: { message?: string; text?: string }) => {
+            w.__sent.push([event, data]);
+            return socket;
+          }) as typeof socket.emit;
+        }
+        w.__sent.length = 0;
+        g_last_tts = 0; // TTS 는 1초에 한 번만 보내므로 연달아 보내도 되게
+        chat_input.value = text;
+        chat_send.dispatchEvent(new PointerEvent("pointerdown", { pointerType, bubbles: true }));
+        await new Promise((r) => setTimeout(r, holdMs));
+        chat_send.dispatchEvent(new PointerEvent("pointerup", { pointerType, bubbles: true }));
+        chat_send.click();
+        const all = (name: string) => w.__sent.filter(([event]) => event === name).map(([, data]) => data);
+        return { chats: all("chat_message").map((d) => d.message), tts: all("tts").map((d) => d.text) };
+      },
+      { text, holdMs, pointerType },
+    );
   }
 
-  async function setAlways(page: Page, on: boolean) {
-    await page.evaluate((on) => {
-      option_checkbox_tts_always.checked = on;
-      option_checkbox_tts_always.dispatchEvent(new Event("change"));
-    }, on);
-  }
-
-  test("켜면 일반 채팅도 TTS 로 보내고, /명령어는 TTS 로 보내지 않는다", async () => {
-    const page = await open();
+  test("짧게 누르면 일반 채팅, 꾹 누르면 TTS 로 한 번만 보낸다", async () => {
+    const page = await open(MOBILE);
     await page.waitForFunction(() => socket.connected);
-    await setAlways(page, true);
-    assert.equal(await page.evaluate(() => localStorage.getItem("option_checkbox_tts_always")), "true");
-
-    assert.deepEqual(await sendText(page, "안녕하세요"), { chat: "안녕하세요", tts: "안녕하세요" });
-    assert.deepEqual(await sendText(page, "/tts 직접 입력"), { chat: "직접 입력", tts: "직접 입력" });
-    assert.deepEqual(await sendText(page, "/명령어 없음"), { chat: "/명령어 없음", tts: undefined });
+    assert.deepEqual(await pressSend(page, "안녕하세요", 50), { chats: ["안녕하세요"], tts: [] });
+    assert.deepEqual(await pressSend(page, "안녕하세요", 700), { chats: ["안녕하세요"], tts: ["안녕하세요"] });
     await page.context().close();
   });
 
-  test("끄면(기본값) TTS 로 보내지 않는다", async () => {
+  test("마우스로 꾹 누르면 일반 채팅", async () => {
     const page = await open();
     await page.waitForFunction(() => socket.connected);
-    assert.equal(await page.evaluate(() => option_checkbox_tts_always.checked), false);
-    assert.deepEqual(await sendText(page, "안녕하세요"), { chat: "안녕하세요", tts: undefined });
+    assert.deepEqual(await pressSend(page, "안녕하세요", 700, "mouse"), { chats: ["안녕하세요"], tts: [] });
     await page.context().close();
   });
 
-  test("설정은 새로고침해도 남는다", async () => {
-    const page = await open();
-    await setAlways(page, true);
-    await page.reload({ waitUntil: "load" });
-    assert.equal(await page.evaluate(() => option_checkbox_tts_always.checked), true);
+  test("'TTS 단축키 사용'을 끄면 꾹 눌러도 일반 채팅", async () => {
+    const page = await open(MOBILE);
+    await page.waitForFunction(() => socket.connected);
+    await page.evaluate(() => (option_checkbox_tts_key_bind.checked = false));
+    assert.deepEqual(await pressSend(page, "안녕하세요", 700), { chats: ["안녕하세요"], tts: [] });
     await page.context().close();
   });
 });
@@ -431,7 +425,8 @@ declare global {
   const playlist_control_panel: HTMLDivElement;
   const playlist_control_panel_playlist_info_name: HTMLDivElement;
   const playlist_control_panel_playlist_search_input: HTMLInputElement;
-  const option_checkbox_tts_always: HTMLInputElement;
+  const option_checkbox_tts_key_bind: HTMLInputElement;
+  const chat_send: HTMLButtonElement;
   const option_checkbox_dezeolmo: HTMLInputElement;
   const socket: { connected: boolean; emit: (event: string, data?: unknown) => unknown };
   var g_isLogin: boolean;

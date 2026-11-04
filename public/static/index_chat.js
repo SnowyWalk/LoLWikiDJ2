@@ -620,9 +620,7 @@ function send(force_tts = false) {
 	if(message)
 		chat_history_push(message)
 
-	// [v2] '모든 채팅을 TTS 로' 설정: /명령어가 아닌 일반 채팅은 전부 /tts 를 붙여 보낸다
-	if(option_checkbox_tts_always.checked && message && message[0] != '/')
-		force_tts = true
+	// Shift+Enter·전송 버튼 꾹 누르기: /tts 를 붙여 보낸다
 	if(message && force_tts && !ttsReg.test(message))
 		message = '/tts ' + message
 

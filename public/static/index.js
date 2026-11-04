@@ -203,7 +203,6 @@ function on_page_ready() {
 	if ('option_checkbox_dezeolmo' in localStorage)
 		option_checkbox_dezeolmo.checked = eval(localStorage.getItem('option_checkbox_dezeolmo'))
 	option_checkbox_confirm_leave.checked = localStorage.getItem('option_checkbox_confirm_leave') == 'true' // 기본값 꺼짐
-	option_checkbox_tts_always.checked = localStorage.getItem('option_checkbox_tts_always') == 'true' // 기본값 꺼짐
 	option_checkbox_lol_title_bold.checked = localStorage.getItem('option_checkbox_lol_title_bold') != 'false' // 기본값 켜짐
 	document.documentElement.setAttribute('lol_title_bold', option_checkbox_lol_title_bold.checked ? 'on' : 'off')
 	option_checkbox_livechat.checked = localStorage.getItem('option_checkbox_livechat') == 'true' // 기본값 꺼짐 (실제 적용은 index_livechat.js 가 같은 키를 읽는다)
@@ -228,7 +227,6 @@ function on_page_ready() {
 	tts_8.onchange = _ => localStorage.setItem('option_tts_type', document.querySelector('[name=tts_voice_name]:checked').value)
 	option_checkbox_dezeolmo.onchange = _ => localStorage.setItem('option_checkbox_dezeolmo', option_checkbox_dezeolmo.checked)
 	option_checkbox_confirm_leave.onchange = _ => localStorage.setItem('option_checkbox_confirm_leave', option_checkbox_confirm_leave.checked)
-	option_checkbox_tts_always.onchange = _ => localStorage.setItem('option_checkbox_tts_always', option_checkbox_tts_always.checked)
 	option_checkbox_lol_title_bold.onchange = _ => {
 		localStorage.setItem('option_checkbox_lol_title_bold', option_checkbox_lol_title_bold.checked)
 		document.documentElement.setAttribute('lol_title_bold', option_checkbox_lol_title_bold.checked ? 'on' : 'off')
