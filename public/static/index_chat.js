@@ -148,12 +148,12 @@ function add_message(data)
 			else
 				className = 'other'
 
-			// [v2] 같은 사람이 연달아 보낸 메시지는 묶어서 보여 준다 (이미지·TTS 메시지는 따로)
+			// [v2] 같은 사람이 연달아 보낸 메시지는 묶어서 보여 준다 (이미지·TTS·롤백 글 공유 메시지는 따로)
 			message.setAttribute('chat_name', data.name)
-			if(g_chat_modern && !emoji_mode && !data.tts_hash && !imgReg.test(text) && !videoReg.test(text))
+			if(g_chat_modern && !emoji_mode && !data.tts_hash && !imgReg.test(text) && !videoReg.test(text) && !data.lol_link_data)
 			{
 				var prev = chat.lastElementChild
-				if(prev && prev.classList.contains('chat_balloon') && prev.getAttribute('chat_name') == data.name && !prev.querySelector('.chat_img') && !prev.querySelector('temp[emoji]'))
+				if(prev && prev.classList.contains('chat_balloon') && prev.getAttribute('chat_name') == data.name && !prev.querySelector('.chat_img') && !prev.querySelector('temp[emoji]') && !prev.querySelector('.chat_lol_link'))
 					message.toggleAttribute('continued', true)
 			}
 		break
