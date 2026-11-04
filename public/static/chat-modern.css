@@ -459,7 +459,7 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: filter 0.15s;
+  transition: filter 0.15s, transform 0.5s; /* transform: 꾹 누르는 중 (index.css #chat_send[pressing]) */
 }
 
 :root[chat-modern] #chat_send:hover {

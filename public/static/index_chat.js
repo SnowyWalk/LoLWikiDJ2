@@ -1340,3 +1340,46 @@ if(g_chat_modern)
 	chat.addEventListener('wheel', function() { stop_chat_scroll_animation() }, { passive: true })
 	chat.addEventListener('touchstart', function() { stop_chat_scroll_animation() }, { passive: true })
 }
+
+/* [v2] 모바일: 전송 버튼을 꾹 누르면 TTS 로 보낸다 (PC 의 Shift+Enter 와 같은 'TTS 단축키 사용' 설정을 따른다)
+   손가락으로 누를 때만 (마우스 클릭은 그대로). 누른 채 버튼 밖으로 벗어나거나 스크롤되면 취소 */
+const CHAT_SEND_LONG_PRESS_MS = 500
+var g_chat_send_press_timer = null
+var g_chat_send_long_pressed = false // 꾹 눌러 이미 보냈으면 손을 뗄 때 오는 click 은 무시
+
+function chat_send_press_cancel()
+{
+	clearTimeout(g_chat_send_press_timer)
+	g_chat_send_press_timer = null
+	chat_send.removeAttribute('pressing')
+}
+
+chat_send.addEventListener('pointerdown', function(e) {
+	g_chat_send_long_pressed = false
+	if(e.pointerType == 'mouse' || !option_checkbox_tts_key_bind.checked)
+		return
+	chat_send_press_cancel()
+	chat_send.toggleAttribute('pressing', true)
+	g_chat_send_press_timer = setTimeout(function() {
+		chat_send_press_cancel()
+		if(!chat_input.value.trim())
+			return
+		g_chat_send_long_pressed = true
+		if(navigator.vibrate)
+			navigator.vibrate(30)
+		send(true)
+	}, CHAT_SEND_LONG_PRESS_MS)
+})
+chat_send.addEventListener('pointerup', chat_send_press_cancel)
+chat_send.addEventListener('pointerleave', chat_send_press_cancel)
+chat_send.addEventListener('pointercancel', chat_send_press_cancel)
+// 꾹 누를 때 뜨는 길게 누르기 메뉴 막기
+chat_send.addEventListener('contextmenu', function(e) { e.preventDefault() })
+chat_send.onclick = function() {
+	if(g_chat_send_long_pressed)
+	{
+		g_chat_send_long_pressed = false
+		return
+	}
+	send()
+}
