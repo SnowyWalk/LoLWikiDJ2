@@ -55,6 +55,7 @@
   --icon-image-add: url(icons/light/image-add.svg);
   --icon-search-white: url(icons/light/search-white.svg);
   --icon-livechat: url(icons/light/livechat.svg);
+  --icon-fullscreen: url(icons/light/fullscreen.svg);
   --icon-write-white: url(icons/light/write-white.svg);
   --icon-lol-youtube: url(icons/light/lol-youtube.svg);
   --icon-lol-doodlr: url(icons/light/lol-doodlr.svg);
@@ -117,6 +118,7 @@
   --icon-star-full: url(icons/dark/star-full.svg);
   --icon-image-add: url(icons/dark/image-add.svg);
   --icon-livechat: url(icons/dark/livechat.svg);
+  --icon-fullscreen: url(icons/dark/fullscreen.svg);
   --icon-lol-youtube: url(icons/dark/lol-youtube.svg);
   --icon-lol-doodlr: url(icons/dark/lol-doodlr.svg);
 
@@ -410,9 +412,17 @@
   transition: background-color 0.12s;
 }
 
+/* 영상 전체화면 켜기 */
+:root[site-modern] #video_info_fullscreen_btn {
+  background-image: var(--icon-fullscreen);
+  opacity: 0.85;
+  transition: background-color 0.12s;
+}
+
 :root[site-modern] #video_info_volume_btn:hover,
 :root[site-modern] #video_info_volume_mute_once_btn:hover,
-:root[site-modern] #video_info_livechat_btn:hover {
+:root[site-modern] #video_info_livechat_btn:hover,
+:root[site-modern] #video_info_fullscreen_btn:hover {
   background-color: var(--sm-btn-hover) !important;
   opacity: 1;
 }

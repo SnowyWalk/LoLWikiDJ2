@@ -148,12 +148,12 @@ function add_message(data)
 			else
 				className = 'other'
 
-			// [v2] 같은 사람이 연달아 보낸 메시지는 묶어서 보여 준다 (이미지·TTS 메시지는 따로)
+			// [v2] 같은 사람이 연달아 보낸 메시지는 묶어서 보여 준다 (이미지·TTS·롤백 글 공유 메시지는 따로)
 			message.setAttribute('chat_name', data.name)
-			if(g_chat_modern && !emoji_mode && !data.tts_hash && !imgReg.test(text) && !videoReg.test(text))
+			if(g_chat_modern && !emoji_mode && !data.tts_hash && !imgReg.test(text) && !videoReg.test(text) && !data.lol_link_data)
 			{
 				var prev = chat.lastElementChild
-				if(prev && prev.classList.contains('chat_balloon') && prev.getAttribute('chat_name') == data.name && !prev.querySelector('.chat_img') && !prev.querySelector('temp[emoji]'))
+				if(prev && prev.classList.contains('chat_balloon') && prev.getAttribute('chat_name') == data.name && !prev.querySelector('.chat_img') && !prev.querySelector('temp[emoji]') && !prev.querySelector('.chat_lol_link'))
 					message.toggleAttribute('continued', true)
 			}
 		break
@@ -173,19 +173,17 @@ function add_message(data)
 		var img_url = imgReg.exec(text)[2]
 		text = text.replace(imgReg, '')
 
-		if(!option_checkbox_dezeolmo.checked)
-		{
-			var lol_link_img = document.createElement('img')
-			lol_link_img.classList.add('chat_img')
-			lol_link_img.src = lol_convert_uri_to_mirror(img_url)
-			lol_link_img.onmouseenter = image_onmouseenter
-			lol_link_img.onmouseout = image_onmouseout
-			lol_link_img.onmousemove = image_onmousemove
-			lol_link_img.onerror = function() { lol_link_img.style.height = '0px'; }
-			if(need_scroll)
-				lol_link_img.onload = scrollDown
-			message.appendChild(lol_link_img)
-		}
+		// 데이터 절약 모드면 가린 img로 두었다가 클릭 후 받도록 (index_lol.js dezeolmo_set_src)
+		var lol_link_img = document.createElement('img')
+		lol_link_img.classList.add('chat_img')
+		dezeolmo_set_src(lol_link_img, lol_convert_uri_to_mirror(img_url))
+		lol_link_img.onmouseenter = image_onmouseenter
+		lol_link_img.onmouseout = image_onmouseout
+		lol_link_img.onmousemove = image_onmousemove
+		lol_link_img.onerror = function() { lol_link_img.style.height = '0px'; }
+		if(need_scroll)
+			lol_link_img.onload = scrollDown
+		message.appendChild(lol_link_img)
 	}
 
 	if(videoReg.test(text))
@@ -287,7 +285,10 @@ function add_message(data)
 		message.style.backgroundColor = data.bg
 
 	if(need_scroll)
+	{
+		chat_trim_old()
 		scrollDown()
+	}
 
 	// 호출 사운드
 	if(option_checkbox_mention.checked) // 호출 알림 체크되어있어야 재생
@@ -412,6 +413,23 @@ function chat_make_reply_quote(data, reply_to)
 	quote.title = '원본 메시지로 이동'
 	quote.onclick = function(event) { event.stopPropagation(); chat_jump_to(reply_to.id) }
 	return quote
+}
+
+/* [v2] 오래된 채팅 자동 삭제: 채팅이 설정한 개수를 넘으면 위에서부터 지운다 (쌓일수록 느려지는 것 방지).
+   맨 아래를 보고 있을 때만 부른다 → 위로 올려 옛 채팅을 읽는 동안에는 지우지 않아 화면이 밀리지 않는다 */
+function chat_trim_old()
+{
+	if(!g_chat_auto_trim)
+		return
+	var over = chat.children.length - g_chat_auto_trim
+	if(over <= 0)
+		return
+	while(over-- > 0)
+		chat.firstElementChild.remove()
+	// 묶음의 첫 메시지가 지워졌으면 남은 첫 메시지에 다시 이름·아바타를 보인다
+	var first = chat.firstElementChild
+	if(first && first.hasAttribute('continued'))
+		first.removeAttribute('continued')
 }
 
 /* 원본 메시지로 스크롤하고 잠깐 강조. 지워졌으면(/clear 등) 아무 일도 하지 않는다 */
@@ -550,7 +568,10 @@ function add_play_message(data)
 	chat.appendChild(base)
 
 	if(need_scroll)
+	{
+		chat_trim_old()
 		scrollDown()
+	}
 
 	return base
 }
@@ -599,6 +620,7 @@ function send(force_tts = false) {
 	if(message)
 		chat_history_push(message)
 
+	// Shift+Enter·전송 버튼 꾹 누르기: /tts 를 붙여 보낸다
 	if(message && force_tts && !ttsReg.test(message))
 		message = '/tts ' + message
 
@@ -1255,6 +1277,8 @@ function chat_scroll() {
 
 function image_onmouseenter()
 {
+	if(event.target.classList.contains('dezeolmo_locked')) // 가려 둔 이미지는 크게 보기도 받지 않는다
+		return
 	image_expander.style.display = 'block'
 	image_expander_src.src = event.target.src
 	image_expander_set_pos(event.clientX, event.clientY)
@@ -1313,4 +1337,47 @@ if(g_chat_modern)
 {
 	chat.addEventListener('wheel', function() { stop_chat_scroll_animation() }, { passive: true })
 	chat.addEventListener('touchstart', function() { stop_chat_scroll_animation() }, { passive: true })
+}
+
+/* [v2] 모바일: 전송 버튼을 꾹 누르면 TTS 로 보낸다 (PC 의 Shift+Enter 와 같은 'TTS 단축키 사용' 설정을 따른다)
+   손가락으로 누를 때만 (마우스 클릭은 그대로). 누른 채 버튼 밖으로 벗어나거나 스크롤되면 취소 */
+const CHAT_SEND_LONG_PRESS_MS = 500
+var g_chat_send_press_timer = null
+var g_chat_send_long_pressed = false // 꾹 눌러 이미 보냈으면 손을 뗄 때 오는 click 은 무시
+
+function chat_send_press_cancel()
+{
+	clearTimeout(g_chat_send_press_timer)
+	g_chat_send_press_timer = null
+	chat_send.removeAttribute('pressing')
+}
+
+chat_send.addEventListener('pointerdown', function(e) {
+	g_chat_send_long_pressed = false
+	if(e.pointerType == 'mouse' || !option_checkbox_tts_key_bind.checked)
+		return
+	chat_send_press_cancel()
+	chat_send.toggleAttribute('pressing', true)
+	g_chat_send_press_timer = setTimeout(function() {
+		chat_send_press_cancel()
+		if(!chat_input.value.trim())
+			return
+		g_chat_send_long_pressed = true
+		if(navigator.vibrate)
+			navigator.vibrate(30)
+		send(true)
+	}, CHAT_SEND_LONG_PRESS_MS)
+})
+chat_send.addEventListener('pointerup', chat_send_press_cancel)
+chat_send.addEventListener('pointerleave', chat_send_press_cancel)
+chat_send.addEventListener('pointercancel', chat_send_press_cancel)
+// 꾹 누를 때 뜨는 길게 누르기 메뉴 막기
+chat_send.addEventListener('contextmenu', function(e) { e.preventDefault() })
+chat_send.onclick = function() {
+	if(g_chat_send_long_pressed)
+	{
+		g_chat_send_long_pressed = false
+		return
+	}
+	send()
 }

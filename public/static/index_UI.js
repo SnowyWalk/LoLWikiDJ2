@@ -121,6 +121,7 @@ function show_playlist_control_panel(isShow)
 		update_playlist()
 
 	playlist_control_panel.style.display = isShow ? 'block' : 'none'
+	playlist_picker_toggle(false)
 	mobile_tab_sync()
 }
 
@@ -232,10 +233,19 @@ function onclick_playlist_button()
 
 	var playlist_id = thisElement.getAttribute('playlist_id')
 
+	playlist_picker_toggle(false) // 모바일: 고르면 접는다 (같은 걸 다시 눌러도)
 	if(g_playlist_control_panel_current_playlist_id == playlist_id)
 		return
 
 	select_playlist_button(playlist_id)
+}
+
+/* [v2] 모바일 재생목록 패널: 재생목록 고르기 펼치기/접기 (CSS 는 #playlist_control_panel[picker_open]) */
+function playlist_picker_toggle(open)
+{
+	if(open === undefined)
+		open = !playlist_control_panel.hasAttribute('picker_open')
+	playlist_control_panel.toggleAttribute('picker_open', open)
 }
 
 /* 컨트롤패널 - 선택된 재생목록의 영상 목록 UI 구성 */
@@ -853,6 +863,19 @@ function onclick_chat_category_option_logout()
 		localStorage.removeItem(g_storage_nick_key)
 	g_skip_leave_confirm = true
 	location.reload()
+}
+
+/* [v2] 오래된 채팅 자동 삭제 개수 (0 = 끄기) */
+function set_chat_auto_trim(count)
+{
+	count = Number(count)
+	if([0, 200, 500, 1000].indexOf(count) < 0)
+		count = 0
+	g_chat_auto_trim = count
+	localStorage.setItem(g_storage_chat_auto_trim_key, count)
+	document.querySelector(format('[name=chat_auto_trim][value="{0}"]', count)).checked = true
+	if(is_scroll_bottom())
+		chat_trim_old()
 }
 
 function onclick_chat_category_option_chat_clear()
@@ -1565,4 +1588,262 @@ function make_toast(parent_element, text, duration_sec, align = 'center', ...css
 		t.style.animationName = 'fadeout'
 		// t.style.animationDuration = '0.75s'
 	}, duration_sec * 1000, background_element, text_element)
+}
+
+/* [v2] 영상 전체화면 + 채팅 겹쳐 보기 -----------------------------------------------------------
+   페이지 전체(<html>)를 전체화면으로 올리고 <html video_fullscreen> 로 영상을 화면 가득 채운 뒤 채팅을 그 위에 겹친다 (video-fullscreen.css).
+   영상 iframe 을 다른 요소 안으로 옮기면 다시 불러오므로 옮기지 않고 CSS 만 바꾼다. */
+var g_video_fullscreen_native = false // 브라우저 전체화면에 들어갔는지
+
+function video_fullscreen_api() { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled) }
+function video_fullscreen_element() { return document.fullscreenElement || document.webkitFullscreenElement || null }
+function video_fullscreen_on() { return document.documentElement.hasAttribute('video_fullscreen') }
+
+function video_fullscreen_init()
+{
+	video_info_fullscreen_btn.onclick = _ => video_fullscreen_set(true)
+	register_ui_tooltip_event(video_info_fullscreen_btn, '영상을 전체화면으로 보고 채팅을 그 위에 띄웁니다.')
+	video_fs_exit_btn.onclick = _ => video_fullscreen_set(false)
+	video_fs_chat_btn.onclick = video_fullscreen_toggle_chat
+	video_fs_exit_btn.title = '전체화면 나가기'
+	video_fullscreen_update_chat_btn()
+	video_fs_chat_size_btn.onclick = video_fullscreen_cycle_chat_size
+	video_fullscreen_apply_chat_layout()
+	video_fs_chat_grip.addEventListener('pointerdown', video_fullscreen_chat_drag_start)
+	video_fs_chat_grip.addEventListener('pointermove', video_fullscreen_chat_drag_move)
+	video_fs_chat_grip.addEventListener('pointerup', video_fullscreen_chat_drag_end)
+	video_fs_chat_grip.addEventListener('pointercancel', video_fullscreen_chat_drag_end)
+	window.addEventListener('resize', video_fullscreen_place_chat) // 창 크기·화면 방향이 바뀌면 같은 비율 자리로
+
+	// Esc·뒤로 가기·브라우저 메뉴로 전체화면이 풀리면 같이 끈다
+	var on_change = _ => {
+		if(g_video_fullscreen_native && !video_fullscreen_element())
+			video_fullscreen_set(false)
+	}
+	document.addEventListener('fullscreenchange', on_change)
+	document.addEventListener('webkitfullscreenchange', on_change)
+
+	// 화면 채우기만 한 경우(아이폰 등): 뒤로 가기는 사이트를 떠나지 않고 전체화면만 끈다
+	window.addEventListener('popstate', _ => {
+		if(video_fullscreen_on() && !(history.state && history.state.video_fullscreen))
+			video_fullscreen_set(false, true)
+	})
+	document.addEventListener('keydown', e => {
+		if(e.key == 'Escape' && video_fullscreen_on() && !g_video_fullscreen_native)
+			video_fullscreen_set(false)
+	})
+
+	// 모바일 키보드가 올라오고 내려갈 때 보이는 영역에 맞춰 영상·채팅 위치를 다시 잡는다
+	if(window.visualViewport)
+	{
+		visualViewport.addEventListener('resize', video_fullscreen_viewport_sync)
+		visualViewport.addEventListener('scroll', video_fullscreen_viewport_sync)
+	}
+}
+
+/* 키보드가 올라오면 브라우저가 보이는 영역(visual viewport)만 줄이거나(아이폰·크롬) 화면 자체를 줄인다(일부 브라우저). */
+function video_fullscreen_viewport_sync()
+{
+	var style = document.documentElement.style
+	var vv = window.visualViewport
+	// 손가락으로 확대 중이면 보이는 영역이 키보드와 상관없이 바뀌므로 건드리지 않는다
+	if(!vv || !video_fullscreen_on() || vv.scale > 1.01)
+	{
+		style.removeProperty('--fs-vv-top')
+		style.removeProperty('--fs-vv-h')
+		style.removeProperty('--fs-kb')
+		document.documentElement.removeAttribute('video_fs_kb')
+		video_fullscreen_place_chat()
+		return
+	}
+	var top = Math.max(0, vv.offsetTop)
+	var kb = Math.max(0, window.innerHeight - vv.height - top)
+	style.setProperty('--fs-vv-top', top + 'px')
+	style.setProperty('--fs-vv-h', vv.height + 'px')
+	style.setProperty('--fs-kb', kb + 'px')
+	// 키보드가 올라와 있으면 옮겨 둔 높이 대신 키보드 바로 위에 둔다 (video-fullscreen.css)
+	document.documentElement.toggleAttribute('video_fs_kb', kb > 0)
+	video_fullscreen_place_chat()
+}
+
+function video_fullscreen_set(on, from_history = false)
+{
+	var root = document.documentElement
+	if(on == video_fullscreen_on())
+		return
+
+	if(on)
+	{
+		// 채팅이 보이도록 롤백·재생목록 패널을 닫고 채팅 탭으로
+		if(g_lol_panel_show)
+			onrclick_playlist_info_box()
+		if(g_show_playlist_control_panel)
+			show_playlist_control_panel(false)
+		set_chat_category(mainchat_header_chat)
+		mobile_tab_sync()
+
+		root.toggleAttribute('video_fullscreen', true)
+		g_video_fullscreen_native = false
+
+		// 전체화면 요청은 클릭 처리 안에서 바로 불러야 한다
+		var req = video_fullscreen_api() && (root.requestFullscreen ? root.requestFullscreen({ navigationUI: 'hide' }) : root.webkitRequestFullscreen())
+		if(req && req.then)
+		{
+			req.then(_ => g_video_fullscreen_native = true)
+				.catch(_ => video_fullscreen_push_history()) // 거부되면 화면 채우기만
+		}
+		else if(video_fullscreen_element()) // webkit: 약속 없이 바로 들어간다
+			g_video_fullscreen_native = true
+		else
+			video_fullscreen_push_history()
+	}
+	else
+	{
+		root.removeAttribute('video_fullscreen')
+		if(video_fullscreen_element())
+		{
+			var exit = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen()
+			if(exit && exit.catch)
+				exit.catch(_ => {})
+		}
+		g_video_fullscreen_native = false
+		// 들어갈 때 쌓은 기록 칸은 지워서 다음 뒤로 가기가 헛돌지 않게
+		if(!from_history && history.state && history.state.video_fullscreen)
+			history.back()
+	}
+
+	video_fullscreen_viewport_sync()
+	resize()
+	setTimeout(scrollDown, 50) // 채팅 칸 크기가 바뀌었으니 맨 아래로
+}
+
+function video_fullscreen_push_history()
+{
+	if(video_fullscreen_on() && !(history.state && history.state.video_fullscreen))
+		history.pushState({ video_fullscreen: true }, '')
+}
+
+/* 전체화면 중 채팅 숨기기/보이기 */
+function video_fullscreen_toggle_chat()
+{
+	document.documentElement.toggleAttribute('video_fullscreen_chat_hidden')
+	video_fullscreen_update_chat_btn()
+	if(!document.documentElement.hasAttribute('video_fullscreen_chat_hidden'))
+		setTimeout(scrollDown, 50)
+}
+
+function video_fullscreen_update_chat_btn()
+{
+	var hidden = document.documentElement.hasAttribute('video_fullscreen_chat_hidden')
+	video_fs_chat_btn.toggleAttribute('off', hidden)
+	video_fs_chat_btn.title = hidden ? '채팅 보이기' : '채팅 숨기기'
+}
+
+/* 겹친 채팅의 크기(작게·보통·크게)와 위치(손잡이로 끌어 옮기기). 가로 화면(PC·모바일 가로)에서만 쓰인다 (세로 화면은 영상 아래에 따로 둔다)
+   크기는 <html video_fs_chat_size=s|m|l> 로 video-fullscreen.css 가 맞추고, 위치는 --fs-chat-left·--fs-chat-bottom 으로 준다. 고른 값은 다음에도 쓴다 */
+const VIDEO_FS_CHAT_SIZES = ['s', 'm', 'l']
+const VIDEO_FS_CHAT_SIZE_NAMES = { s: '작게', m: '보통', l: '크게' }
+var g_video_fs_portrait = window.matchMedia('(orientation: portrait)')
+var g_video_fs_chat_drag = null // 끄는 중: { id, x, y, left, bottom }
+
+function video_fullscreen_apply_chat_layout()
+{
+	var size = localStorage.getItem('video_fs_chat_size')
+	if(!VIDEO_FS_CHAT_SIZES.includes(size))
+		size = 'm'
+	document.documentElement.setAttribute('video_fs_chat_size', size)
+	video_fs_chat_size_btn.textContent = size.toUpperCase()
+	var next = VIDEO_FS_CHAT_SIZES[(VIDEO_FS_CHAT_SIZES.indexOf(size) + 1) % VIDEO_FS_CHAT_SIZES.length]
+	video_fs_chat_size_btn.title = '채팅 크기: ' + VIDEO_FS_CHAT_SIZE_NAMES[size] + ' (누르면 ' + VIDEO_FS_CHAT_SIZE_NAMES[next] + ')'
+	video_fullscreen_place_chat()
+}
+
+function video_fullscreen_cycle_chat_size()
+{
+	var size = document.documentElement.getAttribute('video_fs_chat_size')
+	var next = VIDEO_FS_CHAT_SIZES[(VIDEO_FS_CHAT_SIZES.indexOf(size) + 1) % VIDEO_FS_CHAT_SIZES.length]
+	localStorage.setItem('video_fs_chat_size', next)
+	video_fullscreen_apply_chat_layout()
+	setTimeout(scrollDown, 50) // 채팅 칸 크기가 바뀌었으니 맨 아래로
+}
+
+/* 저장한 위치: 화면 안에서 채팅창이 움직일 수 있는 범위에 대한 비율 (x: 0 왼쪽 끝 ~ 1 오른쪽 끝, y: 0 아래 끝 ~ 1 위 끝).
+   픽셀 대신 비율이라 창 크기·화면 방향·채팅 크기가 바뀌어도 화면 밖으로 나가지 않는다. 기본은 오른쪽 아래 */
+function video_fullscreen_chat_pos()
+{
+	var pos = null
+	try { pos = JSON.parse(localStorage.getItem('video_fs_chat_pos')) } catch(e) {}
+	var ratio = v => (typeof v == 'number' && isFinite(v)) ? Math.min(1, Math.max(0, v)) : null
+	return { x: ratio(pos && pos.x) ?? 1, y: ratio(pos && pos.y) ?? 0 }
+}
+
+/* 저장한 위치(비율)를 지금 화면에 맞춰 픽셀로 넣는다. 세로 화면이거나 전체화면이 아니면 지운다 */
+function video_fullscreen_place_chat()
+{
+	var root = document.documentElement
+	if(!video_fullscreen_on() || g_video_fs_portrait.matches)
+	{
+		root.style.removeProperty('--fs-chat-left')
+		root.style.removeProperty('--fs-chat-bottom')
+		root.removeAttribute('video_fs_chat_side')
+		return
+	}
+	if(g_video_fs_chat_drag)
+		return
+	var pos = video_fullscreen_chat_pos()
+	video_fullscreen_set_chat_px(pos.x * Math.max(0, window.innerWidth - mainchat.offsetWidth),
+	                             pos.y * Math.max(0, window.innerHeight - mainchat.offsetHeight))
+}
+
+function video_fullscreen_set_chat_px(left, bottom)
+{
+	var root = document.documentElement
+	root.style.setProperty('--fs-chat-left', Math.round(left) + 'px')
+	root.style.setProperty('--fs-chat-bottom', Math.round(bottom) + 'px')
+	// 화면 왼쪽 절반에 있으면 바탕 그라데이션·노치 여백을 왼쪽 기준으로 (video-fullscreen.css)
+	root.setAttribute('video_fs_chat_side', left + mainchat.offsetWidth / 2 < window.innerWidth / 2 ? 'left' : 'right')
+}
+
+function video_fullscreen_chat_drag_start(e)
+{
+	if(e.button)
+		return
+	var rect = mainchat.getBoundingClientRect()
+	g_video_fs_chat_drag = { id: e.pointerId, x: e.clientX, y: e.clientY, left: rect.left, bottom: window.innerHeight - rect.bottom }
+	video_fs_chat_grip.setPointerCapture(e.pointerId)
+	document.documentElement.toggleAttribute('video_fs_chat_dragging', true)
+	e.preventDefault()
+}
+
+function video_fullscreen_chat_drag_move(e)
+{
+	var drag = g_video_fs_chat_drag
+	if(!drag || e.pointerId != drag.id)
+		return
+	var clamp = (v, max) => Math.min(Math.max(0, max), Math.max(0, v))
+	var left = clamp(drag.left + e.clientX - drag.x, window.innerWidth - mainchat.offsetWidth)
+	// 키보드가 올라와 있으면 높이는 키보드 위로 고정되므로 좌우로만
+	var bottom = document.documentElement.hasAttribute('video_fs_kb') ? drag.bottom : clamp(drag.bottom - (e.clientY - drag.y), window.innerHeight - mainchat.offsetHeight)
+	drag.cur_left = left
+	drag.cur_bottom = bottom
+	video_fullscreen_set_chat_px(left, bottom)
+}
+
+function video_fullscreen_chat_drag_end(e)
+{
+	var drag = g_video_fs_chat_drag
+	if(!drag || e.pointerId != drag.id)
+		return
+	g_video_fs_chat_drag = null
+	document.documentElement.removeAttribute('video_fs_chat_dragging')
+	if(drag.cur_left == undefined) // 누르기만 하고 움직이지 않았다
+		return
+	var free_x = window.innerWidth - mainchat.offsetWidth
+	var free_y = window.innerHeight - mainchat.offsetHeight
+	var old = video_fullscreen_chat_pos()
+	localStorage.setItem('video_fs_chat_pos', JSON.stringify({
+		x: free_x > 0 ? drag.cur_left / free_x : old.x,
+		y: document.documentElement.hasAttribute('video_fs_kb') ? old.y : (free_y > 0 ? drag.cur_bottom / free_y : old.y),
+	}))
+	video_fullscreen_place_chat()
 }

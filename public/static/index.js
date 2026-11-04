@@ -4,6 +4,8 @@ var socket = io({ query: { channel: window.__DJ_CHANNEL__ } }) // [v2] 채널은
 const g_storage_theme_key = 'LoLWikiDJ_Theme'
 const g_storage_font_scale_key = 'option_font_scale' // [v2] 글자 크기 프리셋
 const g_storage_font_family_key = 'option_font_family' // [v2] 글꼴
+const g_storage_chat_auto_trim_key = 'option_chat_auto_trim' // [v2] 오래된 채팅 자동 삭제 개수
+var g_chat_auto_trim = 0 // 0 이면 끔 (index_chat.js chat_trim_old)
 var g_skip_leave_confirm = false // [v2] 로그아웃·서버 새로고침처럼 우리가 일부러 새로고침할 때는 닫기 확인을 묻지 않는다
 
 /* 채팅/인증용 데이터 */
@@ -183,6 +185,7 @@ function on_page_ready() {
 	set_theme(localStorage.getItem(g_storage_theme_key))
 	set_font_scale(localStorage.getItem(g_storage_font_scale_key))
 	set_font_family(localStorage.getItem(g_storage_font_family_key))
+	set_chat_auto_trim(localStorage.getItem(g_storage_chat_auto_trim_key))
 	if ('option_checkbox_mention' in localStorage)
 		option_checkbox_mention.checked = eval(localStorage.getItem('option_checkbox_mention'))
 	if ('option_slider_mention_volume' in localStorage)
@@ -332,6 +335,9 @@ function on_page_ready() {
 	video_info_volume_slider.oninput = onchange_video_info_volume_slider
 	video_info_volume_mute_once_btn.onclick = onclick_video_info_volume_mute_once_btn
 
+	/* [v2] 영상 전체화면 (index_UI.js video_fullscreen_set) */
+	video_fullscreen_init()
+
 	/* 롤디자게 숨겨진 버튼 */
 	current_playlist_info_box.addEventListener('contextmenu', onrclick_playlist_info_box)
 
@@ -340,6 +346,17 @@ function on_page_ready() {
 	playlist_control_panel_playlist_search_close_button.onclick = onclick_playlist_control_panel_search_close_button
 
 	/* 플레이리스트 관련 */
+	// 모바일: 이름줄을 누르면 재생목록 고르기를 펼치고, 그 밖을 누르면 접는다
+	playlist_control_panel_playlist_info_name.addEventListener('click', _ => { if(g_mobile_media.matches) playlist_picker_toggle() })
+	playlist_control_panel.addEventListener('click', e => {
+		if(!playlist_control_panel.hasAttribute('picker_open'))
+			return
+		if(e.target.closest('#playlist_control_panel_playlist_header, #playlist_control_panel_playlist_info_name'))
+			return
+		playlist_picker_toggle(false)
+		e.stopPropagation() // 닫으려고 누른 곳(영상 등)이 같이 실행되지 않게
+		e.preventDefault()
+	}, true)
 	playlist_control_panel_playlist_info_new_video_button.addEventListener('contextmenu', onrclick_playlist_control_panel_playlist_info_new_video_button, false)
 	playlist_control_panel_playlist_info_delete_button.addEventListener('contextmenu', onrclick_playlist_control_panel_playlist_info_delete_button, false)
 	playlist_control_panel_playlist_info_rename_button.addEventListener('contextmenu', onrclick_playlist_control_panel_playlist_info_rename_button, false)
@@ -358,6 +375,10 @@ function on_page_ready() {
 	/* 옵션 - 글자 크기 */
 	for(var e of document.querySelectorAll('[name=font_scale]'))
 		e.onchange = _ => set_font_scale(document.querySelector('[name=font_scale]:checked').value)
+
+	/* 옵션 - 오래된 채팅 자동 삭제 */
+	for(var e of document.querySelectorAll('[name=chat_auto_trim]'))
+		e.onchange = _ => set_chat_auto_trim(document.querySelector('[name=chat_auto_trim]:checked').value)
 
 	/* 롤백 관련 */
 	lol_lpanel_board.onscroll = lol_lpanel_board_onscroll
